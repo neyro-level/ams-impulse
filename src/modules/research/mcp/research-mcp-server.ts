@@ -29,12 +29,37 @@ async function safely(operation: () => Promise<unknown>, correlationId: string) 
 }
 
 export function createResearchMcpServer(input: { principal: PrincipalContext; research: ResearchService; reports: ResearchReportService }) {
-  const server = new McpServer({ name: "ams-impulse-research", version: "1.0.0" });
+  const server = new McpServer({ name: "ams-impulse-research", version: "1.1.0" });
+
+  server.registerTool("research_list", {
+    description: "Получить доступные исследования явно указанного проекта Инструментов.",
+    inputSchema: z.object({ organizationId: ref.organizationId, projectId: ref.projectId }),
+  }, (args) => safely(() => input.research.list(input.principal, args.organizationId, args.projectId), input.principal.correlationId));
+
+  server.registerTool("research_get", {
+    description: "Получить черновик, версию и запросы исследования в доступном проекте.",
+    inputSchema: z.object(ref),
+  }, (args) => safely(() => input.research.get(input.principal, args), input.principal.correlationId));
 
   server.registerTool("research_create_draft", {
     description: "Создать черновик исследования в явно доступном проекте Инструментов.",
     inputSchema: z.object({ organizationId: ref.organizationId, projectId: ref.projectId, title: z.string().min(2).max(180), brief: z.string().max(5000).default(""), queries: z.array(z.string().min(2).max(500)).min(1).max(20) }),
   }, (args) => safely(() => input.research.create(input.principal, args), input.principal.correlationId));
+
+  server.registerTool("research_update_draft", {
+    description: "Обновить редактируемое исследование с optimistic version check.",
+    inputSchema: z.object({ ...ref, title: z.string().min(2).max(180), brief: z.string().max(5000).default(""), queries: z.array(z.string().min(2).max(500)).min(1).max(20), version: z.number().int().positive() }),
+  }, (args) => safely(() => input.research.update(input.principal, args), input.principal.correlationId));
+
+  server.registerTool("research_archive", {
+    description: "Архивировать редактируемое исследование по его текущей версии.",
+    inputSchema: z.object({ ...ref, version: z.number().int().positive() }),
+  }, ({ version, ...args }) => safely(() => input.research.archive(input.principal, args, version), input.principal.correlationId));
+
+  server.registerTool("research_list_runs", {
+    description: "Получить историю и безопасный прогресс запусков исследования.",
+    inputSchema: z.object(ref),
+  }, (args) => safely(() => input.research.listRuns(input.principal, args), input.principal.correlationId));
 
   server.registerTool("research_estimate_run", {
     description: "Рассчитать серверную стоимость запуска без платных обращений к провайдеру.",
@@ -45,6 +70,11 @@ export function createResearchMcpServer(input: { principal: PrincipalContext; re
     description: "Подтвердить сохранённую стоимость и поставить исследование в очередь.",
     inputSchema: z.object({ ...ref, runId: z.string().min(1).max(128), expectedEstimatedCostKopecks: z.number().int().min(0) }),
   }, (args) => safely(() => input.research.confirmAndQueue(input.principal, args), input.principal.correlationId));
+
+  server.registerTool("research_cancel_run", {
+    description: "Безопасно отменить только ожидающий подтверждения или ещё не взятый worker запуск.",
+    inputSchema: z.object({ ...ref, runId: z.string().min(1).max(128) }),
+  }, (args) => safely(() => input.research.cancelRun(input.principal, args), input.principal.correlationId));
 
   server.registerTool("research_get_run", {
     description: "Получить статус, доказательства и карту конкурентов по запуску.",

@@ -16,6 +16,7 @@ export interface ResearchRepository {
   listWorkItems(organizationId: string, projectId: string, query: ResearchListQuery): Promise<ResearchListResult>;
   findById(ref: ResearchRef, transaction?: DatabaseTransaction): Promise<ResearchRecord | null>;
   listRuns(ref: ResearchRef): Promise<ResearchRunSummary[]>;
+  hasActiveRun(ref: ResearchRef, transaction: DatabaseTransaction): Promise<boolean>;
   create(input: CreateResearchInput & { createdByUserId: string; correlationId: string }, transaction: DatabaseTransaction): Promise<ResearchRecord>;
   update(input: UpdateResearchInput & { actorId: string; correlationId: string }, transaction: DatabaseTransaction): Promise<ResearchRecord | null>;
   archive(ref: ResearchRef & { version: number; actorId: string; correlationId: string }, transaction: DatabaseTransaction): Promise<boolean>;
@@ -38,7 +39,7 @@ export interface ResearchRepository {
     dailyLimitKopecks: number;
     monthlyLimitKopecks: number;
   }, transaction: DatabaseTransaction): Promise<{ runId: string; outboxEventId: string } | null>;
-  cancelRun(input: ResearchRef & { runId: string; actorId: string; correlationId: string }, transaction: DatabaseTransaction): Promise<boolean>;
+  cancelRun(input: ResearchRef & { runId: string; actorId: string; correlationId: string }, transaction: DatabaseTransaction): Promise<"cancelled" | "already-cancelled" | "unsafe-state" | "not-found">;
   appendAudit(input: {
     organizationId: string;
     projectId: string;

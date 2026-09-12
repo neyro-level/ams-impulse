@@ -3,6 +3,7 @@ import { getPgBoss, stopPgBoss } from "../platform-operations/queue.ts";
 import { researchRunJobSchema, RESEARCH_RUN_QUEUE, type ResearchRunJob } from "./domain/research-queue.ts";
 import { ResearchExecutionService } from "./application/research-execution-service.ts";
 import { listStaleResearchRunScopes, PrismaResearchExecutionRepository } from "./infrastructure/prisma-research-execution-repository.ts";
+import { PrismaResearchLifecyclePublisher } from "./infrastructure/prisma-research-lifecycle-publisher.ts";
 import { XmlRiverClient } from "./infrastructure/xmlriver-client.ts";
 import { setTimeout as sleep } from "node:timers/promises";
 import { recordRuntimeHeartbeat, RESEARCH_WORKER_RUNTIME, RUNTIME_HEARTBEAT_WRITE_INTERVAL_MS } from "../platform-operations/index.ts";
@@ -64,7 +65,7 @@ export async function runNextResearchJob(env: Record<string, string | undefined>
           projectId: job.toolsProjectId,
         });
         await repository.failStaleRuns(new Date(Date.now() - RESEARCH_STALE_RUN_AFTER_MS));
-        return new ResearchExecutionService(repository, new XmlRiverClient({ user, key }));
+        return new ResearchExecutionService(repository, new XmlRiverClient({ user, key }), undefined, new PrismaResearchLifecyclePublisher());
       },
     );
   } finally {
@@ -105,7 +106,7 @@ export async function runResearchWorkerDaemon(
             projectId: job.toolsProjectId,
           });
           await repository.failStaleRuns(new Date(Date.now() - RESEARCH_STALE_RUN_AFTER_MS));
-          return new ResearchExecutionService(repository, new XmlRiverClient({ user, key }));
+          return new ResearchExecutionService(repository, new XmlRiverClient({ user, key }), undefined, new PrismaResearchLifecyclePublisher());
         },
       );
       if (result.status === "idle") {

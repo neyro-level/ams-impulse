@@ -10,6 +10,7 @@ import { PrismaResearchRepository } from "./infrastructure/prisma-research-repos
 import { S3PrivateExportStorage } from "./infrastructure/s3-private-export-storage.ts";
 import { ResearchReportService } from "./application/research-report-service.ts";
 import { ResearchService } from "./application/research-service.ts";
+import type { PrivateExportStorage } from "./application/ports/research-report-repository.ts";
 
 export { ResearchService } from "./application/research-service.ts";
 export { ResearchReportService } from "./application/research-report-service.ts";
@@ -24,11 +25,18 @@ function databaseUserId(principal: PrincipalContext) {
   return principal.userId;
 }
 
+function lazyPrivateExportStorage(): PrivateExportStorage {
+  return {
+    putCsv(objectKey, body) { return S3PrivateExportStorage.fromEnvironment().putCsv(objectKey, body); },
+    createDownloadUrl(objectKey, expiresInSeconds) { return S3PrivateExportStorage.fromEnvironment().createDownloadUrl(objectKey, expiresInSeconds); },
+  };
+}
+
 export function createResearchMcpServices(principal: PrincipalContext) {
   const prisma = getPrismaClient();
   const userId = databaseUserId(principal);
   const authorization = new AuthorizationService(new PrismaAccessGrantRepository(prisma));
-  const storage = S3PrivateExportStorage.fromEnvironment();
+  const storage = lazyPrivateExportStorage();
   return {
     research: new ResearchService(
       new PrismaResearchRepository(userId, prisma),
@@ -61,6 +69,6 @@ export function createResearchReportService(principal: PrincipalContext) {
   return new ResearchReportService(
     new PrismaResearchReportRepository(userId, prisma),
     new AuthorizationService(new PrismaAccessGrantRepository(prisma)),
-    S3PrivateExportStorage.fromEnvironment(),
+    lazyPrivateExportStorage(),
   );
 }

@@ -30,6 +30,7 @@ export class S3PrivateExportStorage implements PrivateExportStorage {
     await this.client.send(new PutObjectCommand({ Bucket: this.bucket, Key: objectKey, Body: body, ContentType: "text/csv; charset=utf-8", CacheControl: "private, no-store", ServerSideEncryption: "AES256" }));
   }
   createDownloadUrl(objectKey: string, expiresInSeconds: number) {
-    return getSignedUrl(this.client, new GetObjectCommand({ Bucket: this.bucket, Key: objectKey, ResponseCacheControl: "private, no-store", ResponseContentDisposition: 'attachment; filename="research.csv"' }), { expiresIn: expiresInSeconds });
+    const ttl = Math.min(60, Math.max(1, Math.trunc(expiresInSeconds)));
+    return getSignedUrl(this.client, new GetObjectCommand({ Bucket: this.bucket, Key: objectKey, ResponseCacheControl: "private, no-store", ResponseContentDisposition: 'attachment; filename="research.csv"' }), { expiresIn: ttl });
   }
 }

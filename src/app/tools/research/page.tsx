@@ -23,8 +23,8 @@ import { WorkspacePicker } from "./WorkspacePicker.tsx";
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 const first = (value: string | string[] | undefined) => Array.isArray(value) ? value[0] : value;
-const tone: Record<string, StatusTone> = { DRAFT: "neutral", READY: "info", RUNNING: "warning", SUCCEEDED: "success", FAILED: "destructive" };
-const label: Record<string, string> = { DRAFT: "Черновик", READY: "Готово", RUNNING: "Выполняется", SUCCEEDED: "Завершено", FAILED: "Ошибка" };
+const tone: Record<string, StatusTone> = { DRAFT: "neutral", READY: "info", RUNNING: "warning", SUCCEEDED: "success", PARTIAL: "warning", FAILED: "destructive" };
+const label: Record<string, string> = { DRAFT: "Черновик", READY: "Готово", RUNNING: "Выполняется", SUCCEEDED: "Завершено", PARTIAL: "Частичный результат", FAILED: "Ошибка" };
 const rubles = (kopecks: number) => new Intl.NumberFormat("ru-RU", { style: "currency", currency: "RUB", maximumFractionDigits: 0 }).format(kopecks / 100);
 
 function listHref(raw: Record<string, string>, page: number) {

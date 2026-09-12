@@ -18,7 +18,8 @@ class MemoryResearchRepository implements ResearchRepository {
   runIds = new Map<string, string>();
   lastConfirmation: Parameters<ResearchRepository["confirmRun"]>[0] | null = null;
   private reservationTail: Promise<void> = Promise.resolve();
-  cancelledRunId: string | null = null;
+  cancelResult: Awaited<ReturnType<ResearchRepository["cancelRun"]>> = "cancelled";
+  activeRun = false;
 
   async listByProject(organizationId: string, projectId: string) { return this.records.filter((record) => record.organizationId === organizationId && record.projectId === projectId && record.status !== "ARCHIVED"); }
   async listWorkItems(organizationId: string, projectId: string, query: Parameters<ResearchRepository["listWorkItems"]>[2]) {
@@ -35,6 +36,7 @@ class MemoryResearchRepository implements ResearchRepository {
   }
   async findById(ref: { organizationId: string; projectId: string; researchId: string }) { return this.records.find((record) => record.id === ref.researchId && record.organizationId === ref.organizationId && record.projectId === ref.projectId) ?? null; }
   async listRuns() { return []; }
+  async hasActiveRun() { return this.activeRun; }
   async create(input: Parameters<ResearchRepository["create"]>[0]) {
     const record: ResearchRecord = { id: `research-${this.records.length + 1}`, organizationId: input.organizationId, projectId: input.projectId, title: input.title, brief: input.brief, status: "DRAFT", version: 1, queries: input.queries.map((text, position) => ({ id: `query-${position}`, text, position })), updatedAt: "2026-09-11T00:00:00.000Z" };
     this.records.push(record); return record;
@@ -66,7 +68,7 @@ class MemoryResearchRepository implements ResearchRepository {
     }
   }
   async confirmRun(input: Parameters<ResearchRepository["confirmRun"]>[0]) { this.lastConfirmation = input; return input.expectedEstimatedCostKopecks >= 0 ? { runId: input.runId, outboxEventId: "outbox-1" } : null; }
-  async cancelRun(input: Parameters<ResearchRepository["cancelRun"]>[0]) { this.cancelledRunId = input.runId; return true; }
+  async cancelRun() { return this.cancelResult; }
   async appendAudit() {}
 }
 
@@ -167,11 +169,28 @@ describe("ResearchService", () => {
     expect(repository.dailyKopecks).toBe(100);
   });
 
-  it("cancels an unstarted run through a command transaction", async () => {
+  it("cancels only a safe pre-dispatch state and stays idempotent", async () => {
     const repository = new MemoryResearchRepository();
     const service = new ResearchService(repository, authorization, pricing, budget);
     const analyst = createPlatformAnalystPrincipal("analyst");
-    await service.cancelRun(analyst, { organizationId: "atlas", projectId: "secondary", researchId: "research-1", runId: "run-1" });
-    expect(repository.cancelledRunId).toBe("run-1");
+    const input = { organizationId: "atlas", projectId: "secondary", researchId: "research-1", runId: "run-1" };
+
+    await expect(service.cancelRun(analyst, input)).resolves.toEqual({ runId: "run-1", status: "CANCELLED", changed: true });
+    repository.cancelResult = "already-cancelled";
+    await expect(service.cancelRun(analyst, input)).resolves.toEqual({ runId: "run-1", status: "CANCELLED", changed: false });
+    repository.cancelResult = "unsafe-state";
+    await expect(service.cancelRun(analyst, input)).rejects.toMatchObject({ code: "RESEARCH_RUN_NOT_CANCELLABLE" });
+  });
+
+  it("edits a partial result but blocks mutations while a run is active", async () => {
+    const repository = new MemoryResearchRepository();
+    const service = new ResearchService(repository, authorization, pricing, budget);
+    const analyst = createPlatformAnalystPrincipal("analyst");
+    const research = await service.create(analyst, { organizationId: "atlas", projectId: "secondary", title: "История", queries: ["один"] });
+    research.status = "PARTIAL";
+    await expect(service.update(analyst, { organizationId: "atlas", projectId: "secondary", researchId: research.id, title: "Новый запуск", brief: "", queries: ["два"], version: research.version })).resolves.toMatchObject({ title: "Новый запуск" });
+    repository.activeRun = true;
+    await expect(service.update(analyst, { organizationId: "atlas", projectId: "secondary", researchId: research.id, title: "Нельзя", brief: "", queries: ["три"], version: research.version })).rejects.toMatchObject({ code: "RESEARCH_ACTIVE_RUN_EXISTS" });
+    await expect(service.archive(analyst, { organizationId: "atlas", projectId: "secondary", researchId: research.id }, research.version)).rejects.toMatchObject({ code: "RESEARCH_ACTIVE_RUN_EXISTS" });
   });
 });

@@ -202,10 +202,16 @@ export class PrismaResearchRepository implements ResearchRepository {
   async listRuns(ref: ResearchRef): Promise<ResearchRunSummary[]> {
     return this.withContext(async (transaction) => {
       const rows = await transaction.$queryRaw<Array<Omit<ResearchRunSummary, "createdAt" | "finishedAt"> & { createdAt: Date; finishedAt: Date | null }>>(Prisma.sql`
-        SELECT "id" AS "runId", "status"::text, "queryCount", "estimatedCostKopecks", "actualCostKopecks", "safeErrorCode", "createdAt", "finishedAt"
-        FROM "research"."Run"
-        WHERE "researchId"=${ref.researchId} AND "organizationId"=${ref.organizationId} AND "projectId"=${ref.projectId}
-        ORDER BY "createdAt" DESC
+        SELECT run."id" AS "runId", run."status"::text, run."queryCount", run."estimatedCostKopecks",
+          COALESCE(run."actualCostKopecks", (SELECT COALESCE(SUM(query_run."costKopecks"), 0)::int FROM "research"."QueryRun" AS query_run WHERE query_run."runId"=run."id")) AS "actualCostKopecks",
+          run."safeErrorCode", run."createdAt", run."finishedAt",
+          (SELECT COUNT(*) FILTER (WHERE query_run."status"='PENDING')::int FROM "research"."QueryRun" AS query_run WHERE query_run."runId"=run."id") AS "pendingCount",
+          (SELECT COUNT(*) FILTER (WHERE query_run."status"='RUNNING')::int FROM "research"."QueryRun" AS query_run WHERE query_run."runId"=run."id") AS "runningCount",
+          (SELECT COUNT(*) FILTER (WHERE query_run."status"='SUCCEEDED')::int FROM "research"."QueryRun" AS query_run WHERE query_run."runId"=run."id") AS "succeededCount",
+          (SELECT COUNT(*) FILTER (WHERE query_run."status"='FAILED')::int FROM "research"."QueryRun" AS query_run WHERE query_run."runId"=run."id") AS "failedCount"
+        FROM "research"."Run" AS run
+        WHERE run."researchId"=${ref.researchId} AND run."organizationId"=${ref.organizationId} AND run."projectId"=${ref.projectId}
+        ORDER BY run."createdAt" DESC
       `);
       return rows.map((row) => ({ ...row, createdAt: row.createdAt.toISOString(), finishedAt: row.finishedAt?.toISOString() ?? null }));
     });
@@ -234,6 +240,11 @@ export class PrismaResearchRepository implements ResearchRepository {
         SET "title" = ${input.title}, "brief" = ${input.brief}, "version" = "version" + 1, "updatedAt" = CURRENT_TIMESTAMP
         WHERE "id" = ${input.researchId} AND "organizationId" = ${input.organizationId}
           AND "projectId" = ${input.projectId} AND "version" = ${input.version} AND "archivedAt" IS NULL
+          AND NOT EXISTS (
+            SELECT 1 FROM "research"."Run" AS run
+            WHERE run."researchId"=${input.researchId} AND run."organizationId"=${input.organizationId}
+              AND run."projectId"=${input.projectId} AND run."status" IN ('AWAITING_CONFIRMATION','QUEUED','RUNNING')
+          )
     `);
     if (count !== 1) return null;
     await transaction.$executeRaw(Prisma.sql`
@@ -255,6 +266,11 @@ export class PrismaResearchRepository implements ResearchRepository {
         SET "status" = 'ARCHIVED', "archivedAt" = CURRENT_TIMESTAMP, "version" = "version" + 1, "updatedAt" = CURRENT_TIMESTAMP
         WHERE "id" = ${ref.researchId} AND "organizationId" = ${ref.organizationId}
           AND "projectId" = ${ref.projectId} AND "version" = ${ref.version} AND "archivedAt" IS NULL
+          AND NOT EXISTS (
+            SELECT 1 FROM "research"."Run" AS run
+            WHERE run."researchId"=${ref.researchId} AND run."organizationId"=${ref.organizationId}
+              AND run."projectId"=${ref.projectId} AND run."status" IN ('AWAITING_CONFIRMATION','QUEUED','RUNNING')
+          )
     `);
     return count === 1;
   }
@@ -308,7 +324,25 @@ export class PrismaResearchRepository implements ResearchRepository {
         (${runId}, ${input.ref.organizationId}, ${input.ref.projectId}, ${input.ref.researchId}, 'AWAITING_CONFIRMATION', ${input.queryCount}, ${input.estimatedCostKopecks}, ${input.now}::timestamptz + INTERVAL '15 minutes', ${input.idempotencyKey}, ${input.now}, CURRENT_TIMESTAMP)
       RETURNING "id"
     `);
-    return { runId: inserted[0]!.id, dailyCommittedKopecks, monthlyCommittedKopecks };
+    if (inserted[0]) {
+      const snapshotQueries = await transaction.$queryRaw<Array<{ id: string; organizationId: string; projectId: string; text: string; position: number }>>(Prisma.sql`
+        SELECT "id", "organizationId", "projectId", "text", "position"
+        FROM "research"."Query"
+        WHERE "researchId"=${input.ref.researchId}
+          AND "organizationId"=${input.ref.organizationId} AND "projectId"=${input.ref.projectId}
+        ORDER BY "position"
+      `);
+      if (snapshotQueries.length !== input.queryCount) throw new Error("RESEARCH_QUERY_SET_CHANGED");
+      await transaction.$executeRaw(Prisma.sql`
+        INSERT INTO "research"."QueryRun"
+          ("id", "organizationId", "projectId", "researchId", "runId", "queryId", "queryText", "queryPosition", "status", "attemptCount")
+        VALUES ${Prisma.join(snapshotQueries.map((query) => Prisma.sql`
+          (${newId()}, ${query.organizationId}, ${query.projectId}, ${input.ref.researchId}, ${inserted[0]!.id}, ${query.id}, ${query.text}, ${query.position}, 'PENDING', 0)
+        `))}
+      `);
+      return { runId: inserted[0].id, dailyCommittedKopecks, monthlyCommittedKopecks };
+    }
+    throw new Error("RESEARCH_RUN_ESTIMATE_INSERT_FAILED");
   }
 
   async confirmRun(input: { ref: ResearchRef; runId: string; expectedEstimatedCostKopecks: number; actorId: string; correlationId: string; now: Date; dailyLimitKopecks: number; monthlyLimitKopecks: number }, transaction: DatabaseTransaction) {
@@ -371,19 +405,39 @@ export class PrismaResearchRepository implements ResearchRepository {
   }
 
   async cancelRun(input: ResearchRef & { runId: string; actorId: string; correlationId: string }, transaction: DatabaseTransaction) {
-    const count = await transaction.$executeRaw(Prisma.sql`
+    const rows = await transaction.$queryRaw<Array<{ status: string }>>(Prisma.sql`
+      SELECT "status"::text AS "status" FROM "research"."Run"
+      WHERE "id"=${input.runId} AND "organizationId"=${input.organizationId}
+        AND "projectId"=${input.projectId} AND "researchId"=${input.researchId}
+      FOR UPDATE
+    `);
+    const run = rows[0];
+    if (!run) return "not-found" as const;
+    if (run.status === "CANCELLED") return "already-cancelled" as const;
+    if (!( ["AWAITING_CONFIRMATION", "QUEUED"] as const).includes(run.status as "AWAITING_CONFIRMATION" | "QUEUED")) return "unsafe-state" as const;
+    await transaction.$executeRaw(Prisma.sql`
       UPDATE "research"."Run"
       SET "status"='CANCELLED', "safeErrorCode"='RESEARCH_CANCELLED_BY_USER',
         "finishedAt"=CURRENT_TIMESTAMP, "updatedAt"=CURRENT_TIMESTAMP
-      WHERE "id"=${input.runId} AND "organizationId"=${input.organizationId}
-        AND "projectId"=${input.projectId} AND "researchId"=${input.researchId}
-        AND "status" IN ('AWAITING_CONFIRMATION','QUEUED')
+      WHERE "id"=${input.runId}
     `);
-    if (count !== 1) return false;
-    return true;
+    return "cancelled" as const;
+  }
+
+  async hasActiveRun(ref: ResearchRef, transaction: DatabaseTransaction) {
+    const rows = await transaction.$queryRaw<Array<{ active: boolean }>>(Prisma.sql`
+      SELECT EXISTS(
+        SELECT 1 FROM "research"."Run"
+        WHERE "organizationId"=${ref.organizationId} AND "projectId"=${ref.projectId}
+          AND "researchId"=${ref.researchId}
+          AND "status" IN ('AWAITING_CONFIRMATION','QUEUED','RUNNING')
+      ) AS "active"
+    `);
+    return rows[0]?.active ?? false;
   }
 
   async appendAudit(input: { organizationId: string; projectId: string; actorId: string; action: string; entityId: string; correlationId: string; marker: Prisma.InputJsonValue }, transaction: DatabaseTransaction) {
     await appendAudit(transaction, input);
   }
+
 }

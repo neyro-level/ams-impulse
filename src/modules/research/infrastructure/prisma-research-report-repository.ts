@@ -25,12 +25,11 @@ export class PrismaResearchReportRepository implements ResearchReportRepository 
           AND "organizationId"=${ref.organizationId} AND "projectId"=${ref.projectId} LIMIT 1
       `);
       const run = runs[0]; if (!run) return null;
-      const queryRows = await transaction.$queryRaw<Array<{ queryRunId: string | null; query: string; status: string; costKopecks: number | null }>>(Prisma.sql`
-        SELECT query_run."id" AS "queryRunId", query."text" AS "query", COALESCE(query_run."status"::text, 'PENDING') AS "status", query_run."costKopecks"
-        FROM "research"."Query" AS query LEFT JOIN "research"."QueryRun" AS query_run
-          ON query_run."queryId"=query.id AND query_run."runId"=${ref.runId}
-        WHERE query."researchId"=${ref.researchId} AND query."organizationId"=${ref.organizationId} AND query."projectId"=${ref.projectId}
-        ORDER BY query."position"
+      const queryRows = await transaction.$queryRaw<Array<{ queryRunId: string | null; query: string; status: string; costKopecks: number | null; safeErrorCode: string | null; startedAt: Date | null; finishedAt: Date | null }>>(Prisma.sql`
+        SELECT "id" AS "queryRunId", "queryText" AS "query", "status"::text AS "status", "costKopecks", "safeErrorCode", "startedAt", "finishedAt"
+        FROM "research"."QueryRun"
+        WHERE "runId"=${ref.runId} AND "organizationId"=${ref.organizationId} AND "projectId"=${ref.projectId}
+        ORDER BY "queryPosition"
       `);
       const evidence = await transaction.$queryRaw<Array<{ queryRunId: string; type: string; url: string | null; title: string | null; snippet: string | null }>>(Prisma.sql`
         SELECT "queryRunId", "sourceType" AS "type", "sourceUrl" AS "url", "title", "snippet"
@@ -49,6 +48,8 @@ export class PrismaResearchReportRepository implements ResearchReportRepository 
         finishedAt: run.finishedAt?.toISOString() ?? null,
         queries: queryRows.map((query) => ({
           ...query,
+          startedAt: query.startedAt?.toISOString() ?? null,
+          finishedAt: query.finishedAt?.toISOString() ?? null,
           evidence: query.queryRunId
             ? evidence
                 .filter((item) => item.queryRunId === query.queryRunId)
@@ -63,15 +64,16 @@ export class PrismaResearchReportRepository implements ResearchReportRepository 
   async reserveExport(input: ResearchRef & { runId: string; idempotencyKey: string; actorId: string }): Promise<ResearchExportReservation> {
     return this.withContext(async (transaction) => {
       const id = newId();
-      const rows = await transaction.$queryRaw<Array<ResearchExportRecord & { researchId: string; runId: string | null; format: string }>>(Prisma.sql`
+      const rows = await transaction.$queryRaw<Array<ResearchExportRecord & { format: string }>>(Prisma.sql`
         INSERT INTO "research"."Export" ("id", "organizationId", "projectId", "researchId", "runId", "format", "status", "createdByUserId", "idempotencyKey", "createdAt")
         VALUES (${id}, ${input.organizationId}, ${input.projectId}, ${input.researchId}, ${input.runId}, 'csv', 'PENDING', ${input.actorId}, ${input.idempotencyKey}, CURRENT_TIMESTAMP)
         ON CONFLICT ("organizationId", "idempotencyKey") DO NOTHING
-        RETURNING "id" AS "exportId", "status"::text AS "status", "objectKey", "researchId", "runId", "format"
+        RETURNING "id" AS "exportId", "organizationId", "projectId", "researchId", "runId", "status"::text AS "status", "objectKey"
+          , "format"
       `);
       if (rows[0]) return { ...rows[0], generationClaimed: true };
-      const existing = await transaction.$queryRaw<Array<ResearchExportRecord & { projectId: string; researchId: string; runId: string | null; format: string }>>(Prisma.sql`
-        SELECT "id" AS "exportId", "status"::text AS "status", "objectKey", "projectId", "researchId", "runId", "format"
+      const existing = await transaction.$queryRaw<Array<ResearchExportRecord & { format: string }>>(Prisma.sql`
+        SELECT "id" AS "exportId", "organizationId", "projectId", "researchId", "runId", "status"::text AS "status", "objectKey", "format"
         FROM "research"."Export"
         WHERE "organizationId"=${input.organizationId} AND "idempotencyKey"=${input.idempotencyKey}
         LIMIT 1
@@ -91,7 +93,7 @@ export class PrismaResearchReportRepository implements ResearchReportRepository 
           UPDATE "research"."Export"
           SET "status"='PENDING', "objectKey"=NULL, "expiresAt"=NULL
           WHERE "id"=${previous.exportId} AND "status"='FAILED'
-          RETURNING "id" AS "exportId", "status"::text AS "status", "objectKey"
+          RETURNING "id" AS "exportId", "organizationId", "projectId", "researchId", "runId", "status"::text AS "status", "objectKey"
         `);
         if (claimed[0]) return { ...claimed[0], generationClaimed: true };
       }
@@ -107,7 +109,7 @@ export class PrismaResearchReportRepository implements ResearchReportRepository 
   }
   async getExport(ref: ResearchRef & { exportId: string }): Promise<ResearchExportRecord | null> {
     return this.withContext(async (transaction) => {
-      const rows = await transaction.$queryRaw<ResearchExportRecord[]>(Prisma.sql`SELECT "id" AS "exportId", "status"::text AS "status", "objectKey" FROM "research"."Export" WHERE "id"=${ref.exportId} AND "researchId"=${ref.researchId} AND "organizationId"=${ref.organizationId} AND "projectId"=${ref.projectId} AND ("expiresAt" IS NULL OR "expiresAt">CURRENT_TIMESTAMP) LIMIT 1`);
+      const rows = await transaction.$queryRaw<ResearchExportRecord[]>(Prisma.sql`SELECT "id" AS "exportId", "organizationId", "projectId", "researchId", "runId", "status"::text AS "status", "objectKey" FROM "research"."Export" WHERE "id"=${ref.exportId} AND "researchId"=${ref.researchId} AND "organizationId"=${ref.organizationId} AND "projectId"=${ref.projectId} AND ("expiresAt" IS NULL OR "expiresAt">CURRENT_TIMESTAMP) LIMIT 1`);
       return rows[0] ?? null;
     });
   }

@@ -65,7 +65,8 @@ export function createResearchCommands(dependencies: {
       const current = await dependencies.repository.findById(input, transaction);
       if (!current) throw new ResearchError("RESEARCH_NOT_FOUND_OR_FORBIDDEN");
       if (current.version !== input.version) throw new ResearchError("RESEARCH_STALE");
-      if (!( ["DRAFT", "READY", "FAILED"] as const).includes(current.status as "DRAFT" | "READY" | "FAILED")) throw new ResearchError("RESEARCH_NOT_EDITABLE");
+      if (!( ["DRAFT", "READY", "PARTIAL", "FAILED"] as const).includes(current.status as "DRAFT" | "READY" | "PARTIAL" | "FAILED")) throw new ResearchError("RESEARCH_NOT_EDITABLE");
+      if (await dependencies.repository.hasActiveRun(input, transaction)) throw new ResearchError("RESEARCH_ACTIVE_RUN_EXISTS");
       const actor = actorId(principal);
       const result = await dependencies.repository.update({ ...input, actorId: actor, correlationId: principal.correlationId }, transaction);
       if (!result) throw new ResearchError("RESEARCH_STALE");
@@ -80,6 +81,7 @@ export function createResearchCommands(dependencies: {
     authorize: (principal: PrincipalContext, input) => requireAccess(dependencies.authorization, principal, "research:update", input),
     execute: async ({ principal, input, transaction }) => {
       const actor = actorId(principal);
+      if (await dependencies.repository.hasActiveRun(input, transaction)) throw new ResearchError("RESEARCH_ACTIVE_RUN_EXISTS");
       if (!await dependencies.repository.archive({ ...input, actorId: actor, correlationId: principal.correlationId }, transaction)) throw new ResearchError("RESEARCH_STALE");
       await dependencies.repository.appendAudit({ ...auditScope(input), actorId: actor, action: "research.archive", entityId: input.researchId, correlationId: principal.correlationId, marker: { toolsOrganizationId: input.organizationId, toolsProjectId: input.projectId, version: input.version + 1 } }, transaction);
     },
@@ -92,7 +94,7 @@ export function createResearchCommands(dependencies: {
     execute: async ({ principal, input, transaction }) => {
       const research = await dependencies.repository.findById(input, transaction);
       if (!research) throw new ResearchError("RESEARCH_NOT_FOUND_OR_FORBIDDEN");
-      if (!(["DRAFT", "READY", "FAILED"] as const).includes(research.status as "DRAFT" | "READY" | "FAILED")) throw new ResearchError("RESEARCH_NOT_EDITABLE");
+      if (!(["DRAFT", "READY", "PARTIAL", "FAILED"] as const).includes(research.status as "DRAFT" | "READY" | "PARTIAL" | "FAILED")) throw new ResearchError("RESEARCH_NOT_EDITABLE");
       const estimatedCostKopecks = dependencies.pricing.estimateRunCostKopecks(research.queries.length);
       if (!Number.isSafeInteger(estimatedCostKopecks) || estimatedCostKopecks < 0) throw new ResearchError("RESEARCH_PRICING_UNAVAILABLE");
       const idempotencyKey = input.idempotencyKey ?? deriveResearchEstimateIdempotencyKey({ researchId: research.id, version: research.version, queries: research.queries.map(({ text }) => text) });
@@ -121,8 +123,13 @@ export function createResearchCommands(dependencies: {
     authorize: (principal: PrincipalContext, input) => requireAccess(dependencies.authorization, principal, "research:run", input),
     execute: async ({ principal, input, transaction }) => {
       const actor = actorId(principal);
-      if (!await dependencies.repository.cancelRun({ ...input, actorId: actor, correlationId: principal.correlationId }, transaction)) throw new ResearchError("RESEARCH_NOT_FOUND_OR_FORBIDDEN");
-      await dependencies.repository.appendAudit({ ...auditScope(input), actorId: actor, action: "research.run.cancel", entityId: input.runId, correlationId: principal.correlationId, marker: { toolsOrganizationId: input.organizationId, toolsProjectId: input.projectId } }, transaction);
+      const result = await dependencies.repository.cancelRun({ ...input, actorId: actor, correlationId: principal.correlationId }, transaction);
+      if (result === "not-found") throw new ResearchError("RESEARCH_NOT_FOUND_OR_FORBIDDEN");
+      if (result === "unsafe-state") throw new ResearchError("RESEARCH_RUN_NOT_CANCELLABLE");
+      if (result === "cancelled") {
+        await dependencies.repository.appendAudit({ ...auditScope(input), actorId: actor, action: "research.run.cancel", entityId: input.runId, correlationId: principal.correlationId, marker: { toolsOrganizationId: input.organizationId, toolsProjectId: input.projectId } }, transaction);
+      }
+      return { runId: input.runId, status: "CANCELLED" as const, changed: result === "cancelled" };
     },
   });
 

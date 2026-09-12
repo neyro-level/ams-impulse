@@ -1,0 +1,2 @@
+ALTER TYPE "research"."ResearchStatus" ADD VALUE IF NOT EXISTS 'PARTIAL';
+ALTER TYPE "research"."RunStatus" ADD VALUE IF NOT EXISTS 'PARTIAL';

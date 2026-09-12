@@ -114,7 +114,7 @@ The migrator owns schema changes. `ams_web` and `ams_worker` are login roles wit
 - Client-side permission checks improve UX only.
 - Private responses use `Cache-Control: no-store` where relevant.
 - Service worker cannot cache session, API, report, export, research or PII responses.
-- Private S3 object keys are never public; download URLs are short-lived and issued after fresh authorization.
+- Private S3 object keys are never public and are bound to the exact Tools organization, project, research and export id. Download URLs are HTTPS-only, contain no URL credentials, are capped at 60 seconds and are issued only after fresh `research:export` authorization.
 
 ### Public Lead Form
 

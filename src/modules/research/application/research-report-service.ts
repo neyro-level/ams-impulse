@@ -3,7 +3,7 @@ import type { PrincipalContext } from "../../../platform/authorization/principal
 import { z } from "zod";
 import { ResearchError, researchRefSchema } from "../domain/research.ts";
 import { deriveResearchCsvIdempotencyKey } from "../domain/research-idempotency.ts";
-import type { PrivateExportStorage, ResearchReportRepository, ResearchRunReport } from "./ports/research-report-repository.ts";
+import type { PrivateExportStorage, ResearchExportRecord, ResearchReportRepository, ResearchRunReport } from "./ports/research-report-repository.ts";
 
 function actorId(principal: PrincipalContext) {
   return principal.kind === "api-client" || principal.kind === "job" ? null : principal.userId;
@@ -32,6 +32,24 @@ function wait(milliseconds: number) {
   return new Promise((resolve) => setTimeout(resolve, milliseconds));
 }
 
+function expectedObjectKey(input: { organizationId: string; projectId: string; researchId: string }, exportId: string) {
+  return `research/${input.organizationId}/${input.projectId}/${input.researchId}/${exportId}.csv`;
+}
+
+function exportMatches(record: ResearchExportRecord, input: { organizationId: string; projectId: string; researchId: string; runId?: string }) {
+  return record.organizationId === input.organizationId && record.projectId === input.projectId && record.researchId === input.researchId && (!input.runId || record.runId === input.runId);
+}
+
+function safeSignedDownloadUrl(raw: string) {
+  try {
+    const url = new URL(raw);
+    if (url.protocol !== "https:" || url.username || url.password) throw new Error("UNSAFE_SIGNED_URL");
+    return url.toString();
+  } catch {
+    throw new ResearchError("RESEARCH_NOT_FOUND_OR_FORBIDDEN");
+  }
+}
+
 export class ResearchReportService {
   constructor(
     private readonly repository: ResearchReportRepository,
@@ -57,13 +75,15 @@ export class ResearchReportService {
     await this.require(principal, "research:export", input);
     const userId = actorId(principal); if (!userId) throw new ResearchError("RESEARCH_NOT_FOUND_OR_FORBIDDEN");
     const report = await this.repository.getRunReport(input);
-    if (!report || report.status !== "SUCCEEDED") throw new ResearchError("RESEARCH_NOT_FOUND_OR_FORBIDDEN");
+    if (!report || !["SUCCEEDED", "PARTIAL"].includes(report.status)) throw new ResearchError("RESEARCH_NOT_FOUND_OR_FORBIDDEN");
     const reserved = await this.repository.reserveExport({
       ...input,
       idempotencyKey: input.idempotencyKey ?? deriveResearchCsvIdempotencyKey(input.runId),
       actorId: userId,
     });
-    const objectKey = reserved.objectKey ?? `research/${input.organizationId}/${input.projectId}/${input.researchId}/${reserved.exportId}.csv`;
+    if (!exportMatches(reserved, input)) throw new ResearchError("RESEARCH_NOT_FOUND_OR_FORBIDDEN");
+    const objectKey = expectedObjectKey(input, reserved.exportId);
+    if (reserved.objectKey && reserved.objectKey !== objectKey) throw new ResearchError("RESEARCH_NOT_FOUND_OR_FORBIDDEN");
     if (reserved.generationClaimed) {
       try {
         await this.storage.putCsv(objectKey, reportToCsv(report));
@@ -90,7 +110,8 @@ export class ResearchReportService {
     const input = researchRefSchema.extend({ exportId: researchRefSchema.shape.researchId }).parse(rawInput);
     await this.require(principal, "research:export", input);
     const record = await this.repository.getExport(input);
-    if (!record || record.status !== "READY" || !record.objectKey) throw new ResearchError("RESEARCH_NOT_FOUND_OR_FORBIDDEN");
-    return { url: await this.storage.createDownloadUrl(record.objectKey, 60), expiresInSeconds: 60 as const };
+    if (!record || !exportMatches(record, input) || record.status !== "READY" || record.objectKey !== expectedObjectKey(input, record.exportId)) throw new ResearchError("RESEARCH_NOT_FOUND_OR_FORBIDDEN");
+    const url = await this.storage.createDownloadUrl(record.objectKey, 60);
+    return { url: safeSignedDownloadUrl(url), expiresInSeconds: 60 as const };
   }
 }

@@ -4,16 +4,16 @@ import { ResearchReportService } from "../src/modules/research/server.ts";
 import { AuthorizationService } from "../src/platform/authorization/authorization-service.ts";
 import { createPlatformAnalystPrincipal, createTenantUserPrincipal } from "./helpers/principal.ts";
 
-const report: ResearchRunReport = { runId: "run-1", status: "SUCCEEDED", estimatedCostKopecks: 100, approvedCostKopecks: 100, actualCostKopecks: 100, safeErrorCode: null, createdAt: "2026-09-11T00:00:00.000Z", finishedAt: "2026-09-11T00:01:00.000Z", queries: [{ query: "запрос", status: "SUCCEEDED", costKopecks: 100, evidence: [{ type: "organic", url: "https://example.test", title: "Пример", snippet: null }] }], competitors: [] };
+const report: ResearchRunReport = { runId: "run-1", status: "SUCCEEDED", estimatedCostKopecks: 100, approvedCostKopecks: 100, actualCostKopecks: 100, safeErrorCode: null, createdAt: "2026-09-11T00:00:00.000Z", finishedAt: "2026-09-11T00:01:00.000Z", queries: [{ query: "запрос", status: "SUCCEEDED", costKopecks: 100, safeErrorCode: null, startedAt: "2026-09-11T00:00:10.000Z", finishedAt: "2026-09-11T00:00:20.000Z", evidence: [{ type: "organic", url: "https://example.test", title: "Пример", snippet: null }] }], competitors: [] };
 
 class MemoryReports implements ResearchReportRepository {
   status: "PENDING" | "READY" = "PENDING"; objectKey: string | null = null;
   idempotencyKeys: string[] = [];
   async getRunReport() { return report; }
-  async reserveExport(input: Parameters<ResearchReportRepository["reserveExport"]>[0]) { this.idempotencyKeys.push(input.idempotencyKey); return { exportId: "export-1", status: this.status, objectKey: this.objectKey, generationClaimed: this.status !== "READY" }; }
+  async reserveExport(input: Parameters<ResearchReportRepository["reserveExport"]>[0]) { this.idempotencyKeys.push(input.idempotencyKey); return { exportId: "export-1", organizationId: "org-1", projectId: "project-1", researchId: "research-1", runId: "run-1", status: this.status, objectKey: this.objectKey, generationClaimed: this.status !== "READY" }; }
   async markExportReady(_id: string, key: string) { this.status = "READY"; this.objectKey = key; }
   async markExportFailed() { return; }
-  async getExport() { return { exportId: "export-1", status: this.status, objectKey: this.objectKey }; }
+  async getExport() { return { exportId: "export-1", organizationId: "org-1", projectId: "project-1", researchId: "research-1", runId: "run-1", status: this.status, objectKey: this.objectKey }; }
 }
 
 const storage: PrivateExportStorage & { body?: string } = {
@@ -54,5 +54,23 @@ describe("ResearchReportService", () => {
     const service = new ResearchReportService(repository, authorization, isolatedStorage);
     await service.createExport(createPlatformAnalystPrincipal("analyst"), { organizationId: "org-1", projectId: "project-1", researchId: "research-1", runId: "run-1" });
     expect(isolatedStorage.body).toContain("'=WEBSERVICE");
+  });
+
+  it("exports an explicit partial result without inventing missing evidence", async () => {
+    const repository = new MemoryReports();
+    repository.getRunReport = async () => ({ ...report, status: "PARTIAL", queries: [{ ...report.queries[0]!, status: "FAILED", costKopecks: null, evidence: [] }] });
+    const isolatedStorage: PrivateExportStorage & { body?: string } = { async putCsv(_key, body) { this.body = body; }, async createDownloadUrl() { return "https://storage.test/signed"; } };
+    await new ResearchReportService(repository, authorization, isolatedStorage).createExport(createPlatformAnalystPrincipal("analyst"), { organizationId: "org-1", projectId: "project-1", researchId: "research-1", runId: "run-1", idempotencyKey: "export-003" });
+    expect(isolatedStorage.body).toContain('"FAILED"');
+    expect(isolatedStorage.body).not.toContain("undefined");
+  });
+
+  it("rejects a foreign object key and an unsafe signed URL", async () => {
+    const repository = new MemoryReports(); repository.status = "READY"; repository.objectKey = "research/foreign/project/research/export-1.csv";
+    const service = new ResearchReportService(repository, authorization, { ...storage, async createDownloadUrl() { return "http://storage.test/signed"; } });
+    const principal = createPlatformAnalystPrincipal("analyst");
+    await expect(service.createDownload(principal, { organizationId: "org-1", projectId: "project-1", researchId: "research-1", exportId: "export-1" })).rejects.toMatchObject({ code: "RESEARCH_NOT_FOUND_OR_FORBIDDEN" });
+    repository.objectKey = "research/org-1/project-1/research-1/export-1.csv";
+    await expect(service.createDownload(principal, { organizationId: "org-1", projectId: "project-1", researchId: "research-1", exportId: "export-1" })).rejects.toMatchObject({ code: "RESEARCH_NOT_FOUND_OR_FORBIDDEN" });
   });
 });

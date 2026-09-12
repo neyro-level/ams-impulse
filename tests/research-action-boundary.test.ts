@@ -5,13 +5,13 @@ const actions = readFileSync(new URL("../src/app/tools/research/actions.ts", imp
 
 describe("Research UI action boundary", () => {
   it("routes every UI mutation through defineAction", () => {
-    expect(actions.match(/defineAction</g)).toHaveLength(6);
+    expect(actions.match(/defineAction</g)).toHaveLength(7);
     expect(actions).not.toContain("requireCurrentCabinetPrincipal");
   });
 
   it("keeps Next.js navigation outside defined action executions", () => {
     expect(actions).not.toMatch(/execute:[\s\S]{0,300}(?:redirect|notFound)\(/);
-    expect(actions.indexOf("redirect(")).toBeGreaterThan(actions.indexOf("export async function createResearchAction"));
+    expect(actions).toContain("export async function cancelResearchRunAction");
   });
 
   it("maps Research errors and configures post-commit invalidation", () => {

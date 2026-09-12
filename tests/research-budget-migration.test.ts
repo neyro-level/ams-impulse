@@ -9,6 +9,10 @@ const repository = readFileSync(
   new URL("../src/modules/research/infrastructure/prisma-research-repository.ts", import.meta.url),
   "utf8",
 );
+const terminalSpendMigration = readFileSync(
+  new URL("../prisma/migrations/20260912181000_include_terminal_research_spend/migration.sql", import.meta.url),
+  "utf8",
+);
 
 describe("Research budget serialization", () => {
   it("aggregates organization spend behind an authorized project", () => {
@@ -22,5 +26,12 @@ describe("Research budget serialization", () => {
     expect(repository).toContain("reserveRunEstimate");
     expect(repository).toContain("RESEARCH_DAILY_LIMIT_EXCEEDED");
     expect(repository).toContain("RESEARCH_MONTHLY_LIMIT_EXCEEDED");
+  });
+
+  it("keeps live estimates reserved while charging actual terminal spend", () => {
+    expect(terminalSpendMigration).toContain("run.\"status\" = 'AWAITING_CONFIRMATION'");
+    expect(terminalSpendMigration).toContain('run."estimateExpiresAt" > reference_time');
+    expect(terminalSpendMigration).toContain("run.\"status\" IN ('SUCCEEDED', 'PARTIAL', 'FAILED')");
+    expect(terminalSpendMigration).toContain('COALESCE(run."actualCostKopecks", 0)');
   });
 });

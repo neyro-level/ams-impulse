@@ -37,17 +37,25 @@ Research UI mutations проходят через `defineAction`; revalidation �
 - ambiguous timeout не повторяет платный вызов;
 - история запусков, Evidence и CompetitorProjection;
 - private S3 CSV и signed URL на 60 секунд;
-- кабинет и шесть MCP tools.
+- кабинет и двенадцать MCP tools полного жизненного цикла.
 
-Не реализованы: partial run, cancellation UI, XLSX, AI insights, отдельные research templates и уведомления Research.
+Не реализованы: XLSX, AI insights и отдельные research templates.
 
 ## Состояния
 
-- Research: `DRAFT | READY | RUNNING | SUCCEEDED | FAILED | ARCHIVED`.
-- Run: `DRAFT | AWAITING_CONFIRMATION | QUEUED | RUNNING | SUCCEEDED | FAILED | CANCELLED`.
+- Research: `DRAFT | READY | RUNNING | SUCCEEDED | PARTIAL | FAILED | ARCHIVED`.
+- Run: `DRAFT | AWAITING_CONFIRMATION | QUEUED | RUNNING | SUCCEEDED | PARTIAL | FAILED | CANCELLED`.
 - QueryRun: `PENDING | RUNNING | SUCCEEDED | FAILED`. Terminal `Run` failure closes every remaining `PENDING`/`RUNNING` query as `FAILED`; unexecuted queries keep `costKopecks = null`, while `Run.actualCostKopecks` sums only recorded query costs.
 
 При неоднозначном результате provider call запуск завершается `FAILED` с безопасным кодом; автоматического повтора нет. Зависший `RUNNING` старше 20 минут восстанавливается только внутри scope текущего job.
+
+Обычный безопасно классифицированный отказ одного запроса не стирает доказательства остальных запросов: worker продолжает bounded run и завершает его как `PARTIAL`. Для каждого запроса сохраняются собственный статус, безопасная причина и фактическая стоимость успешного provider-вызова. CSV для `PARTIAL` содержит только реально сохранённые данные. Повтор не выполняется автоматически: новый запуск требует новой оценки и отдельного подтверждения стоимости.
+
+Состав и порядок запросов snapshot-ятся в `QueryRun` в момент estimate. Пока запуск находится в `AWAITING_CONFIRMATION`, `QUEUED` или `RUNNING`, редактирование и архивирование исследования запрещены. После терминального состояния текущий черновик можно изменить для нового запуска, не меняя историю, evidence и стоимость прежнего.
+
+Отмена разрешена только для `AWAITING_CONFIRMATION` и `QUEUED` до claim платным worker. Повторная отмена идемпотентна и аудируется при первом переходе. `RUNNING` не отменяется без отдельного доказанного provider/worker rollback contract.
+
+Worker публикует идемпотентные platform-team уведомления `started`, `completed`, `partial`, `failed` и отдельное `action_required` для частичного или неуспешного результата. Сбой вторичного канала уведомлений не меняет уже зафиксированный исход платного запуска; точкой истины остаются `Run` и `QueryRun`.
 
 ## Права
 
@@ -65,14 +73,17 @@ Cabinet повторный клик не создаёт новый estimate/expo
 
 Endpoint `/mcp`, Streamable HTTP, OAuth 2.1 + PKCE, scope `mcp:research`:
 
-- `research_create_draft`;
+- `research_list`, `research_get`;
+- `research_create_draft`, `research_update_draft`, `research_archive`;
+- `research_list_runs`;
 - `research_estimate_run`;
 - `research_confirm_and_run`;
+- `research_cancel_run`;
 - `research_get_run`;
 - `research_create_export`;
 - `research_get_export_download`.
 
-MCP не предоставляет SQL, provider credentials или admin bearer token. Каждый вызов использует свежие AMS grants.
+MCP не предоставляет SQL, provider credentials или admin bearer token. Каждый вызов использует свежие AMS grants и те же `ResearchService`/`ResearchReportService`, что кабинет: отдельной авторизации, денежных лимитов или правил перехода статусов в MCP нет.
 
 ## Кабинет
 
@@ -83,7 +94,7 @@ MCP не предоставляет SQL, provider credentials или admin beare
 
 ## Хранилище И Секреты
 
-Нормализованные данные находятся в PostgreSQL. CSV хранится в private S3 с SSE AES-256 и `no-store`; signed URL живёт 60 секунд. `XMLRIVER_USER`, `XMLRIVER_KEY`, AWS credentials и signed URL не логируются.
+Нормализованные данные находятся в PostgreSQL. CSV хранится в private S3 с SSE AES-256 и `no-store`; object key детерминированно привязан к точным organization/project/research/export, а HTTPS signed URL живёт не более 60 секунд и создаётся после свежей авторизации. `XMLRIVER_USER`, `XMLRIVER_KEY`, AWS credentials и signed URL не логируются.
 
 ## Проверенное Состояние
 

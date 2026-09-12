@@ -13,6 +13,9 @@ export interface ResearchRunReport {
     query: string;
     status: string;
     costKopecks: number | null;
+    safeErrorCode: string | null;
+    startedAt: string | null;
+    finishedAt: string | null;
     evidence: Array<{ type: string; url: string | null; title: string | null; snippet: string | null }>;
   }>;
   competitors: Array<{ domain: string; visibilityScore: number; matchedQueryCount: number }>;
@@ -20,6 +23,10 @@ export interface ResearchRunReport {
 
 export interface ResearchExportRecord {
   exportId: string;
+  organizationId: string;
+  projectId: string;
+  researchId: string;
+  runId: string;
   status: "PENDING" | "READY" | "FAILED" | "EXPIRED";
   objectKey: string | null;
 }

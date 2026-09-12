@@ -1,6 +1,6 @@
 import { Prisma, type PrismaClient } from "../../../generated/prisma/client.ts";
-import { newId } from "../../../platform/identifiers/new-id.ts";
 import { getPrismaClient } from "../../../platform/database/prisma/client.ts";
+import { newId } from "../../../platform/identifiers/new-id.ts";
 import { setDatabaseJobContext, type DatabaseJobContext } from "../../../platform/database/authorization-context.ts";
 import type { DatabaseTransaction } from "../../../platform/database/transaction.ts";
 import type { ClaimedResearchRun, ResearchExecutionRepository } from "../application/ports/research-execution-repository.ts";
@@ -19,9 +19,7 @@ interface EvidenceInsertRow {
 
 function batches<T>(rows: T[], size = RESEARCH_EVIDENCE_BATCH_SIZE): T[][] {
   const output: T[][] = [];
-  for (let offset = 0; offset < rows.length; offset += size) {
-    output.push(rows.slice(offset, offset + size));
-  }
+  for (let offset = 0; offset < rows.length; offset += size) output.push(rows.slice(offset, offset + size));
   return output;
 }
 
@@ -65,21 +63,10 @@ export class PrismaResearchExecutionRepository implements ResearchExecutionRepos
       const run = runs[0]; if (!run || run.status !== "QUEUED" || run.approvedCostKopecks === null) return null;
       await transaction.$executeRaw(Prisma.sql`UPDATE "research"."Run" SET "status"='RUNNING', "startedAt"=CURRENT_TIMESTAMP, "updatedAt"=CURRENT_TIMESTAMP WHERE "id"=${runId}`);
       await transaction.$executeRaw(Prisma.sql`UPDATE "research"."Research" SET "status"='RUNNING', "version"="version"+1, "updatedAt"=CURRENT_TIMESTAMP WHERE "id"=${run.researchId} AND "organizationId"=${run.organizationId} AND "projectId"=${run.projectId}`);
-      const queryIds = await transaction.$queryRaw<Array<{ id: string }>>(Prisma.sql`
-        SELECT "id" FROM "research"."Query"
-        WHERE "researchId"=${run.researchId} AND "organizationId"=${run.organizationId} AND "projectId"=${run.projectId}
-      `);
-      for (const query of queryIds) {
-        await transaction.$executeRaw(Prisma.sql`
-          INSERT INTO "research"."QueryRun" ("id", "organizationId", "projectId", "researchId", "runId", "queryId", "status", "attemptCount")
-          VALUES (${newId()}, ${run.organizationId}, ${run.projectId}, ${run.researchId}, ${runId}, ${query.id}, 'PENDING', 0)
-          ON CONFLICT ("runId", "queryId") DO NOTHING
-        `);
-      }
-      const queries = await transaction.$queryRaw<Array<{ queryRunId: string; queryId: string; text: string }>>(Prisma.sql`
-        SELECT query_run."id" AS "queryRunId", query."id" AS "queryId", query."text"
-        FROM "research"."QueryRun" AS query_run JOIN "research"."Query" AS query ON query.id=query_run."queryId"
-        WHERE query_run."runId"=${runId} AND query_run."status"='PENDING' ORDER BY query."position"
+      const queries = await transaction.$queryRaw<Array<{ queryRunId: string; queryId: string | null; text: string }>>(Prisma.sql`
+        SELECT "id" AS "queryRunId", "queryId", "queryText" AS "text"
+        FROM "research"."QueryRun"
+        WHERE "runId"=${runId} AND "status"='PENDING' ORDER BY "queryPosition"
       `);
       return { runId: run.runId, organizationId: run.organizationId, projectId: run.projectId, researchId: run.researchId, approvedCostKopecks: run.approvedCostKopecks, queries };
     });
@@ -96,22 +83,8 @@ export class PrismaResearchExecutionRepository implements ResearchExecutionRepos
       const scopes = await transaction.$queryRaw<Array<{ organizationId: string; projectId: string }>>(Prisma.sql`SELECT "organizationId", "projectId" FROM "research"."QueryRun" WHERE "id"=${input.queryRunId} AND "status"='RUNNING' FOR UPDATE`);
       const scope = scopes[0]; if (!scope) throw new Error("QUERY_RUN_NOT_RUNNING");
       const evidenceRows: EvidenceInsertRow[] = [
-        ...input.search.map((evidence) => ({
-          id: newId(),
-          sourceType: evidence.type,
-          sourceUrl: evidence.url,
-          title: evidence.title,
-          snippet: evidence.snippet,
-          payload: JSON.stringify(evidence),
-        })),
-        ...input.wordstat.map((evidence) => ({
-          id: newId(),
-          sourceType: "wordstat",
-          sourceUrl: null,
-          title: evidence.phrase,
-          snippet: null,
-          payload: JSON.stringify(evidence),
-        })),
+        ...input.search.map((evidence) => ({ id: newId(), sourceType: evidence.type, sourceUrl: evidence.url, title: evidence.title, snippet: evidence.snippet, payload: JSON.stringify(evidence) })),
+        ...input.wordstat.map((evidence) => ({ id: newId(), sourceType: "wordstat", sourceUrl: null, title: evidence.phrase, snippet: null, payload: JSON.stringify(evidence) })),
       ];
       for (const batch of batches(evidenceRows)) {
         const values = Prisma.join(batch.map((row) => Prisma.sql`
@@ -141,9 +114,9 @@ export class PrismaResearchExecutionRepository implements ResearchExecutionRepos
   }
 
   async completeRun(run: ClaimedResearchRun) {
-    await this.withContext(async (transaction) => {
+    return this.withContext(async (transaction) => {
       const domains = await transaction.$queryRaw<Array<{ domain: string; matchedQueryCount: bigint; visibilityScore: number }>>(Prisma.sql`
-        SELECT evidence."payload"->>'domain' AS "domain", COUNT(DISTINCT query_run."queryId")::bigint AS "matchedQueryCount", COUNT(*)::float8 AS "visibilityScore"
+        SELECT evidence."payload"->>'domain' AS "domain", COUNT(DISTINCT query_run."id")::bigint AS "matchedQueryCount", COUNT(*)::float8 AS "visibilityScore"
         FROM "research"."Evidence" AS evidence JOIN "research"."QueryRun" AS query_run ON query_run.id=evidence."queryRunId"
         WHERE query_run."runId"=${run.runId} AND evidence."sourceType"='organic' AND evidence."payload"->>'domain' IS NOT NULL
         GROUP BY evidence."payload"->>'domain' ORDER BY "visibilityScore" DESC, "domain"
@@ -151,8 +124,11 @@ export class PrismaResearchExecutionRepository implements ResearchExecutionRepos
       for (const domain of domains) {
         await transaction.$executeRaw(Prisma.sql`INSERT INTO "research"."CompetitorProjection" ("id", "organizationId", "projectId", "runId", "domain", "visibilityScore", "matchedQueryCount", "payload") VALUES (${newId()}, ${run.organizationId}, ${run.projectId}, ${run.runId}, ${domain.domain}, ${domain.visibilityScore}, ${Number(domain.matchedQueryCount)}, ${JSON.stringify({ domain: domain.domain, matchedQueryCount: Number(domain.matchedQueryCount), visibilityScore: domain.visibilityScore })}::jsonb) ON CONFLICT ("runId", "domain") DO UPDATE SET "visibilityScore"=EXCLUDED."visibilityScore", "matchedQueryCount"=EXCLUDED."matchedQueryCount", "payload"=EXCLUDED."payload"`);
       }
-      await transaction.$executeRaw(Prisma.sql`UPDATE "research"."Run" SET "status"='SUCCEEDED', "actualCostKopecks"=(SELECT COALESCE(SUM("costKopecks"),0) FROM "research"."QueryRun" WHERE "runId"=${run.runId}), "finishedAt"=CURRENT_TIMESTAMP, "updatedAt"=CURRENT_TIMESTAMP WHERE "id"=${run.runId} AND "status"='RUNNING'`);
-      await transaction.$executeRaw(Prisma.sql`UPDATE "research"."Research" SET "status"='SUCCEEDED', "version"="version"+1, "updatedAt"=CURRENT_TIMESTAMP WHERE "id"=${run.researchId} AND "organizationId"=${run.organizationId} AND "projectId"=${run.projectId}`);
+      const counts = await transaction.$queryRaw<Array<{ failedCount: number }>>(Prisma.sql`SELECT COUNT(*) FILTER (WHERE "status"='FAILED')::int AS "failedCount" FROM "research"."QueryRun" WHERE "runId"=${run.runId}`);
+      const finalStatus = (counts[0]?.failedCount ?? 0) > 0 ? "PARTIAL" : "SUCCEEDED";
+      await transaction.$executeRaw(Prisma.sql`UPDATE "research"."Run" SET "status"=${finalStatus}::"research"."RunStatus", "actualCostKopecks"=(SELECT COALESCE(SUM("costKopecks"),0) FROM "research"."QueryRun" WHERE "runId"=${run.runId}), "finishedAt"=CURRENT_TIMESTAMP, "updatedAt"=CURRENT_TIMESTAMP WHERE "id"=${run.runId} AND "status"='RUNNING'`);
+      await transaction.$executeRaw(Prisma.sql`UPDATE "research"."Research" SET "status"=${finalStatus}::"research"."ResearchStatus", "version"="version"+1, "updatedAt"=CURRENT_TIMESTAMP WHERE "id"=${run.researchId} AND "organizationId"=${run.organizationId} AND "projectId"=${run.projectId}`);
+      return finalStatus === "PARTIAL" ? "partial" as const : "succeeded" as const;
     });
   }
 }

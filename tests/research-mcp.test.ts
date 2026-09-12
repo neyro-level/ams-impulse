@@ -18,17 +18,36 @@ async function connect(input: { research: Partial<ResearchService>; reports: Par
 }
 
 describe("Research MCP server", () => {
-  it("publishes only the six bounded research tools", async () => {
+  it("publishes the cabinet command and query contract without provider primitives", async () => {
     const { client, server } = await connect({ research: {}, reports: {} });
     const result = await client.listTools();
     expect(result.tools.map(({ name }) => name)).toEqual([
+      "research_list",
+      "research_get",
       "research_create_draft",
+      "research_update_draft",
+      "research_archive",
+      "research_list_runs",
       "research_estimate_run",
       "research_confirm_and_run",
+      "research_cancel_run",
       "research_get_run",
       "research_create_export",
       "research_get_export_download",
     ]);
+    await client.close(); await server.close();
+  });
+
+  it("passes cancellation through the same application service", async () => {
+    let received: unknown;
+    const { client, server } = await connect({
+      research: { cancelRun: async (_principal, input) => { received = input; return { runId: "run-1", status: "CANCELLED", changed: true }; } },
+      reports: {},
+    });
+    const args = { organizationId: "org-1", projectId: "project-1", researchId: "research-1", runId: "run-1" };
+    const result = await client.callTool({ name: "research_cancel_run", arguments: args });
+    expect(received).toEqual(args);
+    expect(result.isError).not.toBe(true);
     await client.close(); await server.close();
   });
 

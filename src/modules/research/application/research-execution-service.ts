@@ -1,4 +1,5 @@
 import type { ResearchExecutionRepository } from "./ports/research-execution-repository.ts";
+import { silentResearchLifecyclePublisher, type ResearchLifecycleEvent, type ResearchLifecyclePublisher } from "./ports/research-lifecycle-publisher.ts";
 import type { ResearchProvider } from "./ports/research-provider.ts";
 
 function safeProviderCode(error: unknown) {
@@ -15,7 +16,16 @@ export class ResearchExecutionService {
     private readonly repository: ResearchExecutionRepository,
     private readonly provider: ResearchProvider,
     private readonly delay: (milliseconds: number) => Promise<void> = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds)),
+    private readonly lifecycle: ResearchLifecyclePublisher = silentResearchLifecyclePublisher,
   ) {}
+
+  private async publish(event: ResearchLifecycleEvent, run: { runId: string; organizationId: string; projectId: string; researchId: string }) {
+    try {
+      await this.lifecycle.publish({ event, runId: run.runId, organizationId: run.organizationId, projectId: run.projectId, researchId: run.researchId });
+    } catch {
+      // A secondary notification must never rewrite the durable paid-run outcome.
+    }
+  }
 
   private async providerCall<T>(operation: () => Promise<T>): Promise<T> {
     try {
@@ -31,6 +41,7 @@ export class ResearchExecutionService {
   async execute(runId: string, correlationId?: string) {
     const run = await this.repository.claimRun(runId);
     if (!run) return { status: "ignored" as const };
+    await this.publish("started", run);
     const queryCount = Math.max(1, run.queries.length);
     const baseCost = Math.floor(run.approvedCostKopecks / queryCount);
     const costRemainder = run.approvedCostKopecks % queryCount;
@@ -48,15 +59,23 @@ export class ResearchExecutionService {
         } catch (error) {
           const code = safeProviderCode(error);
           await this.repository.failQuery(query.queryRunId, code);
-          await this.repository.failRun(run.runId, code);
-          return { status: "failed" as const, code };
+          if (code.includes("AMBIGUOUS")) {
+            await this.repository.failRun(run.runId, code);
+            await this.publish("failed", run);
+            await this.publish("action_required", run);
+            return { status: "failed" as const, code };
+          }
         }
       }
-      await this.repository.completeRun(run);
-      return { status: "succeeded" as const };
+      const status = await this.repository.completeRun(run);
+      await this.publish(status === "partial" ? "partial" : "completed", run);
+      if (status === "partial") await this.publish("action_required", run);
+      return { status };
     } catch (error) {
       const code = safeProviderCode(error);
       await this.repository.failRun(run.runId, code);
+      await this.publish("failed", run);
+      await this.publish("action_required", run);
       return { status: "failed" as const, code };
     }
   }

@@ -26,6 +26,7 @@ const uiStateByError = {
   RESEARCH_DAILY_LIMIT_EXCEEDED: "DAILY_LIMIT",
   RESEARCH_MONTHLY_LIMIT_EXCEEDED: "MONTHLY_LIMIT",
   RESEARCH_PRICING_UNAVAILABLE: "PRICING_UNAVAILABLE",
+  RESEARCH_ACTIVE_RUN_EXISTS: "RESEARCH_NOT_EDITABLE",
 } as const;
 
 async function resolveScope(principal: PrincipalContext, requested: RequestedScope) {
@@ -45,6 +46,8 @@ function mapResearchError(error: unknown) {
     RESEARCH_DAILY_LIMIT_EXCEEDED: "Превышен суточный лимит исследований.",
     RESEARCH_MONTHLY_LIMIT_EXCEEDED: "Превышен месячный лимит исследований.",
     RESEARCH_IDEMPOTENCY_CONFLICT: "Операция уже была отправлена с другими параметрами.",
+    RESEARCH_RUN_NOT_CANCELLABLE: "Запуск уже начался и не может быть безопасно отменён.",
+    RESEARCH_ACTIVE_RUN_EXISTS: "Сначала завершите или безопасно отмените активный запуск.",
   };
   return { code: error.code, message: messages[error.code] };
 }
@@ -91,6 +94,12 @@ const confirmResearchMutation = defineAction<ResearchRefInput & { runId: string;
   revalidate: ({ input }) => [{ path: detailPath(input) }],
 });
 
+const cancelResearchRunMutation = defineAction<ResearchRefInput & { runId: string }, unknown>({
+  execute: async ({ principal, input }) => createResearchCabinetService(principal).cancelRun(principal, { ...input, ...await resolveScope(principal, input) }),
+  mapError: mapResearchError,
+  revalidate: ({ input }) => [{ path: detailPath(input) }],
+});
+
 const downloadResearchExportMutation = defineAction<ResearchRefInput & { runId: string }, { url: string }>({
   execute: async ({ principal, input }) => {
     const resolved = { ...input, ...await resolveScope(principal, input) };
@@ -128,6 +137,12 @@ export async function confirmResearchAction(formData: FormData) {
   const input = { ...ref(formData), runId: text(formData, "runId"), expectedEstimatedCostKopecks: Number(text(formData, "estimatedCostKopecks")) };
   unwrap(await confirmResearchMutation(input), input);
   redirect(detailHref(input, { queued: "1" }));
+}
+
+export async function cancelResearchRunAction(formData: FormData) {
+  const input = { ...ref(formData), runId: text(formData, "runId") };
+  unwrap(await cancelResearchRunMutation(input), input);
+  redirect(detailHref(input, { cancelled: "1" }));
 }
 
 export async function downloadResearchExportAction(formData: FormData) {

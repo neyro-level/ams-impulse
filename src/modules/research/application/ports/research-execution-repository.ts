@@ -6,7 +6,7 @@ export interface ClaimedResearchRun {
   projectId: string;
   researchId: string;
   approvedCostKopecks: number;
-  queries: Array<{ queryRunId: string; queryId: string; text: string }>;
+  queries: Array<{ queryRunId: string; queryId: string | null; text: string }>;
 }
 
 export interface ResearchExecutionRepository {
@@ -15,6 +15,6 @@ export interface ResearchExecutionRepository {
   markQueryStarted(queryRunId: string): Promise<boolean>;
   completeQuery(input: { queryRunId: string; search: SearchEvidence[]; wordstat: WordstatEvidence[]; costKopecks: number }): Promise<void>;
   failQuery(queryRunId: string, safeErrorCode: string): Promise<void>;
-  completeRun(run: ClaimedResearchRun): Promise<void>;
+  completeRun(run: ClaimedResearchRun): Promise<"succeeded" | "partial">;
   failRun(runId: string, safeErrorCode: string): Promise<void>;
 }

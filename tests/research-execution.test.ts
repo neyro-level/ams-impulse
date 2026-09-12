@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ResearchProviderError, type ClaimedResearchRun, type ResearchExecutionRepository, type ResearchProvider } from "../src/modules/research/index.ts";
+import { ResearchProviderError, type ClaimedResearchRun, type ResearchExecutionRepository, type ResearchLifecycleEvent, type ResearchProvider } from "../src/modules/research/index.ts";
 import { ResearchExecutionService, recoverStaleResearchRunsWithDependencies } from "../src/modules/research/worker.ts";
 
 class ExecutionRepository implements ResearchExecutionRepository {
@@ -10,7 +10,7 @@ class ExecutionRepository implements ResearchExecutionRepository {
   async markQueryStarted(id: string) { this.started.push(id); return true; }
   async completeQuery(input: { queryRunId: string; costKopecks: number }) { this.completed.push(input.queryRunId); this.costs.push(input.costKopecks); }
   async failQuery(id: string, code: string) { this.failed.push([id, code]); }
-  async completeRun() { this.runStatus = "SUCCEEDED"; }
+  async completeRun() { this.runStatus = this.failed.length ? "PARTIAL" : "SUCCEEDED"; return this.failed.length ? "partial" as const : "succeeded" as const; }
   async failRun(_id: string, code: string) { this.runStatus = `FAILED:${code}`; }
 }
 
@@ -24,12 +24,14 @@ const provider: ResearchProvider = {
 describe("ResearchExecutionService", () => {
   it("runs each query sequentially and completes the durable run", async () => {
     const repository = new ExecutionRepository();
-    const result = await new ResearchExecutionService(repository, provider).execute("run-1");
+    const events: ResearchLifecycleEvent[] = [];
+    const result = await new ResearchExecutionService(repository, provider, undefined, { async publish(input) { events.push(input.event); } }).execute("run-1");
     expect(result).toEqual({ status: "succeeded" });
     expect(repository.started).toEqual(["qr-1", "qr-2"]);
     expect(repository.completed).toEqual(["qr-1", "qr-2"]);
     expect(repository.costs).toEqual([100, 100]);
     expect(repository.runStatus).toBe("SUCCEEDED");
+    expect(events).toEqual(["started", "completed"]);
   });
 
   it("distributes a minor-unit remainder without losing or creating money", async () => {
@@ -72,6 +74,33 @@ describe("ResearchExecutionService", () => {
     expect(result).toEqual({ status: "ignored" });
     expect(providerCalls).toBe(0);
     expect(repository.runStatus).toBe("FAILED:WORKER_INTERRUPTED_AMBIGUOUS");
+  });
+
+  it("keeps successful evidence and finishes partial after a bounded query failure", async () => {
+    const repository = new ExecutionRepository();
+    let calls = 0;
+    const partiallyFailingProvider: ResearchProvider = {
+      ...provider,
+      collectYandexSerp: async ({ query }) => {
+        calls += 1;
+        if (calls === 1) throw Object.assign(new Error("rejected"), { code: "PROVIDER_REJECTED" });
+        return [{ type: "organic", url: "https://example.test", domain: "example.test", title: query, snippet: null }];
+      },
+    };
+
+    const events: ResearchLifecycleEvent[] = [];
+    await expect(new ResearchExecutionService(repository, partiallyFailingProvider, undefined, { async publish(input) { events.push(input.event); } }).execute("run-1")).resolves.toEqual({ status: "partial" });
+    expect(repository.failed).toEqual([["qr-1", "PROVIDER_REJECTED"]]);
+    expect(repository.completed).toEqual(["qr-2"]);
+    expect(repository.runStatus).toBe("PARTIAL");
+    expect(events).toEqual(["started", "partial", "action_required"]);
+  });
+
+  it("does not change the paid-run result when notification delivery fails", async () => {
+    const repository = new ExecutionRepository();
+    const service = new ResearchExecutionService(repository, provider, undefined, { async publish() { throw new Error("notification unavailable"); } });
+    await expect(service.execute("run-1")).resolves.toEqual({ status: "succeeded" });
+    expect(repository.runStatus).toBe("SUCCEEDED");
   });
 
   it("ignores duplicate queue delivery after the run leaves QUEUED", async () => {

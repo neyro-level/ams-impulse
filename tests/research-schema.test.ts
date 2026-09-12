@@ -22,6 +22,14 @@ const researchAuditScopeSql = readFileSync(
   new URL("../prisma/migrations/20260912120000_scope_research_audit_events/migration.sql", import.meta.url),
   "utf8",
 );
+const querySnapshotSql = readFileSync(
+  new URL("../prisma/migrations/20260912180000_snapshot_research_run_queries/migration.sql", import.meta.url),
+  "utf8",
+);
+const terminalSpendSql = readFileSync(
+  new URL("../prisma/migrations/20260912181000_include_terminal_research_spend/migration.sql", import.meta.url),
+  "utf8",
+);
 
 describe("Tools and Research database contract", () => {
   it("uses independent membership and explicit project grants", () => {
@@ -72,5 +80,17 @@ describe("Tools and Research database contract", () => {
     expect(researchAuditScopeSql).toContain('"productCode" = \'tools\'');
     expect(researchAuditScopeSql).toContain('"organizationId" IS NOT NULL');
     expect(researchAuditScopeSql).toContain('"projectId" IS NOT NULL');
+  });
+
+  it("keeps an immutable query snapshot for every priced run", () => {
+    expect(querySnapshotSql).toContain('"queryText"');
+    expect(querySnapshotSql).toContain('"queryPosition"');
+    expect(querySnapshotSql).toContain('ON DELETE SET NULL ("queryId")');
+  });
+
+  it("keeps confirmed partial and failed spend inside budget accounting", () => {
+    expect(terminalSpendSql).toContain("'PARTIAL'");
+    expect(terminalSpendSql).toContain("'FAILED'");
+    expect(terminalSpendSql).toContain('run."projectId" = authorized_project_id');
   });
 });

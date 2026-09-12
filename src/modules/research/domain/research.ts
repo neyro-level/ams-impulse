@@ -4,8 +4,8 @@ const idSchema = z.string().trim().min(1).max(128);
 const titleSchema = z.string().trim().min(2).max(180);
 const querySchema = z.string().trim().min(2).max(500);
 
-export const researchStatusSchema = z.enum(["DRAFT", "READY", "RUNNING", "SUCCEEDED", "FAILED", "ARCHIVED"]);
-export const researchRunStatusSchema = z.enum(["DRAFT", "AWAITING_CONFIRMATION", "QUEUED", "RUNNING", "SUCCEEDED", "FAILED", "CANCELLED"]);
+export const researchStatusSchema = z.enum(["DRAFT", "READY", "RUNNING", "SUCCEEDED", "PARTIAL", "FAILED", "ARCHIVED"]);
+export const researchRunStatusSchema = z.enum(["DRAFT", "AWAITING_CONFIRMATION", "QUEUED", "RUNNING", "SUCCEEDED", "PARTIAL", "FAILED", "CANCELLED"]);
 export const researchListQuerySchema = z.object({
   page: z.number().int().min(1).default(1),
   pageSize: z.number().int().min(1).max(50).default(20),
@@ -58,6 +58,7 @@ export type UpdateResearchInput = z.infer<typeof updateResearchInputSchema>;
 export type ResearchRef = z.infer<typeof researchRefSchema>;
 export type EstimateResearchRunInput = z.infer<typeof estimateResearchRunInputSchema>;
 export type ConfirmResearchRunInput = z.infer<typeof confirmResearchRunInputSchema>;
+export type CancelResearchRunInput = z.infer<typeof cancelResearchRunInputSchema>;
 export type ResearchStatus = z.infer<typeof researchStatusSchema>;
 export type ResearchRunStatus = z.infer<typeof researchRunStatusSchema>;
 export type ResearchListQuery = z.infer<typeof researchListQuerySchema>;
@@ -92,6 +93,10 @@ export interface ResearchRunSummary {
   estimatedCostKopecks: number;
   actualCostKopecks: number | null;
   safeErrorCode: string | null;
+  pendingCount: number;
+  runningCount: number;
+  succeededCount: number;
+  failedCount: number;
   createdAt: string;
   finishedAt: string | null;
 }
@@ -118,10 +123,12 @@ export type ResearchErrorCode =
   | "RESEARCH_NOT_FOUND_OR_FORBIDDEN"
   | "RESEARCH_STALE"
   | "RESEARCH_NOT_EDITABLE"
+  | "RESEARCH_ACTIVE_RUN_EXISTS"
   | "RESEARCH_PRICING_UNAVAILABLE"
   | "RESEARCH_IDEMPOTENCY_CONFLICT"
   | "RESEARCH_DAILY_LIMIT_EXCEEDED"
-  | "RESEARCH_MONTHLY_LIMIT_EXCEEDED";
+  | "RESEARCH_MONTHLY_LIMIT_EXCEEDED"
+  | "RESEARCH_RUN_NOT_CANCELLABLE";
 
 export class ResearchError extends Error {
   constructor(public readonly code: ResearchErrorCode) {

@@ -140,7 +140,7 @@ integrationDescription("Research tenant and project isolation", () => {
           projectId,
           researchId,
           runId,
-          `research/${organizationId}/${exportId}.csv`,
+          `research/${organizationId}/${projectId}/${researchId}/${exportId}.csv`,
           ids.user,
           `${prefix}:${exportId}`,
         ],

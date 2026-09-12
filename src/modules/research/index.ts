@@ -37,4 +37,5 @@ export { ResearchProviderError } from "./application/ports/research-provider.ts"
 export type { ResearchProvider, ResearchProviderFailureCategory, ResearchProviderRequest, SearchEvidence, WordstatEvidence } from "./application/ports/research-provider.ts";
 export type { ResearchBudgetPolicy, ResearchPricingPolicy } from "./application/ports/research-money-policy.ts";
 export type { ClaimedResearchRun, ResearchExecutionRepository } from "./application/ports/research-execution-repository.ts";
+export type { ResearchLifecycleEvent, ResearchLifecycleNotification, ResearchLifecyclePublisher } from "./application/ports/research-lifecycle-publisher.ts";
 export type { PrivateExportStorage, ResearchExportRecord, ResearchReportRepository, ResearchRunReport } from "./application/ports/research-report-repository.ts";
