@@ -6,6 +6,25 @@ import type { DatabaseTransaction } from "../../../platform/database/transaction
 import type { ClaimedResearchRun, ResearchExecutionRepository } from "../application/ports/research-execution-repository.ts";
 import type { SearchEvidence, WordstatEvidence } from "../application/ports/research-provider.ts";
 
+export const RESEARCH_EVIDENCE_BATCH_SIZE = 250;
+
+interface EvidenceInsertRow {
+  id: string;
+  sourceType: string;
+  sourceUrl: string | null;
+  title: string;
+  snippet: string | null;
+  payload: string;
+}
+
+function batches<T>(rows: T[], size = RESEARCH_EVIDENCE_BATCH_SIZE): T[][] {
+  const output: T[][] = [];
+  for (let offset = 0; offset < rows.length; offset += size) {
+    output.push(rows.slice(offset, offset + size));
+  }
+  return output;
+}
+
 export class PrismaResearchExecutionRepository implements ResearchExecutionRepository {
   constructor(private readonly jobContext: DatabaseJobContext, private readonly injectedPrisma?: PrismaClient) {}
   private get prisma() { return this.injectedPrisma ?? getPrismaClient(); }
@@ -76,11 +95,33 @@ export class PrismaResearchExecutionRepository implements ResearchExecutionRepos
     await this.withContext(async (transaction) => {
       const scopes = await transaction.$queryRaw<Array<{ organizationId: string; projectId: string }>>(Prisma.sql`SELECT "organizationId", "projectId" FROM "research"."QueryRun" WHERE "id"=${input.queryRunId} AND "status"='RUNNING' FOR UPDATE`);
       const scope = scopes[0]; if (!scope) throw new Error("QUERY_RUN_NOT_RUNNING");
-      for (const evidence of input.search) {
-        await transaction.$executeRaw(Prisma.sql`INSERT INTO "research"."Evidence" ("id", "organizationId", "projectId", "queryRunId", "sourceType", "sourceUrl", "title", "snippet", "payload") VALUES (${newId()}, ${scope.organizationId}, ${scope.projectId}, ${input.queryRunId}, ${evidence.type}, ${evidence.url}, ${evidence.title}, ${evidence.snippet}, ${JSON.stringify(evidence)}::jsonb)`);
-      }
-      for (const evidence of input.wordstat) {
-        await transaction.$executeRaw(Prisma.sql`INSERT INTO "research"."Evidence" ("id", "organizationId", "projectId", "queryRunId", "sourceType", "sourceUrl", "title", "snippet", "payload") VALUES (${newId()}, ${scope.organizationId}, ${scope.projectId}, ${input.queryRunId}, 'wordstat', NULL, ${evidence.phrase}, NULL, ${JSON.stringify(evidence)}::jsonb)`);
+      const evidenceRows: EvidenceInsertRow[] = [
+        ...input.search.map((evidence) => ({
+          id: newId(),
+          sourceType: evidence.type,
+          sourceUrl: evidence.url,
+          title: evidence.title,
+          snippet: evidence.snippet,
+          payload: JSON.stringify(evidence),
+        })),
+        ...input.wordstat.map((evidence) => ({
+          id: newId(),
+          sourceType: "wordstat",
+          sourceUrl: null,
+          title: evidence.phrase,
+          snippet: null,
+          payload: JSON.stringify(evidence),
+        })),
+      ];
+      for (const batch of batches(evidenceRows)) {
+        const values = Prisma.join(batch.map((row) => Prisma.sql`
+          (${row.id}, ${scope.organizationId}, ${scope.projectId}, ${input.queryRunId}, ${row.sourceType}, ${row.sourceUrl}, ${row.title}, ${row.snippet}, ${row.payload}::jsonb)
+        `));
+        await transaction.$executeRaw(Prisma.sql`
+          INSERT INTO "research"."Evidence"
+            ("id", "organizationId", "projectId", "queryRunId", "sourceType", "sourceUrl", "title", "snippet", "payload")
+          VALUES ${values}
+        `);
       }
       await transaction.$executeRaw(Prisma.sql`UPDATE "research"."QueryRun" SET "status"='SUCCEEDED', "costKopecks"=${input.costKopecks}, "finishedAt"=CURRENT_TIMESTAMP WHERE "id"=${input.queryRunId}`);
     });

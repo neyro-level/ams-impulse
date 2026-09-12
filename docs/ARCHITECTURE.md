@@ -95,6 +95,10 @@ Feature availability and access are separate: active module still requires permi
 
 ## Identity And Authorization
 
+Principal/session resolution is memoized with `React.cache` only inside the current React Server Component render. Layouts and pages may reuse that one fresh resolution. Server Actions, Route Handlers and workers do not rely on this render cache and perform fresh reads; no process-global identity cache exists, so disable/session revocation is observed no later than the next request.
+
+Project grant reads use the same render-scoped mechanism, keyed by Prisma client, user and product. Repeated authorization during one server render reuses grants; calls outside a Server Component render bypass React memoization and read PostgreSQL. Access revocation therefore cannot outlive a request, and worker/job authorization never shares browser render state.
+
 `PrincipalContext` carries identity, system role and correlation ID. It does not select an arbitrary first organization.
 
 Application commands convert that server-owned principal into a discriminated database authorization context. The transaction installs transaction-local `ams.*` values as its first SQL operation and only then invokes the command repository. Missing job/project scope is a fail-closed error; client input is never a context source.
@@ -187,6 +191,16 @@ Research routes в production:
 - `/tools/research/[researchId]/`.
 
 PWA uses `app/manifest.ts`, 192/512 PNG icons and a service worker with an explicit static-only allowlist. Private route/API/MCP responses use `no-store`.
+
+## Cache Strategy
+
+- Private application, tenant data, PII, auth, API, MCP, reports and exports are dynamic and `private, no-store` by default.
+- Principal and grant memoization is React server-render-scoped computation reuse, not a cross-request response or ACL cache; actions, route handlers and workers do not depend on it.
+- Public legal/marketing pages and browser-safe static assets may use framework/static caching when their data has no user or tenant scope.
+- OAuth discovery is a public protocol document and may use its explicit short TTL.
+- `cacheComponents` remains off; enabling it requires a separate version-verified architecture decision and private-route proof.
+- `updateTag`/tagged read models are introduced only with a real shared read model, explicit invalidation owner and stale-data acceptance contract. Current mutations use path revalidation.
+- A process singleton, module `Map`, Redis entry or CDN response must never cache authorization decisions, sessions, presigned URLs or private DTOs.
 
 ## Runtime And Delivery
 

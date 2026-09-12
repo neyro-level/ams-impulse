@@ -1,6 +1,7 @@
 import "server-only";
 
 import { headers } from "next/headers";
+import { cache } from "react";
 import { getPrismaClient } from "../database/prisma/client.ts";
 import {
   getPrincipalStateByUserId,
@@ -20,10 +21,10 @@ export class CabinetPrincipalError extends Error {
   }
 }
 
-async function getFreshPrincipalState(): Promise<{
+const getFreshPrincipalState = cache(async (): Promise<{
   state: PrincipalState | null;
   disabled: boolean;
-} | null> {
+} | null> => {
   if (!auth) return null;
   const requestHeaders = await headers();
   const correlationId = resolveCorrelationId(requestHeaders);
@@ -51,7 +52,7 @@ async function getFreshPrincipalState(): Promise<{
 
   const state = await getPrincipalStateByUserId(session.user.id, { correlationId });
   return { state, disabled: persistedSession.user.disabledAt !== null };
-}
+});
 
 export async function getCurrentPrincipalState(): Promise<PrincipalState | null> {
   return (await getFreshPrincipalState())?.state ?? null;
