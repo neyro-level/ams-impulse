@@ -1,7 +1,7 @@
 "use server";
 
 import { notFound, redirect } from "next/navigation";
-import { ResearchError } from "../../../modules/research/index.ts";
+import { isApprovedPrivateStorageUrl, ResearchError } from "../../../modules/research/index.ts";
 import { createResearchCabinetService, createResearchReportService } from "../../../modules/research/server.ts";
 import { createToolsWorkspaceService } from "../../../modules/tools-workspace/server.ts";
 import { defineAction, type DefinedAction } from "../../../platform/actions/define-action.ts";
@@ -121,6 +121,6 @@ export async function confirmResearchAction(formData: FormData) {
 export async function downloadResearchExportAction(formData: FormData) {
   const input = { ...ref(formData), runId: text(formData, "runId") };
   const download = unwrap(await downloadResearchExportMutation(input));
-  if (!download.url.startsWith("https://")) notFound();
+  if (!isApprovedPrivateStorageUrl(download.url, process.env.APP_ENV === "test")) notFound();
   redirect(download.url);
 }

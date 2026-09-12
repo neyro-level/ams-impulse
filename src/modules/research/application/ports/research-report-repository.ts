@@ -24,9 +24,13 @@ export interface ResearchExportRecord {
   objectKey: string | null;
 }
 
+export interface ResearchExportReservation extends ResearchExportRecord {
+  generationClaimed: boolean;
+}
+
 export interface ResearchReportRepository {
   getRunReport(ref: ResearchRef & { runId: string }): Promise<ResearchRunReport | null>;
-  reserveExport(input: ResearchRef & { runId: string; idempotencyKey: string; actorId: string }): Promise<ResearchExportRecord>;
+  reserveExport(input: ResearchRef & { runId: string; idempotencyKey: string; actorId: string }): Promise<ResearchExportReservation>;
   markExportReady(exportId: string, objectKey: string, expiresAt: Date): Promise<void>;
   markExportFailed(exportId: string): Promise<void>;
   getExport(ref: ResearchRef & { exportId: string }): Promise<ResearchExportRecord | null>;

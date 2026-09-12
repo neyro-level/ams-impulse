@@ -12,6 +12,9 @@ if (!process.env.TEST_DATABASE_NAME && existsSync(localEnvPath)) {
 
 await import("./verify-test-database-env.mjs");
 
+process.env.TEST_RUNTIME_DATABASE_USER ??= "ams_web";
+process.env.TEST_RUNTIME_DATABASE_PASSWORD ??= process.env.TEST_DATABASE_PASSWORD;
+
 const databaseUrl = new URL("postgresql://localhost");
 databaseUrl.username = process.env.TEST_DATABASE_USER;
 databaseUrl.password = process.env.TEST_DATABASE_PASSWORD;
@@ -26,7 +29,6 @@ process.env.DATABASE_PASSWORD = process.env.TEST_DATABASE_PASSWORD;
 process.env.DATABASE_NAME = process.env.TEST_DATABASE_NAME;
 process.env.DATABASE_SSLMODE = process.env.TEST_DATABASE_SSLMODE?.trim() || "disable";
 process.env.DATABASE_URL = databaseUrl.toString();
-process.env.APP_ENV = "test";
 process.env.BETTER_AUTH_SECRET ??= "integration-test-secret-at-least-32-characters";
 process.env.BETTER_AUTH_URL ??= "http://127.0.0.1:3000";
 

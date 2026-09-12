@@ -208,7 +208,7 @@ export class PrismaResearchRepository implements ResearchRepository {
       INSERT INTO "research"."Run"
         ("id", "organizationId", "projectId", "researchId", "status", "queryCount", "estimatedCostKopecks", "estimateExpiresAt", "idempotencyKey", "createdAt", "updatedAt")
       VALUES
-        (${runId}, ${input.ref.organizationId}, ${input.ref.projectId}, ${input.ref.researchId}, 'AWAITING_CONFIRMATION', ${input.queryCount}, ${input.estimatedCostKopecks}, ${input.now} + INTERVAL '15 minutes', ${input.idempotencyKey}, ${input.now}, CURRENT_TIMESTAMP)
+        (${runId}, ${input.ref.organizationId}, ${input.ref.projectId}, ${input.ref.researchId}, 'AWAITING_CONFIRMATION', ${input.queryCount}, ${input.estimatedCostKopecks}, ${input.now}::timestamptz + INTERVAL '15 minutes', ${input.idempotencyKey}, ${input.now}, CURRENT_TIMESTAMP)
       RETURNING "id"
     `);
     return { runId: inserted[0]!.id, dailyCommittedKopecks, monthlyCommittedKopecks };

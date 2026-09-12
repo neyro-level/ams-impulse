@@ -3,7 +3,7 @@ import { setDatabaseAuthorizationContext } from "../../../platform/database/auth
 import { getPrismaClient } from "../../../platform/database/prisma/client.ts";
 import type { DatabaseTransaction } from "../../../platform/database/transaction.ts";
 import { newId } from "../../../platform/identifiers/new-id.ts";
-import type { ResearchExportRecord, ResearchReportRepository, ResearchRunReport } from "../application/ports/research-report-repository.ts";
+import type { ResearchExportRecord, ResearchExportReservation, ResearchReportRepository, ResearchRunReport } from "../application/ports/research-report-repository.ts";
 import type { ResearchRef } from "../domain/research.ts";
 import { ResearchError } from "../domain/research.ts";
 
@@ -60,7 +60,7 @@ export class PrismaResearchReportRepository implements ResearchReportRepository 
     });
   }
 
-  async reserveExport(input: ResearchRef & { runId: string; idempotencyKey: string; actorId: string }): Promise<ResearchExportRecord> {
+  async reserveExport(input: ResearchRef & { runId: string; idempotencyKey: string; actorId: string }): Promise<ResearchExportReservation> {
     return this.withContext(async (transaction) => {
       const id = newId();
       const rows = await transaction.$queryRaw<Array<ResearchExportRecord & { researchId: string; runId: string | null; format: string }>>(Prisma.sql`
@@ -69,7 +69,7 @@ export class PrismaResearchReportRepository implements ResearchReportRepository 
         ON CONFLICT ("organizationId", "idempotencyKey") DO NOTHING
         RETURNING "id" AS "exportId", "status"::text AS "status", "objectKey", "researchId", "runId", "format"
       `);
-      if (rows[0]) return rows[0];
+      if (rows[0]) return { ...rows[0], generationClaimed: true };
       const existing = await transaction.$queryRaw<Array<ResearchExportRecord & { projectId: string; researchId: string; runId: string | null; format: string }>>(Prisma.sql`
         SELECT "id" AS "exportId", "status"::text AS "status", "objectKey", "projectId", "researchId", "runId", "format"
         FROM "research"."Export"
@@ -86,7 +86,16 @@ export class PrismaResearchReportRepository implements ResearchReportRepository 
       ) {
         throw new ResearchError("RESEARCH_IDEMPOTENCY_CONFLICT");
       }
-      return previous;
+      if (previous.status === "FAILED") {
+        const claimed = await transaction.$queryRaw<ResearchExportRecord[]>(Prisma.sql`
+          UPDATE "research"."Export"
+          SET "status"='PENDING', "objectKey"=NULL, "expiresAt"=NULL
+          WHERE "id"=${previous.exportId} AND "status"='FAILED'
+          RETURNING "id" AS "exportId", "status"::text AS "status", "objectKey"
+        `);
+        if (claimed[0]) return { ...claimed[0], generationClaimed: true };
+      }
+      return { ...previous, generationClaimed: false };
     });
   }
 

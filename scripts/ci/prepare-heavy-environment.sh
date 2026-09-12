@@ -15,5 +15,9 @@ apt-get install -y --no-install-recommends postgresql-18
 pg_ctlcluster 18 main start
 runuser -u postgres -- psql -v ON_ERROR_STOP=1 \
   --command "CREATE ROLE ${TEST_DATABASE_USER} LOGIN PASSWORD '${TEST_DATABASE_PASSWORD}' CREATEDB"
+runuser -u postgres -- psql -v ON_ERROR_STOP=1 \
+  --command "CREATE ROLE ams_web LOGIN PASSWORD 'seo_monitor_test' NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOBYPASSRLS"
+runuser -u postgres -- psql -v ON_ERROR_STOP=1 \
+  --command "CREATE ROLE ams_worker LOGIN PASSWORD 'seo_monitor_test' NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOBYPASSRLS"
 runuser -u postgres -- createdb --owner "${TEST_DATABASE_USER}" "${TEST_DATABASE_NAME}"
 pnpm exec playwright install --with-deps chromium

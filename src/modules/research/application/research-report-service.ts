@@ -25,6 +25,12 @@ function reportToCsv(report: ResearchRunReport) {
 }
 
 const idempotencyKeySchema = z.string().trim().min(8).max(160);
+const exportReadinessPollMilliseconds = 50;
+const exportReadinessPollAttempts = 100;
+
+function wait(milliseconds: number) {
+  return new Promise((resolve) => setTimeout(resolve, milliseconds));
+}
 
 export class ResearchReportService {
   constructor(
@@ -58,7 +64,7 @@ export class ResearchReportService {
       actorId: userId,
     });
     const objectKey = reserved.objectKey ?? `research/${input.organizationId}/${input.projectId}/${input.researchId}/${reserved.exportId}.csv`;
-    if (reserved.status !== "READY") {
+    if (reserved.generationClaimed) {
       try {
         await this.storage.putCsv(objectKey, reportToCsv(report));
         await this.repository.markExportReady(reserved.exportId, objectKey, new Date(Date.now() + 24 * 60 * 60 * 1000));
@@ -66,6 +72,16 @@ export class ResearchReportService {
         await this.repository.markExportFailed(reserved.exportId);
         throw error;
       }
+    } else if (reserved.status !== "READY") {
+      for (let attempt = 0; attempt < exportReadinessPollAttempts; attempt += 1) {
+        const current = await this.repository.getExport({ ...input, exportId: reserved.exportId });
+        if (current?.status === "READY" && current.objectKey) {
+          return { exportId: reserved.exportId, status: "READY" as const };
+        }
+        if (current?.status === "FAILED") throw new ResearchError("RESEARCH_NOT_FOUND_OR_FORBIDDEN");
+        await wait(exportReadinessPollMilliseconds);
+      }
+      throw new ResearchError("RESEARCH_NOT_FOUND_OR_FORBIDDEN");
     }
     return { exportId: reserved.exportId, status: "READY" as const };
   }

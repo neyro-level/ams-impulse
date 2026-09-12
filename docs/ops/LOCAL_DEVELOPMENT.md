@@ -27,6 +27,8 @@ Create `.env.local` and fill only local/test values:
 - `APP_ENV=development`;
 - development `DATABASE_*` for `seo_monitor_dev`;
 - isolated `TEST_DATABASE_*` for `seo_monitor_test`;
+  - destructive integration bootstrap requires explicit `APP_ENV=test` and fails closed unless the
+  database name contains `_test`, the identity is test-only, and PostgreSQL is on loopback;
 - local-only `BETTER_AUTH_SECRET`;
 - no production URLs, passwords or provider tokens unless a specific safe local provider task requires them.
 - `RESEARCH_QUERY_ESTIMATE_KOPECKS`, `RESEARCH_DAILY_LIMIT_KOPECKS` and `RESEARCH_MONTHLY_LIMIT_KOPECKS` for Research pricing and budget policy;

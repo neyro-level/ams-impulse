@@ -1,7 +1,9 @@
 import { randomUUID } from "node:crypto";
 import { hashPassword } from "better-auth/crypto";
 import { createLocalAccountIssuer } from "better-auth/db";
+import { Prisma } from "../src/generated/prisma/client.ts";
 import { getPrismaClient } from "../src/platform/database/prisma/client.ts";
+import { E2E_RESEARCH } from "./e2e-research-contract.ts";
 
 const E2E_PASSWORD = "E2e!2026";
 const CLIENT_USERNAMES = [
@@ -28,7 +30,7 @@ async function main() {
       username: string;
       email: string;
       name: string;
-      systemRole: "PLATFORM_ADMIN" | "CLIENT";
+      systemRole: "PLATFORM_ADMIN" | "ANALYST" | "CLIENT";
     }) => {
       const existing = await prisma.user.findUnique({
         where: { email: input.email },
@@ -74,6 +76,111 @@ async function main() {
       systemRole: "PLATFORM_ADMIN",
     });
 
+    const analystUserId = await provisionUser({
+      username: E2E_RESEARCH.analystUsername,
+      email: "e2e-research-analyst@example.invalid",
+      name: "E2E Research Analyst",
+      systemRole: "ANALYST",
+    });
+    if (analystUserId !== E2E_RESEARCH.analystUserId) {
+      await prisma.account.deleteMany({ where: { userId: analystUserId } });
+      await prisma.user.delete({ where: { id: analystUserId } });
+      await prisma.user.create({
+        data: {
+          id: E2E_RESEARCH.analystUserId,
+          username: E2E_RESEARCH.analystUsername,
+          email: "e2e-research-analyst@example.invalid",
+          name: "E2E Research Analyst",
+          systemRole: "ANALYST",
+        },
+      });
+      await prisma.account.create({
+        data: {
+          id: randomUUID(),
+          userId: E2E_RESEARCH.analystUserId,
+          providerId: "credential",
+          issuer,
+          accountId: E2E_RESEARCH.analystUserId,
+          password: passwordHash,
+        },
+      });
+    }
+
+    for (const [organizationId, slug, name] of [
+      [E2E_RESEARCH.allowedOrganizationId, "e2e-tools-allowed", "E2E Tools Allowed"],
+      [E2E_RESEARCH.deniedOrganizationId, "e2e-tools-denied", "E2E Tools Denied"],
+      [E2E_RESEARCH.budgetOrganizationId, "e2e-tools-budget", "E2E Tools Budget"],
+    ] as const) {
+      await prisma.$executeRaw(Prisma.sql`
+        INSERT INTO "tools"."ToolsOrganization" ("id", "slug", "name")
+        VALUES (${organizationId}, ${slug}, ${name})
+        ON CONFLICT ("id") DO UPDATE SET "slug"=EXCLUDED."slug", "name"=EXCLUDED."name"
+      `);
+    }
+    for (const [projectId, organizationId, slug, name] of [
+      [E2E_RESEARCH.allowedProjectId, E2E_RESEARCH.allowedOrganizationId, "allowed", "Research Allowed"],
+      [E2E_RESEARCH.deniedProjectId, E2E_RESEARCH.deniedOrganizationId, "denied", "Research Denied"],
+      [E2E_RESEARCH.budgetProjectId, E2E_RESEARCH.budgetOrganizationId, "budget", "Research Budget"],
+    ] as const) {
+      await prisma.$executeRaw(Prisma.sql`
+        INSERT INTO "tools"."ToolsProject" ("id", "organizationId", "slug", "name")
+        VALUES (${projectId}, ${organizationId}, ${slug}, ${name})
+        ON CONFLICT ("id") DO UPDATE SET "name"=EXCLUDED."name", "archivedAt"=NULL
+      `);
+    }
+    for (const [organizationId, projectId, suffix] of [
+      [E2E_RESEARCH.allowedOrganizationId, E2E_RESEARCH.allowedProjectId, "allowed"],
+      [E2E_RESEARCH.budgetOrganizationId, E2E_RESEARCH.budgetProjectId, "budget"],
+    ] as const) {
+      const membershipId = `e2e-tools-membership-${suffix}`;
+      await prisma.$executeRaw(Prisma.sql`
+        INSERT INTO "tools"."ToolsMembership" ("id", "organizationId", "userId")
+        VALUES (${membershipId}, ${organizationId}, ${E2E_RESEARCH.analystUserId})
+        ON CONFLICT ("organizationId", "userId") DO NOTHING
+      `);
+      const memberships = await prisma.$queryRaw<Array<{ id: string }>>(Prisma.sql`
+        SELECT "id" FROM "tools"."ToolsMembership"
+        WHERE "organizationId"=${organizationId} AND "userId"=${E2E_RESEARCH.analystUserId}
+      `);
+      await prisma.$executeRaw(Prisma.sql`
+        INSERT INTO "tools"."ToolsProjectAccess"
+          ("id", "membershipId", "organizationId", "projectId", "role")
+        VALUES (${`e2e-tools-access-${suffix}`}, ${memberships[0]!.id}, ${organizationId}, ${projectId}, 'ANALYST')
+        ON CONFLICT ("membershipId", "projectId") DO UPDATE SET "role"='ANALYST'
+      `);
+    }
+    await prisma.$executeRaw(Prisma.sql`
+      INSERT INTO "research"."Research"
+        ("id", "organizationId", "projectId", "title", "brief", "status", "createdByUserId")
+      VALUES
+        (${E2E_RESEARCH.deniedResearchId}, ${E2E_RESEARCH.deniedOrganizationId}, ${E2E_RESEARCH.deniedProjectId}, 'Foreign research', '', 'DRAFT', ${E2E_RESEARCH.analystUserId}),
+        (${E2E_RESEARCH.staleResearchId}, ${E2E_RESEARCH.allowedOrganizationId}, ${E2E_RESEARCH.allowedProjectId}, 'Stale research', '', 'DRAFT', ${E2E_RESEARCH.analystUserId}),
+        (${E2E_RESEARCH.budgetResearchId}, ${E2E_RESEARCH.budgetOrganizationId}, ${E2E_RESEARCH.budgetProjectId}, 'Budget research', '', 'DRAFT', ${E2E_RESEARCH.analystUserId})
+      ON CONFLICT ("id") DO UPDATE SET "status"='DRAFT', "version"=1, "archivedAt"=NULL
+    `);
+    for (const [queryId, organizationId, projectId, researchId] of [
+      ["e2e-query-stale", E2E_RESEARCH.allowedOrganizationId, E2E_RESEARCH.allowedProjectId, E2E_RESEARCH.staleResearchId],
+      ["e2e-query-budget", E2E_RESEARCH.budgetOrganizationId, E2E_RESEARCH.budgetProjectId, E2E_RESEARCH.budgetResearchId],
+    ] as const) {
+      await prisma.$executeRaw(Prisma.sql`
+        INSERT INTO "research"."Query"
+          ("id", "organizationId", "projectId", "researchId", "text", "position")
+        VALUES (${queryId}, ${organizationId}, ${projectId}, ${researchId}, 'synthetic query', 0)
+        ON CONFLICT ("researchId", "position") DO UPDATE SET "text"='synthetic query'
+      `);
+    }
+    await prisma.$executeRaw(Prisma.sql`
+      INSERT INTO "research"."Run"
+        ("id", "organizationId", "projectId", "researchId", "status", "queryCount",
+         "estimatedCostKopecks", "estimateExpiresAt", "approvedCostKopecks",
+         "idempotencyKey", "confirmedByUserId", "confirmedAt")
+      VALUES ('e2e-budget-run', ${E2E_RESEARCH.budgetOrganizationId}, ${E2E_RESEARCH.budgetProjectId},
+        ${E2E_RESEARCH.budgetResearchId}, 'QUEUED', 1, 50000, CURRENT_TIMESTAMP + INTERVAL '1 hour',
+        50000, 'e2e-budget-limit', ${E2E_RESEARCH.analystUserId}, CURRENT_TIMESTAMP)
+      ON CONFLICT ("id") DO UPDATE SET "status"='QUEUED', "approvedCostKopecks"=50000,
+        "confirmedAt"=CURRENT_TIMESTAMP
+    `);
+
     const organization = await prisma.organization.findUniqueOrThrow({
       where: { slug: "alpha" },
       select: { id: true },
@@ -97,7 +204,7 @@ async function main() {
         },
       });
     }
-    console.log(JSON.stringify({ seeded: true, identityCount: 1 + CLIENT_USERNAMES.length }));
+    console.log(JSON.stringify({ seeded: true, identityCount: 2 + CLIENT_USERNAMES.length }));
   } finally {
     await prisma.$disconnect();
   }

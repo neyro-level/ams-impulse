@@ -28,6 +28,10 @@ export default defineConfig({
       "tests/config-sync.integration.test.ts",
       "tests/setup-token.integration.test.ts",
       "tests/research-audit.integration.test.ts",
+      "tests/research-isolation.integration.test.ts",
+      "tests/research-rls.integration.test.ts",
+      "tests/research-concurrency.integration.test.ts",
+      "tests/research-audit-safety.integration.test.ts",
     ],
   },
 });

@@ -48,6 +48,32 @@ DATABASE = managed-postgresql
 
 Матрица описывает текущее состояние reviewed commit, а не обещанное целевое состояние. `PARTIAL` и `NOT_IMPLEMENTED` закрываются только фактическим кодом, migration/configuration и соответствующим executable proof; текст аудита сам по себе не повышает статус.
 
+## Guarantee → Proof Matrix
+
+| Guarantee | Required proof | Executable evidence | State |
+|---|---|---|---|
+| Tenant isolation | PostgreSQL integration | `tests/tenant-ownership.integration.test.ts`, `tests/tenant-constraints.integration.test.ts`, `tests/research-isolation.integration.test.ts` | IMPLEMENTED |
+| Project isolation inside one organization | PostgreSQL integration across query, mutation, MCP and download | `tests/research-isolation.integration.test.ts` | IMPLEMENTED |
+| RLS missing-context deny | PostgreSQL integration under real runtime roles | `tests/principal.integration.test.ts`, `tests/research-rls.integration.test.ts` | IMPLEMENTED |
+| Platform Admin MFA | PostgreSQL integration + browser E2E | MFA integration and login E2E must remain green after identity hardening | REQUIRED |
+| Research budget concurrency | PostgreSQL integration with parallel transactions | `tests/research-concurrency.integration.test.ts` | IMPLEMENTED |
+| Command idempotency | Unit + PostgreSQL integration | `tests/reliability.integration.test.ts`, `tests/research-concurrency.integration.test.ts` | IMPLEMENTED |
+| Outbox atomicity | PostgreSQL integration | `tests/reliability.integration.test.ts` | IMPLEMENTED |
+| Paid retry safety | Unit + PostgreSQL integration | `tests/research-execution.test.ts`; durable ambiguous-dispatch proof belongs to EPIC 10 | PARTIAL |
+| MCP grants cannot expand AMS access | PostgreSQL integration through MCP application boundary | `tests/research-mcp.test.ts`, `tests/research-isolation.integration.test.ts` | IMPLEMENTED |
+| Private responses excluded from caches | Browser E2E | `tests/e2e/platform-shell.spec.ts`; Research export and private route assertions belong to EPIC 10 | PARTIAL |
+| Backup completeness and isolated restore | Release/operations proof | `ops/postgres/managed-restore-proof.sh`, `scripts/verify-managed-backup.mjs` | IMPLEMENTED |
+
+## Proof Rules
+
+- Security, tenant, RLS, money and database guarantees require `risky-check` against the reviewed exact head SHA; local output is supporting evidence only.
+- Database proofs use PostgreSQL 18 and dedicated runtime-compatible test roles. A test database name, identity or host that does not satisfy the destructive-target guard fails before migrations or seed data run.
+- Unit tests may prove pure policy and retry classification, but cannot substitute for database isolation, constraints, locking or RLS.
+- E2E proves the browser-visible journey and cache boundary; it does not substitute for direct command, MCP or repository tests.
+- Backup/restore evidence belongs to the release gate for the exact release artifact and managed database target.
+
+STANDARD and RISKY merge proofs, plus release proof, are manual exact-head workflows. PR creation does not trigger verification. The Merge Gate records the selected tests and result for the reviewed SHA; a new commit invalidates earlier evidence.
+
 ## Active Decisions And Exceptions
 
 | Topic | Classification | Project decision / required resolution |

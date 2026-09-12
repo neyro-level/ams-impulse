@@ -10,7 +10,7 @@ class MemoryReports implements ResearchReportRepository {
   status: "PENDING" | "READY" = "PENDING"; objectKey: string | null = null;
   idempotencyKeys: string[] = [];
   async getRunReport() { return report; }
-  async reserveExport(input: Parameters<ResearchReportRepository["reserveExport"]>[0]) { this.idempotencyKeys.push(input.idempotencyKey); return { exportId: "export-1", status: this.status, objectKey: this.objectKey }; }
+  async reserveExport(input: Parameters<ResearchReportRepository["reserveExport"]>[0]) { this.idempotencyKeys.push(input.idempotencyKey); return { exportId: "export-1", status: this.status, objectKey: this.objectKey, generationClaimed: this.status !== "READY" }; }
   async markExportReady(_id: string, key: string) { this.status = "READY"; this.objectKey = key; }
   async markExportFailed() { return; }
   async getExport() { return { exportId: "export-1", status: this.status, objectKey: this.objectKey }; }

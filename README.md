@@ -57,6 +57,7 @@ Service worker кэширует только `/_next/static/*`, `/fonts/*` и PW
 - [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)
 - [`docs/DATA_MODEL.md`](docs/DATA_MODEL.md)
 - [`docs/SECURITY.md`](docs/SECURITY.md)
+- [`docs/PLATFORM_CONFORMANCE.md`](docs/PLATFORM_CONFORMANCE.md)
 - [`docs/MASTER_PLAN.md`](docs/MASTER_PLAN.md)
 - [`docs/modules/MODULE_RESEARCH.md`](docs/modules/MODULE_RESEARCH.md)
 - [`docs/RUNBOOK_DEPLOY.md`](docs/RUNBOOK_DEPLOY.md)

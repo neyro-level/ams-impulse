@@ -42,6 +42,7 @@ DATABASE = managed-postgresql-target
 - `docs/modules/MODULE_*.md` — contracts значимых bounded modules.
 - `docs/INTERNAL_DASHBOARD_DESIGN_SYSTEM.md` — private application UI.
 - `docs/EXTERNAL_SITE_DESIGN_SYSTEM.md` — public marketing/legal UI.
+- `docs/PLATFORM_CONFORMANCE.md` — guarantee-to-proof matrix for merge and release gates.
 - `docs/ops/*.md` — конкретные operator runbooks.
 - `docs/adr/*` — труднообратимые решения.
 
