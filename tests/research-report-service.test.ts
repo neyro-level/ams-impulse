@@ -73,4 +73,19 @@ describe("ResearchReportService", () => {
     repository.objectKey = "research/org-1/project-1/research-1/export-1.csv";
     await expect(service.createDownload(principal, { organizationId: "org-1", projectId: "project-1", researchId: "research-1", exportId: "export-1" })).rejects.toMatchObject({ code: "RESEARCH_NOT_FOUND_OR_FORBIDDEN" });
   });
+
+  it("allows an HTTP signed URL only for an explicit test loopback endpoint", async () => {
+    const repository = new MemoryReports();
+    repository.status = "READY";
+    repository.objectKey = "research/org-1/project-1/research-1/export-1.csv";
+    const loopbackStorage = { ...storage, async createDownloadUrl() { return "http://127.0.0.1:3199/research.csv"; } };
+    const principal = createPlatformAnalystPrincipal("analyst");
+
+    await expect(new ResearchReportService(repository, authorization, loopbackStorage).createDownload(principal, {
+      organizationId: "org-1", projectId: "project-1", researchId: "research-1", exportId: "export-1",
+    })).rejects.toMatchObject({ code: "RESEARCH_NOT_FOUND_OR_FORBIDDEN" });
+    await expect(new ResearchReportService(repository, authorization, loopbackStorage, true).createDownload(principal, {
+      organizationId: "org-1", projectId: "project-1", researchId: "research-1", exportId: "export-1",
+    })).resolves.toEqual({ url: "http://127.0.0.1:3199/research.csv", expiresInSeconds: 60 });
+  });
 });

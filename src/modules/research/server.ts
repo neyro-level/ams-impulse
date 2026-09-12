@@ -48,6 +48,7 @@ export function createResearchMcpServices(principal: PrincipalContext) {
       new PrismaResearchReportRepository(userId, prisma),
       authorization,
       storage,
+      process.env.APP_ENV === "test",
     ),
   };
 }
@@ -70,5 +71,6 @@ export function createResearchReportService(principal: PrincipalContext) {
     new PrismaResearchReportRepository(userId, prisma),
     new AuthorizationService(new PrismaAccessGrantRepository(prisma)),
     lazyPrivateExportStorage(),
+    process.env.APP_ENV === "test",
   );
 }

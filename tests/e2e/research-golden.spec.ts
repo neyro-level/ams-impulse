@@ -48,7 +48,10 @@ test.describe("Research golden journey", () => {
       { cwd: process.cwd(), env: { ...process.env, APP_ENV: "test" }, stdio: "pipe" },
     );
     await page.reload();
-    await expect(page.getByRole("table").getByText("Завершено", { exact: true })).toBeVisible();
+    const runHistory = (page.viewportSize()?.width ?? 0) < 768
+      ? page.locator("#run-history article").first()
+      : page.getByRole("table");
+    await expect(runHistory.getByText("Завершено", { exact: true })).toBeVisible();
     await expect(page.getByText("1 всего", { exact: true })).toBeVisible();
 
     const downloadPromise = page.waitForEvent("download");

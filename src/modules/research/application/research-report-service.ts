@@ -2,6 +2,7 @@ import type { AuthorizationService } from "../../../platform/authorization/autho
 import type { PrincipalContext } from "../../../platform/authorization/principal.ts";
 import { z } from "zod";
 import { ResearchError, researchRefSchema } from "../domain/research.ts";
+import { isApprovedPrivateStorageUrl } from "../domain/private-url.ts";
 import { deriveResearchCsvIdempotencyKey } from "../domain/research-idempotency.ts";
 import type { PrivateExportStorage, ResearchExportRecord, ResearchReportRepository, ResearchRunReport } from "./ports/research-report-repository.ts";
 
@@ -40,14 +41,13 @@ function exportMatches(record: ResearchExportRecord, input: { organizationId: st
   return record.organizationId === input.organizationId && record.projectId === input.projectId && record.researchId === input.researchId && (!input.runId || record.runId === input.runId);
 }
 
-function safeSignedDownloadUrl(raw: string) {
-  try {
-    const url = new URL(raw);
-    if (url.protocol !== "https:" || url.username || url.password) throw new Error("UNSAFE_SIGNED_URL");
-    return url.toString();
-  } catch {
+function safeSignedDownloadUrl(raw: string, allowTestLoopbackHttp: boolean) {
+  if (!isApprovedPrivateStorageUrl(raw, allowTestLoopbackHttp)) {
     throw new ResearchError("RESEARCH_NOT_FOUND_OR_FORBIDDEN");
   }
+  const url = new URL(raw);
+  if (url.username || url.password) throw new ResearchError("RESEARCH_NOT_FOUND_OR_FORBIDDEN");
+  return url.toString();
 }
 
 export class ResearchReportService {
@@ -55,6 +55,7 @@ export class ResearchReportService {
     private readonly repository: ResearchReportRepository,
     private readonly authorization: AuthorizationService,
     private readonly storage: PrivateExportStorage,
+    private readonly allowTestLoopbackHttp = false,
   ) {}
 
   private async require(principal: PrincipalContext, permission: "tools:project:read" | "research:export", ref: { organizationId: string; projectId: string }) {
@@ -112,6 +113,6 @@ export class ResearchReportService {
     const record = await this.repository.getExport(input);
     if (!record || !exportMatches(record, input) || record.status !== "READY" || record.objectKey !== expectedObjectKey(input, record.exportId)) throw new ResearchError("RESEARCH_NOT_FOUND_OR_FORBIDDEN");
     const url = await this.storage.createDownloadUrl(record.objectKey, 60);
-    return { url: safeSignedDownloadUrl(url), expiresInSeconds: 60 as const };
+    return { url: safeSignedDownloadUrl(url, this.allowTestLoopbackHttp), expiresInSeconds: 60 as const };
   }
 }
