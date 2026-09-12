@@ -18,6 +18,10 @@ const oauthTokenArrayFixSql = readFileSync(
   new URL("../prisma/migrations/20260911222500_fix_oauth_optional_array_defaults/migration.sql", import.meta.url),
   "utf8",
 );
+const researchAuditScopeSql = readFileSync(
+  new URL("../prisma/migrations/20260912120000_scope_research_audit_events/migration.sql", import.meta.url),
+  "utf8",
+);
 
 describe("Tools and Research database contract", () => {
   it("uses independent membership and explicit project grants", () => {
@@ -61,5 +65,12 @@ describe("Tools and Research database contract", () => {
     expect(oauthTokenArrayFixSql).toContain('ALTER TABLE "public"."oauthAccessToken"');
     expect(oauthTokenArrayFixSql).toContain('ALTER TABLE "public"."oauthConsent"');
     expect(oauthTokenArrayFixSql.match(/SET DEFAULT ARRAY\[\]::TEXT\[\]/g)).toHaveLength(9);
+  });
+
+  it("requires complete product-local scope for Research audit events", () => {
+    expect(researchAuditScopeSql).toContain('DROP CONSTRAINT "AuditEvent_organizationId_fkey"');
+    expect(researchAuditScopeSql).toContain('"productCode" = \'tools\'');
+    expect(researchAuditScopeSql).toContain('"organizationId" IS NOT NULL');
+    expect(researchAuditScopeSql).toContain('"projectId" IS NOT NULL');
   });
 });

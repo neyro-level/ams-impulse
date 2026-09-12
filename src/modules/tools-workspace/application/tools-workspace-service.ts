@@ -31,6 +31,18 @@ export class ToolsWorkspaceService {
     return this.repository.listProjectOptions(await this.authorization.listAccessibleProjectIds(principal, "tools"));
   }
 
+  async resolveProjectScope(
+    principal: PrincipalContext,
+    requested: { organizationId: string; projectId: string },
+  ): Promise<{ organizationId: string; projectId: string } | null> {
+    const options = await this.listProjectOptions(principal);
+    const option = options.find(
+      ({ organizationId, id }) =>
+        organizationId === requested.organizationId && id === requested.projectId,
+    );
+    return option ? { organizationId: option.organizationId, projectId: option.id } : null;
+  }
+
   async createOrganization(principal: PrincipalContext, raw: unknown) { requireAdmin(principal); return this.repository.createOrganization(createToolsOrganizationSchema.parse(raw)); }
   async createProject(principal: PrincipalContext, raw: unknown) { requireAdmin(principal); return this.repository.createProject(createToolsProjectSchema.parse(raw)); }
   async grantProject(principal: PrincipalContext, raw: unknown) {

@@ -1,6 +1,6 @@
 import { defineCommand } from "../../../platform/commands/define-command.ts";
 import type { PrincipalContext } from "../../../platform/authorization/principal.ts";
-import { createScopedDb, type ScopedDb } from "../../../platform/database/scoped-db.ts";
+import type { DatabaseTransaction } from "../../../platform/database/transaction.ts";
 import {
   changeProjectStatusInputSchema,
   createProjectInputSchema,
@@ -20,7 +20,10 @@ export interface ProjectCommandResult {
 }
 
 export interface ProjectCommandDependencies {
-  createRepository(scopedDb: ScopedDb): ProjectReferenceRepository;
+  createRepository(
+    transaction: DatabaseTransaction,
+    organizationId: string,
+  ): ProjectReferenceRepository;
 }
 
 export function createProjectCommands(dependencies: ProjectCommandDependencies) {
@@ -37,7 +40,8 @@ export function createProjectCommands(dependencies: ProjectCommandDependencies) 
     execute: async ({ principal, input, transaction }) => {
       const scope = requireProjectManagementScope(principal, input.organizationId);
       const repository = dependencies.createRepository(
-        createScopedDb({ organizationId: scope.organizationId }, transaction),
+        transaction,
+        scope.organizationId,
       );
       const project = await repository.create(input);
       await repository.appendAudit({
@@ -69,7 +73,8 @@ export function createProjectCommands(dependencies: ProjectCommandDependencies) 
     },
     execute: async ({ principal, input, transaction }) => {
       const repository = dependencies.createRepository(
-        createScopedDb({ organizationId: input.organizationId }, transaction),
+        transaction,
+        input.organizationId,
       );
       const { scope, project } = await requireProjectForAction(
         principal,
@@ -111,7 +116,8 @@ export function createProjectCommands(dependencies: ProjectCommandDependencies) 
     },
     execute: async ({ principal, input, transaction }) => {
       const repository = dependencies.createRepository(
-        createScopedDb({ organizationId: input.organizationId }, transaction),
+        transaction,
+        input.organizationId,
       );
       const { scope, project } = await requireProjectForAction(
         principal,

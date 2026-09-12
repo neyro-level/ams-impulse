@@ -1,4 +1,5 @@
 import type { PrincipalContext } from "./principal.ts";
+import { isProductCode } from "./access-types.ts";
 import type {
   AuthorizationDecision,
   ProductCode,
@@ -62,14 +63,19 @@ export class AuthorizationService {
     permission: ProductPermission,
     resource: ResourceRef,
   ): Promise<AuthorizationDecision> {
+    if (!isProductCode(resource.product)) {
+      return { allowed: false, code: "UNKNOWN_PRODUCT" };
+    }
+    if (!resource.organizationId?.trim() || !resource.projectId?.trim()) {
+      return { allowed: false, code: "RESOURCE_SCOPE_REQUIRED" };
+    }
     if (principal.kind === "platform-admin") return { allowed: true, role: "PLATFORM_ADMIN" };
-    if (!resource.projectId) return { allowed: false, code: "RESOURCE_SCOPE_REQUIRED" };
     const userId = principalUserId(principal);
     if (!userId) return { allowed: false, code: "ACCESS_DENIED" };
     const grants = await this.grants.listProjectGrants(userId, resource.product);
     const grant = grants.find(({ projectId, organizationId }) =>
       projectId === resource.projectId &&
-      (!resource.organizationId || organizationId === resource.organizationId));
+      organizationId === resource.organizationId);
     if (!grant || !ROLE_PERMISSIONS[resource.product][grant.role].includes(permission)) {
       return { allowed: false, code: "ACCESS_DENIED" };
     }

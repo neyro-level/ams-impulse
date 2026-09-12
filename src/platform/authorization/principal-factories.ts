@@ -77,12 +77,14 @@ export async function getIdentityPrincipalByUserId(
 export function createJobPrincipal(input: {
   jobName: string;
   organizationId: string;
+  projectId?: string;
   correlationId?: string;
 }): PrincipalContext {
   return {
     kind: "job",
     jobName: input.jobName,
     organizationId: input.organizationId,
+    ...(input.projectId ? { projectId: input.projectId } : {}),
     correlationId: input.correlationId ?? createCorrelationId(),
   };
 }

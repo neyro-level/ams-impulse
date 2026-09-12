@@ -30,13 +30,21 @@ function toRecord(row: ResearchRow, queries: QueryRow[]): ResearchRecord {
 
 async function appendAudit(
   store: Store,
-  input: { actorId: string; action: string; entityId: string; correlationId: string; marker: Prisma.InputJsonValue },
+  input: {
+    organizationId: string;
+    projectId: string;
+    actorId: string;
+    action: string;
+    entityId: string;
+    correlationId: string;
+    marker: Prisma.InputJsonValue;
+  },
 ) {
   await store.$executeRaw(Prisma.sql`
     INSERT INTO "public"."AuditEvent"
-      ("id", "organizationId", "actorType", "actorId", "action", "entityType", "entityId", "beforeMarker", "afterMarker", "source", "correlationId", "createdAt")
+      ("id", "productCode", "organizationId", "projectId", "actorType", "actorId", "action", "entityType", "entityId", "beforeMarker", "afterMarker", "source", "correlationId", "createdAt")
     VALUES
-      (${randomUUID()}, NULL, 'USER', ${input.actorId}, ${input.action}, 'Research', ${input.entityId}, NULL, ${JSON.stringify(input.marker)}::jsonb, 'research', ${input.correlationId}, CURRENT_TIMESTAMP)
+      (${randomUUID()}, 'tools', ${input.organizationId}, ${input.projectId}, 'USER', ${input.actorId}, ${input.action}, 'Research', ${input.entityId}, NULL, ${JSON.stringify(input.marker)}::jsonb, 'research', ${input.correlationId}, CURRENT_TIMESTAMP)
   `);
 }
 
@@ -49,7 +57,7 @@ export class PrismaResearchRepository implements ResearchRepository {
 
   private withContext<T>(operation: (transaction: DatabaseTransaction) => Promise<T>) {
     return this.prisma.$transaction(async (transaction) => {
-      await setDatabaseAuthorizationContext(transaction, { userId: this.databaseUserId });
+      await setDatabaseAuthorizationContext(transaction, { kind: "user", userId: this.databaseUserId });
       return operation(transaction);
     });
   }
@@ -121,6 +129,8 @@ export class PrismaResearchRepository implements ResearchRepository {
         `);
       }
       await appendAudit(transaction, {
+        organizationId: input.organizationId,
+        projectId: input.projectId,
         actorId: input.createdByUserId,
         action: "research.create",
         entityId: researchId,
@@ -151,6 +161,8 @@ export class PrismaResearchRepository implements ResearchRepository {
         `);
       }
       await appendAudit(transaction, {
+        organizationId: input.organizationId,
+        projectId: input.projectId,
         actorId: input.actorId,
         action: "research.update",
         entityId: input.researchId,
@@ -172,6 +184,8 @@ export class PrismaResearchRepository implements ResearchRepository {
       `);
       if (count !== 1) return false;
       await appendAudit(transaction, {
+        organizationId: ref.organizationId,
+        projectId: ref.projectId,
         actorId: ref.actorId,
         action: "research.archive",
         entityId: ref.researchId,
@@ -249,13 +263,15 @@ export class PrismaResearchRepository implements ResearchRepository {
         WHERE "id"=${run.id}
       `);
       const outboxEventId = randomUUID();
+      // OutboxEvent is a platform-owned delivery record. The versioned payload is
+      // the authoritative Tools scope; its legacy SEO organization FK stays null.
       await transaction.$executeRaw(Prisma.sql`
         INSERT INTO "public"."OutboxEvent"
           ("id", "organizationId", "topic", "payload", "status", "attempts", "schemaVersion", "correlationId", "occurredAt", "availableAt", "createdAt", "updatedAt")
         VALUES
           (${outboxEventId}, NULL, 'research.run.v1', ${JSON.stringify({ toolsOrganizationId: input.ref.organizationId, toolsProjectId: input.ref.projectId, researchId: input.ref.researchId, runId: input.runId })}::jsonb, 'PENDING', 0, 1, ${input.correlationId}, ${input.now}, ${input.now}, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
       `);
-      await appendAudit(transaction, { actorId: input.actorId, action: "research.run.confirm", entityId: input.runId, correlationId: input.correlationId, marker: { toolsOrganizationId: input.ref.organizationId, toolsProjectId: input.ref.projectId, estimatedCostKopecks: run.estimatedCostKopecks, outboxEventId } });
+      await appendAudit(transaction, { organizationId: input.ref.organizationId, projectId: input.ref.projectId, actorId: input.actorId, action: "research.run.confirm", entityId: input.runId, correlationId: input.correlationId, marker: { toolsOrganizationId: input.ref.organizationId, toolsProjectId: input.ref.projectId, estimatedCostKopecks: run.estimatedCostKopecks, outboxEventId } });
       return { runId: input.runId, outboxEventId };
     });
   }

@@ -1,4 +1,6 @@
 import { z } from "zod";
+import type { PrincipalContext } from "../authorization/principal.ts";
+import { deriveDatabaseAuthorizationContext } from "../database/authorization-context.ts";
 import {
   runInDatabaseTransaction,
   type DatabaseTransaction,
@@ -19,14 +21,15 @@ export interface CommandDefinition<TPrincipal, TSchema extends z.ZodType, TResul
   ) => Promise<TResult>;
 }
 
-export function defineCommand<TPrincipal, TSchema extends z.ZodType, TResult>(
+export function defineCommand<TPrincipal extends PrincipalContext, TSchema extends z.ZodType, TResult>(
   definition: CommandDefinition<TPrincipal, TSchema, TResult>,
 ) {
   return async (principal: TPrincipal, rawInput: z.input<TSchema>): Promise<TResult> => {
     const input = definition.input.parse(rawInput);
     await definition.authorize(principal, input);
+    const databaseContext = deriveDatabaseAuthorizationContext(principal);
 
-    return runInDatabaseTransaction((transaction) =>
+    return runInDatabaseTransaction(databaseContext, (transaction) =>
       definition.execute({ principal, input, transaction }),
     );
   };

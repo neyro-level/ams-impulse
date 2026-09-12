@@ -8,6 +8,8 @@ import {
 } from "../src/modules/project-registry/domain/project.ts";
 import type { ProjectReferenceRepository } from "../src/modules/project-registry/application/ports/project-reference-repository.ts";
 import type { PrincipalContext } from "../src/platform/authorization/principal.ts";
+import { PrismaProjectReferenceRepository } from "../src/modules/project-registry/infrastructure/prisma-project-reference-repository.ts";
+import type { DatabaseTransaction } from "../src/platform/database/transaction.ts";
 
 const project = {
   id: "project-a",
@@ -45,6 +47,12 @@ const foreignOwner: PrincipalContext = {
 
 
 describe("Project reference domain", () => {
+  it("requires explicit organization scope at repository construction", () => {
+    expect(
+      () => new PrismaProjectReferenceRepository({} as DatabaseTransaction, ""),
+    ).toThrow("TENANT_SCOPE_REQUIRED");
+  });
+
   it("normalizes canonical create input and advances a valid version", () => {
     expect(createProjectInputSchema.parse({
       organizationId: " organization-a ",

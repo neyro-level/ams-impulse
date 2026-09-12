@@ -53,6 +53,7 @@ export interface JobPrincipal {
   kind: "job";
   jobName: string;
   organizationId: string;
+  projectId?: string;
   correlationId: string;
 }
 

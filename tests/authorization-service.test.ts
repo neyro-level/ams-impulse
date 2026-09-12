@@ -27,7 +27,11 @@ const service = new AuthorizationService({
 describe("AuthorizationService", () => {
   it("denies by default and requires a project scope", async () => {
     const client = createTenantUserPrincipal({ userId: "client", organizationId: "seo-org" });
-    await expect(service.authorize(client, "seo:project:read", { product: "seo-monitor" })).resolves.toEqual({
+    await expect(service.authorize(client, "seo:project:read", {
+      product: "seo-monitor",
+      organizationId: "",
+      projectId: "",
+    })).resolves.toEqual({
       allowed: false,
       code: "RESOURCE_SCOPE_REQUIRED",
     });
@@ -36,6 +40,11 @@ describe("AuthorizationService", () => {
       organizationId: "seo-org",
       projectId: "seo-b",
     })).resolves.toEqual({ allowed: false, code: "ACCESS_DENIED" });
+    await expect(service.authorize(client, "seo:project:read", {
+      product: "unknown-product",
+      organizationId: "seo-org",
+      projectId: "seo-a",
+    })).resolves.toEqual({ allowed: false, code: "UNKNOWN_PRODUCT" });
   });
 
   it("isolates products and projects", async () => {
@@ -69,8 +78,14 @@ describe("AuthorizationService", () => {
     await expect(service.listAccessibleProjectIds(createPlatformAdminPrincipal(), "seo-monitor")).resolves.toBeNull();
     await expect(service.authorize(createPlatformAdminPrincipal(), "research:run", {
       product: "tools",
+      organizationId: "any-organization",
       projectId: "any",
     })).resolves.toEqual({ allowed: true, role: "PLATFORM_ADMIN" });
+    await expect(service.authorize(createPlatformAdminPrincipal(), "research:run", {
+      product: "tools",
+      organizationId: "",
+      projectId: "any",
+    })).resolves.toEqual({ allowed: false, code: "RESOURCE_SCOPE_REQUIRED" });
     await expect(service.listAccessibleProducts(createDeniedJobPrincipal("seo-org"))).resolves.toEqual([]);
   });
 });

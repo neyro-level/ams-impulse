@@ -91,6 +91,12 @@ Feature availability and access are separate: active module still requires permi
 
 `PrincipalContext` carries identity, system role and correlation ID. It does not select an arbitrary first organization.
 
+Application commands convert that server-owned principal into a discriminated database authorization context. The transaction installs transaction-local `ams.*` values as its first SQL operation and only then invokes the command repository. Missing job/project scope is a fail-closed error; client input is never a context source.
+
+Tenant repositories receive the command transaction and explicit organization/project scope directly. There is no parallel `ScopedDb` security abstraction: authorization, transaction-local context, scoped predicates, RLS and composite constraints form the enforceable layered contract.
+
+Platform Admin mutation adapters never acquire a global Prisma client or open a nested transaction. Their composition roots inject the contextual command transaction explicitly; read-only query adapters receive the global client explicitly in a separate query path.
+
 ```text
 authorize(principal, permission, resourceRef)
 -> system-role check

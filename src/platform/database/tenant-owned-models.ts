@@ -23,15 +23,26 @@ export const TENANT_OWNED_MODELS = [
   "MetrikaGeoDailyMetric",
   "TechnicalSnapshot",
   "ReportSnapshot",
+  "Notification",
+] as const;
+
+export const PLATFORM_OPERATIONAL_MODELS = [
   "AuditEvent",
   "IdempotencyKey",
   "OutboxEvent",
   "JobRun",
-  "Notification",
+  "RuntimeHeartbeat",
+  "RetentionRun",
 ] as const;
 
 export type TenantOwnedModel = (typeof TENANT_OWNED_MODELS)[number];
 
 export function isTenantOwnedModel(model: string): model is TenantOwnedModel {
   return TENANT_OWNED_MODELS.some((candidate) => candidate === model);
+}
+
+export type PlatformOperationalModel = (typeof PLATFORM_OPERATIONAL_MODELS)[number];
+
+export function isPlatformOperationalModel(model: string): model is PlatformOperationalModel {
+  return PLATFORM_OPERATIONAL_MODELS.some((candidate) => candidate === model);
 }

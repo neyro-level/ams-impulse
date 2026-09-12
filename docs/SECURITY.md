@@ -38,7 +38,7 @@ authorize(principal, permission, resourceRef)
 -> ALLOW | DENY
 ```
 
-`resourceRef` names product and exact organization/project/resource. Authorization runs for every:
+`resourceRef` requires a known product and exact organization/project; optional resource identifiers refine that complete scope. Missing scope fails with `RESOURCE_SCOPE_REQUIRED`, and an unknown product fails with stable `UNKNOWN_PRODUCT` instead of dynamic indexing. Platform Admin uses the same explicit target requirement; privileged mutations record that target in AuditEvent. Authorization runs for every:
 
 - private Server Component and route handler;
 - server action and application command;
@@ -65,7 +65,7 @@ Changing/revoking membership or project grant writes AuditEvent and revokes acti
 Application authorization, scoped repositories and composite ownership constraints are mandatory. RLS adds defense in depth for tenant-owned runtime tables:
 
 - `ENABLE ROW LEVEL SECURITY`;
-- `FORCE ROW LEVEL SECURITY`;
+- `FORCE ROW LEVEL SECURITY`, except documented definer lookup roots that remain protected for non-owner runtime roles;
 - runtime roles use `NOBYPASSRLS` and do not own protected tables;
 - transaction-local user/product/project context;
 - no context means default deny;
@@ -74,12 +74,34 @@ Application authorization, scoped repositories and composite ownership constrain
 - migrator and backup identities are not used by application runtime;
 - provider physical backups remain complete independently of RLS; logical backup aborts before upload when `FORCE RLS` exists and the provider-managed backup role cannot bypass it.
 
+Every `defineCommand` transaction derives a discriminated database authorization context from the server-generated principal and installs it before application SQL runs. Supported context kinds are user, Platform Admin, API client and project-scoped job. Command payload fields never supply this context; an incomplete principal fails with `AUTHORIZATION_CONTEXT_REQUIRED`.
+
 RLS changes require PostgreSQL integration tests proving allowed and denied reads/writes. Backup proof verifies complete dump and restore independently from runtime policies.
+
+Protected-table policy matrix:
+
+| Tables | ENABLE / FORCE | `USING` and `WITH CHECK` | Context |
+| --- | --- | --- | --- |
+| `Project`, `SyncRun` | yes / yes | exact SEO organization + project | user or project-scoped worker |
+| `Site` | yes / no | authorized SEO project; definer lookup root | user or project-scoped worker |
+| `ProviderOperation`, `ProviderConnection`, `SearchTarget`, `GoalDefinitionSite`, `TrackedQuerySet`, `SourceRun`, all Webmaster/Metrika daily metric tables, `LandingPageDailyMetric`, `CompetitorSnapshot`, `TechnicalSnapshot`, `ReportSnapshot` | yes / yes | authorized parent site/project | user or project-scoped worker |
+| `GoalDefinition` | yes / yes | exact SEO organization + project | user or project-scoped worker |
+| `TrackedQuery`, `RankingCapture` | yes / yes | authorized tenant parent relation | user or project-scoped worker |
+| `Notification` | yes / yes | non-null authorized project | user or project-scoped worker |
+| `SeoProjectAccess` | yes / no | tenant-scoped SELECT; Platform Admin INSERT/UPDATE/DELETE; definer lookup root | user |
+| `ToolsOrganization` | yes / yes | tenant-scoped SELECT; Platform Admin INSERT/UPDATE/DELETE | user |
+| `ToolsMembership`, `ToolsProjectAccess` | yes / no | tenant-scoped SELECT; Platform Admin INSERT/UPDATE/DELETE; definer lookup roots | user |
+| `ToolsProject`, `research.Research`, `research.Query`, `research.Run`, `research.QueryRun`, `research.Evidence`, `research.CompetitorProjection`, `research.Export` | yes / yes | exact Tools organization + project | user or project-scoped worker |
+
+The migrator owns schema changes. `ams_web` and `ams_worker` are login roles with `NOBYPASSRLS`, no role inheritance and no protected relation/schema ownership; `ops/postgres/roles.sql` verifies these facts before applying grants. User context is `ams.user_id`; worker context is the pair `ams.job_organization_id` + `ams.job_project_id`. No context denies restricted runtime access.
+
+`Site`, `SeoProjectAccess`, `ToolsMembership` and `ToolsProjectAccess` deliberately use ENABLE without FORCE because they are lookup inputs to tightly scoped `SECURITY DEFINER` authorization functions. PostgreSQL applies FORCE policies to a table owner; keeping FORCE here would recursively re-enter the same policy. The exception does not exempt runtime identities: they are verified non-owners with `NOBYPASSRLS`. Definer functions use fixed trusted `search_path` values ending in `pg_temp` and expose only boolean decisions.
 
 ## Browser And UI
 
 - Server builds navigation from effective product access.
 - Organization/project selectors receive only authorized options.
+- Research URL and form IDs are requested selections only; the server resolves an exact pair from fresh Tools project options before calling the application service.
 - Client-side permission checks improve UX only.
 - Private responses use `Cache-Control: no-store` where relevant.
 - Service worker cannot cache session, API, report, export, research or PII responses.

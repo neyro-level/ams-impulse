@@ -69,7 +69,7 @@ export class PrismaProjectRepository implements ProjectRepository {
     const prisma = getPrismaClient();
     if (!scope.databaseUserId) return operation(prisma);
     return prisma.$transaction(async (transaction) => {
-      await setDatabaseAuthorizationContext(transaction, { userId: scope.databaseUserId! });
+      await setDatabaseAuthorizationContext(transaction, { kind: "user", userId: scope.databaseUserId! });
       return operation(transaction);
     });
   }

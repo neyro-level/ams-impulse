@@ -11,7 +11,7 @@ export class PrismaResearchReportRepository implements ResearchReportRepository 
   private get prisma() { return this.injectedPrisma ?? getPrismaClient(); }
   private withContext<T>(operation: (transaction: DatabaseTransaction) => Promise<T>) {
     return this.prisma.$transaction(async (transaction) => {
-      await setDatabaseAuthorizationContext(transaction, { userId: this.databaseUserId });
+      await setDatabaseAuthorizationContext(transaction, { kind: "user", userId: this.databaseUserId });
       return operation(transaction);
     });
   }

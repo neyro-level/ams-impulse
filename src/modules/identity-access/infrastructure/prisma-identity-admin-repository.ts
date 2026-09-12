@@ -2,7 +2,6 @@ import { Prisma, type PrismaClient } from "../../../generated/prisma/client.ts";
 import { randomUUID } from "node:crypto";
 import { createLocalAccountIssuer } from "better-auth/db";
 import type { DatabaseTransaction } from "../../../platform/database/transaction.ts";
-import { getPrismaClient } from "../../../platform/database/prisma/client.ts";
 import {
   IdentityAdminError,
   type CreateMembershipInput,
@@ -130,10 +129,8 @@ function translateWriteError(error: unknown): never {
 }
 
 export class PrismaIdentityAdminRepository implements IdentityAdminRepository {
-  constructor(private readonly injectedPrisma?: PrismaStore) {}
-
-  private get prisma(): PrismaStore {
-    return this.injectedPrisma ?? getPrismaClient();
+  constructor(private readonly prisma: PrismaStore) {
+    if (!prisma) throw new Error("DATABASE_STORE_REQUIRED");
   }
   async listOrganizations(
     query: IdentityAdminListQuery,

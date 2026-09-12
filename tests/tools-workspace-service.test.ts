@@ -31,6 +31,15 @@ describe("ToolsWorkspaceService", () => {
     const service = new ToolsWorkspaceService(repository, authorization);
     const client = createTenantUserPrincipal({ userId: "client", organizationId: "seo-org" });
     await expect(service.listProjects(client)).resolves.toEqual([projects[0]]);
+    await expect(
+      service.resolveProjectScope(client, { organizationId: "org-a", projectId: "tools-a" }),
+    ).resolves.toEqual({ organizationId: "org-a", projectId: "tools-a" });
+    await expect(
+      service.resolveProjectScope(client, { organizationId: "org-b", projectId: "tools-a" }),
+    ).resolves.toBeNull();
+    await expect(
+      service.resolveProjectScope(client, { organizationId: "org-b", projectId: "tools-b" }),
+    ).resolves.toBeNull();
   });
 
   it("allows only Platform Admin to change workspace structure and grants", async () => {

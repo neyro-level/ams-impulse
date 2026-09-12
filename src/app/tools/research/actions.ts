@@ -6,6 +6,8 @@ import { revalidatePath } from "next/cache";
 import { requireCurrentCabinetPrincipal } from "../../../modules/identity-access/server.ts";
 import { ResearchError } from "../../../modules/research/index.ts";
 import { createResearchCabinetService, createResearchReportService } from "../../../modules/research/server.ts";
+import { createToolsWorkspaceService } from "../../../modules/tools-workspace/server.ts";
+import type { PrincipalContext } from "../../../platform/authorization/principal.ts";
 
 function text(formData: FormData, key: string) {
   return String(formData.get(key) ?? "").trim();
@@ -17,6 +19,16 @@ function queries(formData: FormData) {
 
 function ref(formData: FormData) {
   return { organizationId: text(formData, "organizationId"), projectId: text(formData, "projectId"), researchId: text(formData, "researchId") };
+}
+
+async function resolveRef(principal: PrincipalContext, requested: ReturnType<typeof ref>) {
+  if (principal.kind === "api-client" || principal.kind === "job") notFound();
+  const scope = await createToolsWorkspaceService(principal.userId).resolveProjectScope(
+    principal,
+    requested,
+  );
+  if (!scope) notFound();
+  return { ...scope, researchId: requested.researchId };
 }
 
 function detailHref(input: ReturnType<typeof ref>, params: Record<string, string> = {}) {
@@ -35,9 +47,10 @@ async function hideForbidden<T>(operation: () => Promise<T>) {
 
 export async function createResearchAction(formData: FormData) {
   const principal = await requireCurrentCabinetPrincipal();
+  const scope = await resolveRef(principal, ref(formData));
   const created = await hideForbidden(() => createResearchCabinetService(principal).create(principal, {
-    organizationId: text(formData, "organizationId"),
-    projectId: text(formData, "projectId"),
+    organizationId: scope.organizationId,
+    projectId: scope.projectId,
     title: text(formData, "title"),
     brief: text(formData, "brief"),
     queries: queries(formData),
@@ -47,7 +60,7 @@ export async function createResearchAction(formData: FormData) {
 
 export async function updateResearchAction(formData: FormData) {
   const principal = await requireCurrentCabinetPrincipal();
-  const input = ref(formData);
+  const input = await resolveRef(principal, ref(formData));
   await hideForbidden(() => createResearchCabinetService(principal).update(principal, {
     ...input,
     title: text(formData, "title"),
@@ -61,7 +74,7 @@ export async function updateResearchAction(formData: FormData) {
 
 export async function archiveResearchAction(formData: FormData) {
   const principal = await requireCurrentCabinetPrincipal();
-  const input = ref(formData);
+  const input = await resolveRef(principal, ref(formData));
   await hideForbidden(() => createResearchCabinetService(principal).archive(principal, input, Number(text(formData, "version"))));
   revalidatePath("/tools/research/");
   redirect(`/tools/research/?organizationId=${encodeURIComponent(input.organizationId)}&projectId=${encodeURIComponent(input.projectId)}`);
@@ -69,14 +82,14 @@ export async function archiveResearchAction(formData: FormData) {
 
 export async function estimateResearchAction(formData: FormData) {
   const principal = await requireCurrentCabinetPrincipal();
-  const input = ref(formData);
+  const input = await resolveRef(principal, ref(formData));
   const estimate = await hideForbidden(() => createResearchCabinetService(principal).estimateRun(principal, { ...input, idempotencyKey: randomUUID() }));
   redirect(detailHref(input, { estimateRunId: estimate.runId, estimateCost: String(estimate.estimatedCostKopecks), estimateQueries: String(estimate.queryCount) }));
 }
 
 export async function confirmResearchAction(formData: FormData) {
   const principal = await requireCurrentCabinetPrincipal();
-  const input = ref(formData);
+  const input = await resolveRef(principal, ref(formData));
   await hideForbidden(() => createResearchCabinetService(principal).confirmAndQueue(principal, {
     ...input,
     runId: text(formData, "runId"),
@@ -88,7 +101,7 @@ export async function confirmResearchAction(formData: FormData) {
 
 export async function downloadResearchExportAction(formData: FormData) {
   const principal = await requireCurrentCabinetPrincipal();
-  const input = ref(formData);
+  const input = await resolveRef(principal, ref(formData));
   const reports = createResearchReportService(principal);
   const created = await hideForbidden(() => reports.createExport(principal, { ...input, runId: text(formData, "runId"), idempotencyKey: randomUUID() }));
   const download = await hideForbidden(() => reports.createDownload(principal, { ...input, exportId: created.exportId }));

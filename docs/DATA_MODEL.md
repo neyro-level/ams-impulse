@@ -150,7 +150,9 @@ AWAITING_CONFIRMATION -> QUEUED -> RUNNING -> SUCCEEDED | FAILED
 
 ## Operations
 
-Outbox, idempotency, JobRun, RuntimeHeartbeat and pg-boss continue as platform-owned reliability records. Product job payloads are bounded, versioned and carry explicit product/organization/project identifiers.
+AuditEvent, Outbox, idempotency, JobRun, RuntimeHeartbeat and pg-boss are platform-owned operational records, not product-owned business rows. A tenant-related AuditEvent carries explicit `productCode`, product-local `organizationId` and, where applicable, `projectId`; Research audit rows require the complete Tools scope. Because product organization registries are intentionally independent, this contextual audit reference is not a foreign key to the SEO-only `public.Organization` table.
+
+Outbox delivery scope is the validated, versioned product payload. The legacy nullable `OutboxEvent.organizationId` is not authorization input and is not populated with a Tools organization ID. Product handlers must validate payload ownership before accessing data.
 
 Research queue topic: `research.run.v1`, concurrency `1`, finite retry and dead-letter behavior.
 

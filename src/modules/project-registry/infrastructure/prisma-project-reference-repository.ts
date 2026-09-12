@@ -1,5 +1,5 @@
 import { Prisma } from "../../../generated/prisma/client.ts";
-import type { ScopedDb } from "../../../platform/database/scoped-db.ts";
+import type { DatabaseTransaction } from "../../../platform/database/transaction.ts";
 import type {
   ProjectAuditInput,
   ProjectReferenceRepository,
@@ -20,11 +20,16 @@ function translateWriteError(error: unknown): never {
 }
 
 export class PrismaProjectReferenceRepository implements ProjectReferenceRepository {
-  constructor(private readonly scopedDb: ScopedDb) {}
+  constructor(
+    private readonly transaction: DatabaseTransaction,
+    private readonly organizationId: string,
+  ) {
+    if (!organizationId.trim()) throw new Error("TENANT_SCOPE_REQUIRED");
+  }
 
   async findForAction(projectId: string) {
-    return this.scopedDb.transaction.project.findFirst({
-      where: { id: projectId, organizationId: this.scopedDb.organizationId },
+    return this.transaction.project.findFirst({
+      where: { id: projectId, organizationId: this.organizationId },
       select: {
         id: true,
         organizationId: true,
@@ -40,9 +45,9 @@ export class PrismaProjectReferenceRepository implements ProjectReferenceReposit
 
   async create(input: CreateProjectInput) {
     try {
-      return await this.scopedDb.transaction.project.create({
+      return await this.transaction.project.create({
         data: {
-          organizationId: this.scopedDb.organizationId,
+          organizationId: this.organizationId,
           slug: input.slug,
           name: input.name,
           status: input.status,
@@ -61,10 +66,10 @@ export class PrismaProjectReferenceRepository implements ProjectReferenceReposit
     expectedVersion: number;
     status: ProjectStatus;
   }): Promise<boolean> {
-    const result = await this.scopedDb.transaction.project.updateMany({
+    const result = await this.transaction.project.updateMany({
       where: {
         id: input.projectId,
-        organizationId: this.scopedDb.organizationId,
+        organizationId: this.organizationId,
         version: input.expectedVersion,
       },
       data: { status: input.status, version: { increment: 1 } },
@@ -79,10 +84,10 @@ export class PrismaProjectReferenceRepository implements ProjectReferenceReposit
     >,
   ): Promise<boolean> {
     try {
-      const result = await this.scopedDb.transaction.project.updateMany({
+      const result = await this.transaction.project.updateMany({
         where: {
           id: input.projectId,
-          organizationId: this.scopedDb.organizationId,
+          organizationId: this.organizationId,
           version: input.version,
         },
         data: {
@@ -99,9 +104,9 @@ export class PrismaProjectReferenceRepository implements ProjectReferenceReposit
   }
 
   async appendAudit(input: ProjectAuditInput): Promise<void> {
-    await this.scopedDb.transaction.auditEvent.create({
+    await this.transaction.auditEvent.create({
       data: {
-        organizationId: this.scopedDb.organizationId,
+        organizationId: this.organizationId,
         actorType: "USER",
         actorId: input.actorId,
         action: input.action,

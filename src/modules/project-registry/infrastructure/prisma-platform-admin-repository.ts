@@ -1,6 +1,5 @@
 import { Prisma, type PrismaClient } from "../../../generated/prisma/client.ts";
 import type { DatabaseTransaction } from "../../../platform/database/transaction.ts";
-import { getPrismaClient } from "../../../platform/database/prisma/client.ts";
 import {
   normalizeTrackedQuery,
   ProjectRegistryAdminError,
@@ -314,10 +313,8 @@ function translateWriteError(error: unknown): never {
 
 export class PrismaProjectRegistryAdminRepository
   implements PlatformAdminQueryRepository, PlatformAdminReferenceRepository {
-  constructor(private readonly injectedPrisma?: PrismaStore) {}
-
-  private get prisma(): PrismaStore {
-    return this.injectedPrisma ?? getPrismaClient();
+  constructor(private readonly prisma: PrismaStore) {
+    if (!prisma) throw new Error("DATABASE_STORE_REQUIRED");
   }
   async listSites(query: Parameters<PlatformAdminQueryRepository["listSites"]>[0]) {
     const where: Prisma.SiteWhereInput = {

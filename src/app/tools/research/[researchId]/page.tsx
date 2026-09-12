@@ -9,6 +9,7 @@ import { Button } from "../../../../components/ui/button.tsx";
 import { Input, Textarea } from "../../../../components/ui/input.tsx";
 import { getCurrentPrincipalState } from "../../../../modules/identity-access/server.ts";
 import { createResearchCabinetService } from "../../../../modules/research/server.ts";
+import { createToolsWorkspaceService } from "../../../../modules/tools-workspace/server.ts";
 import { archiveResearchAction, confirmResearchAction, downloadResearchExportAction, estimateResearchAction, updateResearchAction } from "../actions.ts";
 
 type RouteProps = { params: Promise<{ researchId: string }>; searchParams: Promise<Record<string, string | string[] | undefined>> };
@@ -31,7 +32,12 @@ export default async function ResearchDetailPage({ params, searchParams }: Route
   const organizationId = first(raw.organizationId);
   const projectId = first(raw.projectId);
   if (!organizationId || !projectId) notFound();
-  const ref = { organizationId, projectId, researchId };
+  const scope = await createToolsWorkspaceService(principal.userId).resolveProjectScope(principal, {
+    organizationId,
+    projectId,
+  });
+  if (!scope) notFound();
+  const ref = { ...scope, researchId };
   const service = createResearchCabinetService(principal);
   const research = await service.get(principal, ref).catch(() => null);
   if (!research) notFound();
@@ -42,7 +48,7 @@ export default async function ResearchDetailPage({ params, searchParams }: Route
   const estimateQueries = Number(first(raw.estimateQueries));
 
   return <div className="space-y-6">
-    <PageHeader title={research.title} description={`${research.queries.length} запросов · обновлено ${new Date(research.updatedAt).toLocaleString("ru-RU")}`} backHref={`/tools/research/?organizationId=${encodeURIComponent(organizationId)}&projectId=${encodeURIComponent(projectId)}`} actions={<StatusBadge label={statusLabel[research.status] ?? research.status} tone={statusTone[research.status] ?? "neutral"} />} />
+    <PageHeader title={research.title} description={`${research.queries.length} запросов · обновлено ${new Date(research.updatedAt).toLocaleString("ru-RU")}`} backHref={`/tools/research/?organizationId=${encodeURIComponent(scope.organizationId)}&projectId=${encodeURIComponent(scope.projectId)}`} actions={<StatusBadge label={statusLabel[research.status] ?? research.status} tone={statusTone[research.status] ?? "neutral"} />} />
     {first(raw.saved) === "1" ? <p className="rounded-[var(--radius)] bg-[var(--success-soft)] px-4 py-3 text-sm text-app-success" role="status">Изменения сохранены.</p> : null}
     {first(raw.queued) === "1" ? <p className="rounded-[var(--radius)] bg-[var(--info-soft)] px-4 py-3 text-sm text-app-info" role="status">Исследование поставлено в очередь.</p> : null}
     {estimateRunId && Number.isSafeInteger(estimateCost) && estimateCost >= 0 ? <section className="border-y border-[var(--warning)]/30 bg-[var(--warning-soft)] px-4 py-5">

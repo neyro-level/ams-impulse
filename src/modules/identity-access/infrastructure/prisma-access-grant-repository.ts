@@ -13,7 +13,7 @@ export class PrismaAccessGrantRepository implements AccessGrantRepository {
 
   async listProjectGrants(userId: string, product?: ProductCode): Promise<ProductProjectGrant[]> {
     return this.prisma.$transaction(async (transaction) => {
-      await setDatabaseAuthorizationContext(transaction, { userId });
+      await setDatabaseAuthorizationContext(transaction, { kind: "user", userId });
       const seoGrants = product && product !== "seo-monitor" ? [] : await transaction.seoProjectAccess.findMany({
         where: { membership: { userId, user: { disabledAt: null } } },
         orderBy: [{ organizationId: "asc" }, { projectId: "asc" }],

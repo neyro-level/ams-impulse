@@ -1,5 +1,5 @@
 import { getPrismaClient } from "../../../platform/database/prisma/client.ts";
-import type { ScopedDb } from "../../../platform/database/scoped-db.ts";
+import type { DatabaseTransaction } from "../../../platform/database/transaction.ts";
 import { createProjectCommands } from "../application/project-commands.ts";
 import { createProjectQueries } from "../application/project-queries.ts";
 import type { ProjectReadScope } from "../application/ports/project-query-repository.ts";
@@ -7,8 +7,8 @@ import { PrismaProjectQueryRepository } from "./prisma-project-query-repository.
 import { PrismaProjectReferenceRepository } from "./prisma-project-reference-repository.ts";
 
 const commands = createProjectCommands({
-  createRepository(scopedDb: ScopedDb) {
-    return new PrismaProjectReferenceRepository(scopedDb);
+  createRepository(transaction: DatabaseTransaction, organizationId: string) {
+    return new PrismaProjectReferenceRepository(transaction, organizationId);
   },
 });
 

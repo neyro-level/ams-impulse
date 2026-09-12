@@ -464,7 +464,6 @@ model Organization {
   updatedAt       DateTime         @updatedAt
   members         Member[]
   projects        Project[]
-  auditEvents     AuditEvent[]
   idempotencyKeys IdempotencyKey[]
   outboxEvents    OutboxEvent[]
   jobRuns         JobRun[]
@@ -1140,7 +1139,9 @@ model ReportSnapshot {
 
 model AuditEvent {
   id             String         @id @default(cuid())
+  productCode    String?
   organizationId String?
+  projectId      String?
   actorType      AuditActorType
   actorId        String?
   action         String
@@ -1151,9 +1152,9 @@ model AuditEvent {
   source         String
   correlationId  String
   createdAt      DateTime       @default(now())
-  organization   Organization?  @relation(fields: [organizationId], references: [id], onDelete: SetNull, onUpdate: Cascade)
 
   @@index([organizationId, createdAt])
+  @@index([productCode, organizationId, projectId, createdAt])
   @@index([entityType, entityId, createdAt])
   @@index([correlationId])
 }

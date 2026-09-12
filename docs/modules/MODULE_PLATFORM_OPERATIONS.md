@@ -14,6 +14,8 @@ Models: `AuditEvent`, `IdempotencyKey`, `OutboxEvent`, `JobRun`, `RuntimeHeartbe
 
 pg-boss is transport only; application tables remain delivery truth.
 
+These records are platform-owned operational state. Tenant-related AuditEvent rows carry explicit product-local scope. Outbox/JobRun scope comes from the validated versioned payload and is never inferred from a generic organization foreign key.
+
 ## Principals
 
 - Platform Admin: typed enqueue/retry and operations view.
@@ -39,6 +41,8 @@ business transaction
 
 - Same idempotency key + same hash returns original event.
 - Same key + different hash conflicts.
+- Research AuditEvent always stores `productCode = tools`, `organizationId` and `projectId`.
+- Research OutboxEvent remains platform-owned; its payload names the exact Tools organization/project and the handler revalidates them.
 - Only lease owner completes/fails.
 - Retry is bounded exponential backoff, capped at five attempts.
 - Permanent/invalid payload goes to dead-letter.
