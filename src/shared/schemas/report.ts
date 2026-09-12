@@ -290,10 +290,10 @@ export const metricaReportSchema = z.object({
 
 export const combinedSeoReportSchema = z.object({
   funnel: z.object({
-    shows: z.number().nonnegative(),
-    clicks: z.number().nonnegative(),
-    visits: z.number().nonnegative(),
-    goalReaches: z.number().nonnegative(),
+    shows: z.number().nonnegative().nullable(),
+    clicks: z.number().nonnegative().nullable(),
+    visits: z.number().nonnegative().nullable(),
+    goalReaches: z.number().nonnegative().nullable(),
     caveats: z.array(z.string().min(1)).min(1),
   }),
   opportunities: z.array(opportunitySchema),

@@ -14,8 +14,62 @@ import type { ReportComparison, SiteReportSnapshot } from "../../../shared/schem
 import type { SiteRegistry } from "../../../shared/schemas/registry.ts";
 import type { DirectorAnalytics } from "../application/ports/report-repository.ts";
 import { DirectorReportTabs } from "./DirectorReportTabs.tsx";
+import { getSourceBusinessState } from "./source-business-state.ts";
 
 type ComparisonMetric = ReportComparison["metrics"]["shows"];
+type ReportSource = NonNullable<SiteReportSnapshot["sources"][keyof SiteReportSnapshot["sources"]]>;
+
+const sourceLabels = {
+  webmaster: "Яндекс.Вебмастер",
+  metrica: "Яндекс.Метрика",
+  topvisor: "Topvisor",
+} as const;
+
+const freshnessLabels: Record<SiteReportSnapshot["freshness"], string> = {
+  fresh: "Данные актуальны",
+  partial: "Отчёт собран частично",
+  stale: "Данные устарели",
+  unavailable: "Данные недоступны",
+};
+
+function formatSourceTime(value: string, timezone: string) {
+  return new Date(value).toLocaleString("ru-RU", {
+    timeZone: timezone,
+    dateStyle: "short",
+    timeStyle: "short",
+  });
+}
+
+function SourceFreshnessPanel({ snapshot, timezone }: { snapshot: SiteReportSnapshot; timezone: string }) {
+  const sources = Object.entries(snapshot.sources).filter(
+    (entry): entry is [keyof typeof sourceLabels, ReportSource] => Boolean(entry[1]),
+  );
+
+  return (
+    <section className="rounded-[var(--radius-panel)] border border-[var(--border)] bg-[var(--card)] p-4 sm:p-5" aria-labelledby="source-freshness-title">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wider text-app-primary">Состояние данных</p>
+          <h2 id="source-freshness-title" className="mt-1 text-lg font-semibold text-app-foreground">{freshnessLabels[snapshot.freshness]}</h2>
+        </div>
+        <p className="text-xs text-app-muted-foreground">Отчёт обновлён {formatSourceTime(snapshot.generatedAt, timezone)} · {timezone}</p>
+      </div>
+      <div className="mt-4 grid gap-3 md:grid-cols-3">
+        {sources.map(([key, source]) => (
+          <div key={key} className="rounded-[var(--radius)] bg-[var(--muted)] p-3">
+            <div className="flex items-start justify-between gap-3">
+              <p className="text-sm font-semibold text-app-foreground">{sourceLabels[key]}</p>
+              <span className="text-[11px] font-semibold text-app-muted-foreground">{getSourceBusinessState(source.status).label}</span>
+            </div>
+            <p className="mt-2 text-xs text-app-secondary">Получено {formatSourceTime(source.fetchedAt, timezone)}</p>
+            <p className="mt-1 text-xs text-app-muted-foreground">{source.periodStart && source.periodEnd ? `${source.periodStart} — ${source.periodEnd}` : "Период не определён"}</p>
+            {source.status !== "success" ? <div className="mt-3 border-t border-[var(--border)] pt-3 text-xs leading-5"><p className="text-app-secondary">{getSourceBusinessState(source.status).meaning}</p>{getSourceBusinessState(source.status).action ? <p className="mt-2 font-medium text-app-foreground">Следующий шаг: {getSourceBusinessState(source.status).action}</p> : null}</div> : null}
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
 
 function formatDelta(metric: ComparisonMetric | undefined, mode: "percent" | "points" | "position" = "percent") {
   const value = mode === "percent" ? metric?.deltaPercent : metric?.deltaPoints;
@@ -98,9 +152,6 @@ export function SiteReportView({ site, snapshot, mode, backHref, periodControl, 
   const topOpportunity = snapshot.combined.opportunities[0] ?? null;
   const healthTone = health?.status === "critical" ? "error" : health?.status === "attention" ? "warning" : "success";
   const healthTitle = health?.status === "critical" ? "Есть критичные проблемы" : health?.status === "attention" ? "Сайт требует внимания" : "Сайт работает стабильно";
-  const integrationErrors = Object.entries(snapshot.sources)
-    .filter((entry): entry is [string, NonNullable<(typeof snapshot.sources)[keyof typeof snapshot.sources]>] => Boolean(entry[1]))
-    .filter(([, source]) => ["failed", "access_denied", "quota_limited"].includes(source.status));
 
   return (
     <div className="w-[calc(100vw-2rem)] min-w-0 max-w-full space-y-8 sm:w-[calc(100vw-3rem)] lg:w-auto">
@@ -109,12 +160,12 @@ export function SiteReportView({ site, snapshot, mode, backHref, periodControl, 
         {periodControl}
         <div className="flex items-center gap-2"><FreshnessIndicator freshness={snapshot.freshness} /><p className="text-xs text-app-muted-foreground">{mode === "live" ? "Рабочие данные" : "Демонстрационные данные"}</p></div>
       </div>
-      <DirectorReportTabs snapshot={snapshot} analytics={directorAnalytics} timezone={site.timezone} />
+      <SourceFreshnessPanel snapshot={snapshot} timezone={site.timezone} />
 
       {snapshot.freshness === "partial" ? <StatusBanner tone="warning" title="Отчёт собран частично" description="Часть источников не вернула полный набор данных. Доступные показатели показаны без подмены отсутствующих значений нулями." /> : null}
       {snapshot.freshness === "stale" ? <StatusBanner tone="warning" title="Данные устарели" description="Последний отчёт старше допустимого периода. Показатели сохранены для сравнения, но не считаются текущими." /> : null}
       {snapshot.freshness === "unavailable" ? <StatusBanner tone="error" title="Отчёт временно недоступен" description="Ни один обязательный источник не предоставил актуальные данные." /> : null}
-      {integrationErrors.length > 0 ? <StatusBanner tone="error" title="Не удалось обновить часть данных" description="Проверьте доступ к подключённым источникам и повторите обновление." /> : null}
+      <DirectorReportTabs snapshot={snapshot} analytics={directorAnalytics} timezone={site.timezone} />
 
       <div className="hidden" aria-hidden="true">
       {ranking ? (

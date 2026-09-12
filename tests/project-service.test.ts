@@ -162,4 +162,9 @@ describe("ProjectService", () => {
       await projectService.getSiteAccessForUser(alphaViewer, "beta", "west"),
     ).toBeNull();
   });
+
+  it("returns no project shell for an unauthorized sibling project", async () => {
+    await expect(projectService.getProjectTreeForUser(alphaViewer, "alpha")).resolves.not.toBeNull();
+    await expect(projectService.getProjectTreeForUser(alphaViewer, "beta")).resolves.toBeNull();
+  });
 });

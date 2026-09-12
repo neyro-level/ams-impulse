@@ -38,6 +38,20 @@ Invalid or missing period resolves to `month`.
 6. Landing pages, devices, goals, phrases and geography.
 7. Competitors, alerts, risks, opportunities and methodology.
 
+## Client Journey Contract
+
+The operational route is `login -> projects -> project -> site -> report -> freshness/source state -> problem -> interpretation -> next action`.
+
+Every report decision surface must expose:
+
+- explicit period and site timezone;
+- report generation time and overall `fresh|partial|stale|unavailable` state;
+- source name, source status and last fetch time;
+- safe business meaning for a failed, denied or quota-limited source;
+- one owner/user action or an explicit statement that no action is currently required.
+
+Raw provider payloads, credentials and ambiguous empty shells are never presentation output.
+
 ## Invariants
 
 - `SiteReportSnapshot` is the only browser-safe report DTO.

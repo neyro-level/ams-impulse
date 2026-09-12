@@ -778,10 +778,10 @@ function compileCombinedReport(args: {
 
   return {
     funnel: {
-      shows: args.webmaster?.summary.shows ?? 0,
-      clicks: args.webmaster?.summary.clicks ?? 0,
-      visits: args.metrica?.summary.visits ?? 0,
-      goalReaches: args.metrica?.summary.goalReaches ?? 0,
+      shows: args.webmaster?.summary.shows ?? null,
+      clicks: args.webmaster?.summary.clicks ?? null,
+      visits: args.metrica?.summary.visits ?? null,
+      goalReaches: args.metrica?.summary.goalReaches ?? null,
       caveats: [
         "Клики Вебмастера и визиты Метрики считаются разными системами и не совпадают один к одному.",
         "Сумма достижений целей не является числом уникальных заявок.",
@@ -791,6 +791,7 @@ function compileCombinedReport(args: {
     alerts,
     methodology: [
       "Вебмастер показывает наблюдаемую поисковую видимость, а не частотность Wordstat.",
+      "Средняя позиция Вебмастера за период не является точной позицией запроса в конкретный день.",
       "Метрика показывает агрегированный трафик из поиска Яндекса без пользовательских данных.",
       "Связь конкретный запрос → конкретная заявка не утверждается.",
     ],

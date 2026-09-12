@@ -274,4 +274,72 @@ describe("SiteReportSnapshot compiler", () => {
     expect(partial.metrica).toEqual(previous.metrica);
     expect(partial.combined.funnel.visits).toBe(100);
   });
+
+  it("keeps unavailable metrics null instead of reporting measured zero", () => {
+    const site = getNorthSite();
+    const snapshot = compileSiteReportSnapshot({
+      clientSlug: "alpha",
+      site,
+      generatedAt: "2026-08-28T10:10:00.000Z",
+      clusterProfile,
+      webmasterData: null,
+      metricaData: null,
+      queryThresholds: thresholds,
+    });
+
+    expect(snapshot.freshness).toBe("unavailable");
+    expect(snapshot.combined.funnel).toMatchObject({
+      shows: null,
+      clicks: null,
+      visits: null,
+      goalReaches: null,
+    });
+  });
+
+  it("uses the full approved core as denominator and keeps Top-3 inside Top-10", () => {
+    const site = { ...getNorthSite(), topvisor: { enabled: true, projectId: 700004, regionIndex: 0 } };
+    const snapshot = compileSiteReportSnapshot({
+      clientSlug: "alpha",
+      site,
+      generatedAt: "2026-08-28T10:10:00.000Z",
+      clusterProfile,
+      webmasterData: createWebmasterSourceFixture(site),
+      metricaData: createMetricaSourceFixture(site),
+      periodKey: "quarter",
+      currentPeriod: { dateFrom: "2026-06-01", dateTo: "2026-08-28" },
+      previousPeriod: { dateFrom: "2026-03-04", dateTo: "2026-05-31" },
+      queryThresholds: thresholds,
+      trackedQuerySet: {
+        schemaVersion: 1,
+        clientSlug: "alpha",
+        siteSlug: "north",
+        source: "owner-provided",
+        baselineLabel: "baseline",
+        expectedCount: 4,
+        queries: [
+          { query: "квартиры север", position: { current: 2, baseline: 4, delta: 2 } },
+          { query: "новостройки север", position: { current: 9, baseline: 12, delta: 3 } },
+          { query: "жилой комплекс север", position: { current: 15, baseline: 18, delta: 3 } },
+          { query: "купить квартиру север", position: { current: null, baseline: null, delta: 0 } },
+        ],
+      },
+    });
+
+    expect(snapshot.ranking).toMatchObject({
+      queryCount: 4,
+      measuredCount: 3,
+      top3Count: 1,
+      top10Count: 2,
+      top3Share: 25,
+      top10Share: 50,
+    });
+    expect(snapshot.ranking!.top3Count).toBeLessThanOrEqual(snapshot.ranking!.top10Count);
+    expect(snapshot.periodKey).toBe("quarter");
+    expect(snapshot.sources.webmaster).toMatchObject({
+      periodStart: "2026-06-01",
+      periodEnd: "2026-08-28",
+      timezone: site.timezone,
+    });
+    expect(snapshot.combined.methodology.join(" ")).toContain("не является точной позицией");
+  });
 });
