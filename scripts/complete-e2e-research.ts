@@ -1,6 +1,9 @@
 import type { ResearchProvider } from "../src/modules/research/index.ts";
 import { PrismaResearchExecutionRepository, ResearchExecutionService } from "../src/modules/research/worker.ts";
-import { getPrismaClient } from "../src/platform/database/prisma/client.ts";
+import {
+  closePrismaClient,
+  getPrismaClient,
+} from "../src/platform/database/prisma/client.ts";
 
 const [organizationId, projectId, runId] = process.argv.slice(2);
 if (process.env.APP_ENV !== "test" || !organizationId || !projectId || !runId) {
@@ -39,5 +42,5 @@ try {
   if (result.status !== "succeeded") throw new Error(`Synthetic execution failed: ${result.status}`);
   process.stdout.write(`${JSON.stringify(result)}\n`);
 } finally {
-  await prisma.$disconnect();
+  await closePrismaClient();
 }

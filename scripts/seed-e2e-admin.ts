@@ -2,7 +2,10 @@ import { randomUUID } from "node:crypto";
 import { hashPassword } from "better-auth/crypto";
 import { createLocalAccountIssuer } from "better-auth/db";
 import { Prisma } from "../src/generated/prisma/client.ts";
-import { getPrismaClient } from "../src/platform/database/prisma/client.ts";
+import {
+  closePrismaClient,
+  getPrismaClient,
+} from "../src/platform/database/prisma/client.ts";
 import { E2E_RESEARCH } from "./e2e-research-contract.ts";
 
 const E2E_PASSWORD = "E2e!2026";
@@ -206,7 +209,7 @@ async function main() {
     }
     console.log(JSON.stringify({ seeded: true, identityCount: 2 + CLIENT_USERNAMES.length }));
   } finally {
-    await prisma.$disconnect();
+    await closePrismaClient();
   }
 }
 

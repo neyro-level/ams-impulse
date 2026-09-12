@@ -19,6 +19,19 @@ describe("production backup identity", () => {
 });
 
 describe("production configuration boundary", () => {
+  it("closes both Prisma and its PostgreSQL pool in E2E helper processes", () => {
+    for (const scriptPath of [
+      "scripts/seed-e2e-admin.ts",
+      "scripts/complete-e2e-research.ts",
+    ]) {
+      const script = readFileSync(scriptPath, "utf8");
+
+      expect(script).toContain("closePrismaClient");
+      expect(script).toContain("await closePrismaClient()");
+      expect(script).not.toContain("await prisma.$disconnect()");
+    }
+  });
+
   it("separates production runtime dependencies from migration tooling", () => {
     const dockerfile = readFileSync("Dockerfile", "utf8");
     const compose = readFileSync("docker-compose.production.yml", "utf8");
