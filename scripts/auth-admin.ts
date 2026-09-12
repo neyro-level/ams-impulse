@@ -1,16 +1,32 @@
 import { MembershipRole, SystemRole } from "../src/generated/prisma/client.ts";
 import { createPrismaContext } from "../src/platform/database/prisma/context.ts";
 import { randomUUID } from "node:crypto";
-import { readFileSync } from "node:fs";
-import { hashPassword } from "better-auth/crypto";
+import { readFileSync, writeFileSync } from "node:fs";
+import { isAbsolute, relative, resolve, sep } from "node:path";
+import {
+  generateRandomString,
+  hashPassword,
+  symmetricDecrypt,
+  symmetricEncrypt,
+} from "better-auth/crypto";
 import { createLocalAccountIssuer } from "better-auth/db";
+import { createOTP } from "@better-auth/utils/otp";
 import { parseSystemRole } from "../src/modules/identity-access/index.ts";
+import { readAuthEnvironment } from "../src/platform/config/server-environment.ts";
+import {
+  createPlatformAdminRecoveryBatch,
+  hashPlatformAdminRecoveryCode,
+} from "../src/platform/auth/platform-admin-recovery.ts";
 
 type AuthAdminCommand =
   | "create"
   | "disable"
   | "reset-password"
   | "set-system-role"
+  | "bootstrap-platform-admin"
+  | "verify-platform-admin-bootstrap"
+  | "recover-platform-admin"
+  | "verify-platform-admin-recovery"
   | "add-to-organization"
   | "remove-from-organization";
 
@@ -77,6 +93,65 @@ function readPasswordFromStdin() {
     throw new Error("Password from stdin must contain exactly 8 printable characters without spaces");
   }
   return password;
+}
+
+function readBootstrapSecretFromStdin(kind: "password" | "totp" | "recovery") {
+  if (options.password !== undefined || options.code !== undefined) {
+    throw new Error("--password and --code are forbidden; provide secrets through stdin");
+  }
+  const value = readFileSync(0, "utf8").trim();
+  if (kind === "password" && (!/^[\x21-\x7e]{16,128}$/.test(value))) {
+    throw new Error("Bootstrap password must contain 16-128 printable characters without spaces");
+  }
+  if (kind === "totp" && !/^\d{6}$/.test(value)) {
+    throw new Error("TOTP code from stdin must contain exactly 6 digits");
+  }
+  if (kind === "recovery" && !/^[A-Za-z0-9]{24}$/.test(value)) {
+    throw new Error("Recovery code from stdin is invalid");
+  }
+  return value;
+}
+
+function requireAuthSecret() {
+  const environment = readAuthEnvironment();
+  if (!environment) {
+    throw new Error("BETTER_AUTH_SECRET and BETTER_AUTH_URL are required");
+  }
+  return environment.secret;
+}
+
+function resolveMaterialOutput() {
+  const materialOutput = requireOption("material-output");
+  if (!isAbsolute(materialOutput)) {
+    throw new Error("--material-output must be an absolute path outside the repository");
+  }
+  const resolvedMaterialOutput = resolve(materialOutput);
+  const repositoryRelativePath = relative(process.cwd(), resolvedMaterialOutput);
+  const isInsideRepository = repositoryRelativePath === "" || (
+    !isAbsolute(repositoryRelativePath) &&
+    repositoryRelativePath !== ".." &&
+    !repositoryRelativePath.startsWith(`..${sep}`)
+  );
+  if (isInsideRepository) {
+    throw new Error("Recovery material must be written outside the repository");
+  }
+  return resolvedMaterialOutput;
+}
+
+function writeRecoveryMaterial(input: {
+  path: string;
+  username: string;
+  status: "awaiting_totp_verification" | "awaiting_recovery_totp_verification";
+  totpUri: string;
+  recoveryCodes: string[];
+}) {
+  writeFileSync(input.path, `${JSON.stringify({
+    status: input.status,
+    username: input.username,
+    totpUri: input.totpUri,
+    recoveryCodes: input.recoveryCodes,
+    warning: "Move this file to offline storage and securely remove the workstation copy.",
+  }, null, 2)}\n`, { encoding: "utf8", flag: "wx", mode: 0o600 });
 }
 
 async function findUserByUsername(username: string) {
@@ -197,6 +272,9 @@ async function disableUser() {
 async function setSystemRole() {
   const username = requireUsername();
   const systemRole = parseSystemRole(requireOption("system-role"));
+  if (systemRole === SystemRole.PLATFORM_ADMIN) {
+    throw new Error("Generic role assignment cannot grant PLATFORM_ADMIN; use the controlled bootstrap");
+  }
   const user = await findUserByUsername(username);
 
   await prisma.user.update({
@@ -205,6 +283,276 @@ async function setSystemRole() {
   });
 
   console.log(`updated_system_role=${username}`);
+}
+
+async function assertPlatformAdminBootstrapOpen() {
+  const activeAdmin = await prisma.user.findFirst({
+    where: { systemRole: SystemRole.PLATFORM_ADMIN },
+    select: { id: true },
+  });
+  if (activeAdmin) {
+    throw new Error("Platform Admin bootstrap is permanently closed");
+  }
+}
+
+async function bootstrapPlatformAdmin() {
+  await assertPlatformAdminBootstrapOpen();
+  const username = requireUsername();
+  const email = requireOption("email").trim().toLowerCase();
+  const name = requireOption("name").trim();
+  const password = readBootstrapSecretFromStdin("password");
+  const authSecret = requireAuthSecret();
+  const resolvedMaterialOutput = resolveMaterialOutput();
+  const existingUser = await prisma.user.findFirst({
+    where: { OR: [{ username }, { email }] },
+    select: { id: true },
+  });
+  if (existingUser) throw new Error("Bootstrap identity already exists");
+
+  const userId = randomUUID();
+  const secret = generateRandomString(32);
+  const passwordHash = await hashPassword(password);
+  const encryptedSecret = await symmetricEncrypt({ key: authSecret, data: secret });
+  const disabledBetterAuthBackupCodes = await symmetricEncrypt({ key: authSecret, data: "[]" });
+  const recovery = createPlatformAdminRecoveryBatch(userId);
+  const totpUri = createOTP(secret, { digits: 6, period: 30 }).url("AMS IMPULSE", email);
+  writeRecoveryMaterial({
+    path: resolvedMaterialOutput,
+    username,
+    totpUri,
+    status: "awaiting_totp_verification",
+    recoveryCodes: recovery.codes,
+  });
+
+  await prisma.$transaction([
+    prisma.user.create({
+      data: {
+        id: userId,
+        username,
+        email,
+        name,
+        emailVerified: true,
+        systemRole: SystemRole.CLIENT,
+        twoFactorEnabled: false,
+      },
+    }),
+    prisma.account.create({
+      data: {
+        id: randomUUID(),
+        userId,
+        providerId: "credential",
+        issuer: createLocalAccountIssuer("credential"),
+        accountId: userId,
+        password: passwordHash,
+      },
+    }),
+    prisma.twoFactor.create({
+      data: {
+        id: randomUUID(),
+        userId,
+        secret: encryptedSecret,
+        backupCodes: disabledBetterAuthBackupCodes,
+        verified: false,
+      },
+    }),
+    prisma.platformAdminRecoveryCode.createMany({ data: recovery.records }),
+  ]);
+
+  console.log(`platform_admin_bootstrap_material=${resolvedMaterialOutput}`);
+  console.log(`platform_admin_bootstrap_pending=${username}`);
+}
+
+async function verifyPlatformAdminBootstrap() {
+  await assertPlatformAdminBootstrapOpen();
+  const username = requireUsername();
+  const code = readBootstrapSecretFromStdin("totp");
+  const authSecret = requireAuthSecret();
+  const user = await prisma.user.findUnique({
+    where: { username },
+    include: { twoFactor: true },
+  });
+  if (!user || user.systemRole !== SystemRole.CLIENT || user.twoFactorEnabled) {
+    throw new Error("Pending Platform Admin bootstrap not found");
+  }
+  if (!user.twoFactor || user.twoFactor.verified) {
+    throw new Error("Pending TOTP enrollment not found");
+  }
+  const secret = await symmetricDecrypt({ key: authSecret, data: user.twoFactor.secret });
+  if (!(await createOTP(secret, { digits: 6, period: 30 }).verify(code, { window: 1 }))) {
+    throw new Error("TOTP verification failed");
+  }
+
+  const correlationId = randomUUID();
+  await prisma.$transaction(async (transaction) => {
+    const concurrentAdmin = await transaction.user.findFirst({
+      where: { systemRole: SystemRole.PLATFORM_ADMIN },
+      select: { id: true },
+    });
+    if (concurrentAdmin) throw new Error("Platform Admin bootstrap is permanently closed");
+    await transaction.twoFactor.update({
+      where: { userId: user.id },
+      data: { verified: true, failedVerificationCount: 0, lockedUntil: null },
+    });
+    await transaction.user.update({
+      where: { id: user.id },
+      data: { systemRole: SystemRole.PLATFORM_ADMIN, twoFactorEnabled: true },
+    });
+    await transaction.session.deleteMany({ where: { userId: user.id } });
+    await transaction.auditEvent.create({
+      data: {
+        actorType: "SYSTEM",
+        action: "platform-admin.bootstrap.completed",
+        entityType: "User",
+        entityId: user.id,
+        afterMarker: { username, totpVerified: true },
+        source: "owner-cli",
+        correlationId,
+      },
+    });
+  }, { isolationLevel: "Serializable" });
+
+  console.log(`platform_admin_bootstrap_completed=${username}`);
+}
+
+async function recoverPlatformAdmin() {
+  const username = requireUsername();
+  const recoveryCode = readBootstrapSecretFromStdin("recovery");
+  const recoveryCodeHash = hashPlatformAdminRecoveryCode(recoveryCode);
+  const authSecret = requireAuthSecret();
+  const resolvedMaterialOutput = resolveMaterialOutput();
+  const user = await prisma.user.findUnique({
+    where: { username },
+    include: { twoFactor: true },
+  });
+  if (
+    !user ||
+    user.systemRole !== SystemRole.PLATFORM_ADMIN ||
+    !user.twoFactorEnabled ||
+    !user.twoFactor?.verified
+  ) {
+    throw new Error("Active Platform Admin TOTP enrollment not found");
+  }
+  const availableRecoveryCode = await prisma.platformAdminRecoveryCode.findUnique({
+    where: { userId_codeHash: { userId: user.id, codeHash: recoveryCodeHash } },
+  });
+  if (!availableRecoveryCode || availableRecoveryCode.consumedAt || availableRecoveryCode.revokedAt) {
+    throw new Error("Recovery code is invalid or no longer active");
+  }
+
+  const newSecret = generateRandomString(32);
+  const encryptedSecret = await symmetricEncrypt({ key: authSecret, data: newSecret });
+  const disabledBetterAuthBackupCodes = await symmetricEncrypt({ key: authSecret, data: "[]" });
+  const recovery = createPlatformAdminRecoveryBatch(user.id);
+  const totpUri = createOTP(newSecret, { digits: 6, period: 30 }).url(
+    "AMS IMPULSE",
+    user.email,
+  );
+  writeRecoveryMaterial({
+    path: resolvedMaterialOutput,
+    username,
+    totpUri,
+    status: "awaiting_recovery_totp_verification",
+    recoveryCodes: recovery.codes,
+  });
+
+  const now = new Date();
+  const correlationId = randomUUID();
+  await prisma.$transaction(async (transaction) => {
+    const currentCode = await transaction.platformAdminRecoveryCode.findUnique({
+      where: { userId_codeHash: { userId: user.id, codeHash: recoveryCodeHash } },
+    });
+    if (!currentCode || currentCode.consumedAt || currentCode.revokedAt) {
+      throw new Error("Recovery code is invalid or no longer active");
+    }
+    await transaction.platformAdminRecoveryCode.updateMany({
+      where: { userId: user.id, consumedAt: null, revokedAt: null },
+      data: { revokedAt: now },
+    });
+    await transaction.platformAdminRecoveryCode.update({
+      where: { id: currentCode.id },
+      data: { consumedAt: now, revokedAt: null },
+    });
+    await transaction.platformAdminRecoveryCode.createMany({ data: recovery.records });
+    await transaction.twoFactor.update({
+      where: { userId: user.id },
+      data: {
+        secret: encryptedSecret,
+        backupCodes: disabledBetterAuthBackupCodes,
+        verified: false,
+        failedVerificationCount: 0,
+        lockedUntil: null,
+      },
+    });
+    await transaction.user.update({
+      where: { id: user.id },
+      data: { twoFactorEnabled: false },
+    });
+    await transaction.session.deleteMany({ where: { userId: user.id } });
+    await transaction.auditEvent.create({
+      data: {
+        actorType: "SYSTEM",
+        action: "platform-admin.recovery.started",
+        entityType: "User",
+        entityId: user.id,
+        beforeMarker: { totpVerified: true },
+        afterMarker: { totpVerified: false, sessionsRevoked: true, recoveryBatchRotated: true },
+        source: "owner-cli",
+        correlationId,
+      },
+    });
+  }, { isolationLevel: "Serializable" });
+
+  console.log(`platform_admin_recovery_material=${resolvedMaterialOutput}`);
+  console.log(`platform_admin_recovery_pending=${username}`);
+}
+
+async function verifyPlatformAdminRecovery() {
+  const username = requireUsername();
+  const code = readBootstrapSecretFromStdin("totp");
+  const authSecret = requireAuthSecret();
+  const user = await prisma.user.findUnique({
+    where: { username },
+    include: { twoFactor: true },
+  });
+  if (
+    !user ||
+    user.systemRole !== SystemRole.PLATFORM_ADMIN ||
+    user.twoFactorEnabled ||
+    !user.twoFactor ||
+    user.twoFactor.verified
+  ) {
+    throw new Error("Pending Platform Admin recovery not found");
+  }
+  const secret = await symmetricDecrypt({ key: authSecret, data: user.twoFactor.secret });
+  if (!(await createOTP(secret, { digits: 6, period: 30 }).verify(code, { window: 1 }))) {
+    throw new Error("TOTP verification failed");
+  }
+
+  const correlationId = randomUUID();
+  await prisma.$transaction(async (transaction) => {
+    await transaction.twoFactor.update({
+      where: { userId: user.id },
+      data: { verified: true, failedVerificationCount: 0, lockedUntil: null },
+    });
+    await transaction.user.update({
+      where: { id: user.id },
+      data: { twoFactorEnabled: true },
+    });
+    await transaction.session.deleteMany({ where: { userId: user.id } });
+    await transaction.auditEvent.create({
+      data: {
+        actorType: "SYSTEM",
+        action: "platform-admin.recovery.completed",
+        entityType: "User",
+        entityId: user.id,
+        afterMarker: { totpVerified: true, sessionsRevoked: true },
+        source: "owner-cli",
+        correlationId,
+      },
+    });
+  }, { isolationLevel: "Serializable" });
+
+  console.log(`platform_admin_recovery_completed=${username}`);
 }
 
 async function addToOrganization() {
@@ -269,6 +617,18 @@ async function main() {
       return;
     case "set-system-role":
       await setSystemRole();
+      return;
+    case "bootstrap-platform-admin":
+      await bootstrapPlatformAdmin();
+      return;
+    case "verify-platform-admin-bootstrap":
+      await verifyPlatformAdminBootstrap();
+      return;
+    case "recover-platform-admin":
+      await recoverPlatformAdmin();
+      return;
+    case "verify-platform-admin-recovery":
+      await verifyPlatformAdminRecovery();
       return;
     case "add-to-organization":
       await addToOrganization();

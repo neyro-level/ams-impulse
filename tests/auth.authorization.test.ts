@@ -56,7 +56,12 @@ let westViewerUser: PrincipalContext | null = null;
 let disabledViewerId: string | null = null;
 let projectService: ProjectService | null = null;
 
-async function ensureCredentialUser(email: string, name: string, systemRole: SystemRole) {
+async function ensureCredentialUser(
+  email: string,
+  name: string,
+  systemRole: SystemRole,
+  twoFactorEnabled = false,
+) {
   if (!prisma) {
     throw new Error("Prisma test client is not initialized");
   }
@@ -74,6 +79,7 @@ async function ensureCredentialUser(email: string, name: string, systemRole: Sys
       name,
       systemRole,
       disabledAt: null,
+      twoFactorEnabled,
     },
     create: {
       id: userId,
@@ -81,6 +87,7 @@ async function ensureCredentialUser(email: string, name: string, systemRole: Sys
       name,
       systemRole,
       emailVerified: false,
+      twoFactorEnabled,
     },
   });
 
@@ -168,6 +175,7 @@ authTestDescription("authorization matrix", () => {
       authTestEmails.platformAdmin,
       "Platform Admin Test",
       SystemRole.PLATFORM_ADMIN,
+      true,
     );
     const analystUserId = await ensureCredentialUser(
       authTestEmails.analyst,

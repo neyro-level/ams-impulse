@@ -28,6 +28,7 @@ export async function getPrincipalStateByUserId(
       name: true,
       systemRole: true,
       disabledAt: true,
+      twoFactorEnabled: true,
     },
   });
   if (!user || user.disabledAt) return null;
@@ -35,6 +36,7 @@ export async function getPrincipalStateByUserId(
   const correlationId = options.correlationId ?? createCorrelationId();
   let principal: PrincipalContext;
   if (user.systemRole === "PLATFORM_ADMIN") {
+    if (!user.twoFactorEnabled) return null;
     principal = {
       kind: "platform-admin",
       userId: user.id,
@@ -61,11 +63,14 @@ export async function getIdentityPrincipalByUserId(
 ): Promise<PlatformAdminPrincipal | IdentityUserPrincipal | null> {
   const user = await getPrismaClient().user.findUnique({
     where: { id: userId },
-    select: { id: true, systemRole: true, disabledAt: true },
+    select: { id: true, systemRole: true, disabledAt: true, twoFactorEnabled: true },
   });
   if (!user || user.disabledAt) return null;
   const correlationId = options.correlationId ?? createCorrelationId();
-  if (user.systemRole === "PLATFORM_ADMIN") return { kind: "platform-admin", userId: user.id, correlationId };
+  if (user.systemRole === "PLATFORM_ADMIN") {
+    if (!user.twoFactorEnabled) return null;
+    return { kind: "platform-admin", userId: user.id, correlationId };
+  }
   return {
     kind: "identity-user",
     userId: user.id,

@@ -31,6 +31,7 @@ export default async function DemoPage() {
   if (cabinetRedirect) redirect(cabinetRedirect);
   const state = await getCurrentPrincipalState();
   if (!state) redirect("/?login=1");
+  if (state.principal.kind !== "platform-admin") redirect("/dashboard/");
 
   return (
     <>

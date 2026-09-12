@@ -44,6 +44,7 @@ integrationDescription("PrincipalContext factories", () => {
           email: `admin.${suffix}@example.invalid`,
           name: "Admin",
           systemRole: "PLATFORM_ADMIN",
+          twoFactorEnabled: true,
         },
         {
           id: `${suffix}-analyst`,
@@ -122,6 +123,20 @@ integrationDescription("PrincipalContext factories", () => {
         systemRole: "CLIENT",
         correlationId,
       },
+    });
+  });
+
+  it("denies platform admin authority until TOTP enrollment is verified", async () => {
+    await database.prisma.user.update({
+      where: { id: `${suffix}-admin` },
+      data: { twoFactorEnabled: false },
+    });
+    await expect(
+      getPrincipalStateByUserId(`${suffix}-admin`, { correlationId }),
+    ).resolves.toBeNull();
+    await database.prisma.user.update({
+      where: { id: `${suffix}-admin` },
+      data: { twoFactorEnabled: true },
     });
   });
 });

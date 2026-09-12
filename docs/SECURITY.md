@@ -24,6 +24,15 @@ Better Auth `1.7.2` owns credentials and sessions. AMS owns system roles, produc
 System roles:
 
 - `PLATFORM_ADMIN` - only global bypass;
+- `PLATFORM_ADMIN` authority is issued only after verified TOTP enrollment. The first
+  administrator is created by the two-stage owner CLI bootstrap; the bootstrap closes
+  permanently as soon as an administrator exists. Passwords and TOTP codes enter
+  through stdin. Enrollment and one-time recovery material is written exclusively to a
+  new owner-selected path outside the repository and must then be moved to offline storage.
+- Platform Admin break-glass recovery is owner-CLI-only. A valid one-time recovery code
+  revokes its complete batch and every active session, rotates TOTP and recovery material,
+  writes an AuditEvent, and leaves admin authority denied until the new TOTP is verified.
+  Better Auth backup codes are intentionally empty for bootstrapped Platform Admin accounts.
 - `ANALYST` - internal identity, explicit grants required;
 - `CLIENT` - customer identity, explicit grants required.
 
@@ -110,6 +119,16 @@ The migrator owns schema changes. `ams_web` and `ams_worker` are login roles wit
 ## MCP
 
 - Production transport uses OAuth 2.1 + PKCE.
+- Remote clients use bounded CIMD discovery: HTTPS metadata URLs only, no query,
+  credentials, fragments or non-standard ports; metadata and JWKS policy URLs remain
+  origin-bound; fetch concurrency, per-origin rate and cache size/TTL are capped.
+- Unauthenticated Dynamic Client Registration is disabled. CIMD or explicit
+  pre-registration is the supported client identity path.
+- Self-asserted `software_id`, `software_version` and `software_statement`
+  metadata is rejected unless a future separately reviewed verifier is introduced.
+- Browser-origin MCP requests require the canonical origin and same-origin Fetch Metadata.
+  Native/server clients remain valid without browser-only headers. Authenticated requests
+  are rate-limited per hashed OAuth subject in a shared PostgreSQL window.
 - Access token subject maps to Better Auth user.
 - Token scopes may narrow but cannot expand current AMS grants.
 - Authorization is re-evaluated on every tool call.
@@ -132,9 +151,21 @@ Research worker sets transaction-local `ams.job_organization_id` and `ams.job_pr
 
 ## Passwords And Sessions
 
-The existing operator-assigned password policy remains until a separate identity-hardening decision. Password and hashes never enter Git, docs, argv, logs or AuditEvent. Password reset, access change and user disable revoke sessions.
+Passwords and hashes never enter Git, docs, argv, logs or AuditEvent. Password reset,
+access change and user disable revoke sessions. Platform Admin additionally requires a
+verified TOTP second factor; there is no password-only owner exception.
 
-No additional authentication factor remains an approved owner exception. Compensating controls: HTTPS/HSTS, closed signup, rate limiting, fresh authorization, session revocation and audit.
+Production web listens only on loopback behind host Nginx. Nginx overwrites both client-IP
+headers with its direct peer address; Better Auth reads only `X-Real-IP` and trusts only the
+configured loopback proxy hop. Client-supplied forwarded chains never select a rate-limit or
+session IP identity.
+
+Private application routes enforce a Next 16-compatible CSP: same-origin defaults,
+connections, fonts and forms; only local/data/blob images and local/blob workers; no
+objects, foreign base URI or framing. The current non-nonce baseline retains
+`unsafe-inline` only for framework scripts/styles. Removing it requires a measured
+report-only phase and the official request-proxy nonce flow because nonce rendering is
+fully dynamic and incompatible with static/PPR output.
 
 ## PII, Secrets And Logging
 
@@ -145,6 +176,10 @@ No additional authentication factor remains an approved owner exception. Compens
 - Logs contain safe IDs/counts/status/correlation only.
 - Passwords, tokens, cookies, API keys, emails, phones, raw payloads and signed URLs are redacted.
 - Public errors contain stable code, safe message and correlation ID.
+- `/demo` contains synthetic fixtures and is accessible only to a server-authorized
+  Platform Admin; an ordinary authenticated customer is redirected before data rendering.
+- Auth/callback responses, MCP, consent, fixtures, private workspaces, exports, signed
+  downloads and their error/redirect responses use `no-store` cache policy.
 
 ## Required Access Matrix
 

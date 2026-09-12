@@ -24,6 +24,7 @@ async function handleAuthRequest(method: "GET" | "POST", request: Request) {
 
   const handlers = toNextJsHandler(auth);
   const response = await (method === "GET" ? handlers.GET : handlers.POST)(request);
+  response.headers.set("Cache-Control", "no-store");
   response.headers.set("X-Correlation-ID", correlationId);
   if (request.headers.get("x-correlation-id") !== correlationId) {
     response.headers.set("Vary", "X-Correlation-ID");

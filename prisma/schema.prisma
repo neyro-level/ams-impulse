@@ -204,16 +204,17 @@ enum TechnicalSnapshotKind {
 }
 
 model User {
-  id                 String              @id
+  id                 String                      @id
   name               String
-  username           String?             @unique
-  email              String              @unique
-  emailVerified      Boolean             @default(false)
+  username           String?                     @unique
+  email              String                      @unique
+  emailVerified      Boolean                     @default(false)
   image              String?
-  systemRole         SystemRole          @default(CLIENT)
-  disabledAt         DateTime?           @db.Timestamptz(3)
-  createdAt          DateTime            @default(now())
-  updatedAt          DateTime            @updatedAt
+  systemRole         SystemRole                  @default(CLIENT)
+  disabledAt         DateTime?                   @db.Timestamptz(3)
+  twoFactorEnabled   Boolean?                    @default(false)
+  createdAt          DateTime                    @default(now())
+  updatedAt          DateTime                    @updatedAt
   sessions           Session[]
   accounts           Account[]
   members            Member[]
@@ -222,6 +223,43 @@ model User {
   oauthRefreshTokens OauthRefreshToken[]
   oauthAccessTokens  OauthAccessToken[]
   oauthConsents      OauthConsent[]
+  twoFactor          TwoFactor?
+  adminRecoveryCodes PlatformAdminRecoveryCode[]
+}
+
+model TwoFactor {
+  id                      String    @id
+  userId                  String    @unique
+  secret                  String
+  backupCodes             String
+  verified                Boolean   @default(true)
+  failedVerificationCount Int       @default(0)
+  lockedUntil             DateTime? @db.Timestamptz(3)
+  user                    User      @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+}
+
+model PlatformAdminRecoveryCode {
+  id         String    @id @default(cuid())
+  userId     String
+  batchId    String
+  codeHash   String
+  consumedAt DateTime? @db.Timestamptz(3)
+  revokedAt  DateTime? @db.Timestamptz(3)
+  createdAt  DateTime  @default(now())
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@unique([userId, codeHash])
+  @@index([userId, batchId])
+}
+
+model McpSubjectRateLimit {
+  key             String   @id
+  subjectHash     String
+  windowStartedAt DateTime @db.Timestamptz(3)
+  requestCount    Int      @default(1)
+  expiresAt       DateTime @db.Timestamptz(3)
+
+  @@index([expiresAt])
 }
 
 model Session {

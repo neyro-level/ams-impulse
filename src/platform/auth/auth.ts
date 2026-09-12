@@ -2,17 +2,25 @@ import "server-only";
 
 import { prismaAdapter } from "better-auth/adapters/prisma";
 import { betterAuth } from "better-auth";
-import { jwt, username } from "better-auth/plugins";
+import { jwt, twoFactor, username } from "better-auth/plugins";
 import { cimd } from "@better-auth/cimd";
-import { fetchClientMetadataResource } from "@better-auth/cimd/node";
 import { mcp } from "@better-auth/mcp";
 import {
   hasDatabaseConfiguration,
   readAuthEnvironment,
 } from "../config/server-environment.ts";
 import { getPrismaClient } from "../database/prisma/client.ts";
-import { createAuthRateLimitConfig } from "./security-config.ts";
-import { getMcpResource, MCP_SCOPE } from "./mcp-config.ts";
+import {
+  createAuthRateLimitConfig,
+  createTrustedProxyIpConfig,
+} from "./security-config.ts";
+import {
+  getMcpResource,
+  isMcpClientMetadataUrlAllowed,
+  MCP_CLIENT_METADATA_CACHE_TTL,
+  MCP_SCOPE,
+} from "./mcp-config.ts";
+import { fetchApprovedMcpClientMetadataResource } from "./mcp-metadata-transport.ts";
 
 const authEnvironment = readAuthEnvironment();
 
@@ -41,8 +49,20 @@ export const auth =
           maxPasswordLength: 128,
         },
         rateLimit: createAuthRateLimitConfig(),
+        advanced: {
+          ipAddress: createTrustedProxyIpConfig(),
+        },
         plugins: [
           jwt(),
+          twoFactor({
+            issuer: "AMS IMPULSE",
+            skipVerificationOnEnable: false,
+            accountLockout: {
+              enabled: true,
+              maxFailedAttempts: 5,
+              durationSeconds: 900,
+            },
+          }),
           mcp({
             loginPage: "/",
             consentPage: "/consent",
@@ -55,14 +75,31 @@ export const auth =
             scopes: [MCP_SCOPE, "offline_access"],
             grantTypes: ["authorization_code", "refresh_token"],
             accessTokenExpiresIn: 300,
-            allowDynamicClientRegistration: true,
-            allowUnauthenticatedClientRegistration: true,
+            allowDynamicClientRegistration: false,
+            allowUnauthenticatedClientRegistration: false,
             clientRegistrationDefaultScopes: [MCP_SCOPE],
             clientRegistrationAllowedScopes: ["offline_access"],
           }),
           cimd({
-            fetchClientMetadataResource,
+            fetchClientMetadataResource: fetchApprovedMcpClientMetadataResource,
             metadataProfile: "mcp-2026-07-28",
+            metadataRevalidationInterval: MCP_CLIENT_METADATA_CACHE_TTL,
+            metadataFetchPolicy: {
+              minimumFetchInterval: 5,
+              maximumConcurrentFetches: 8,
+              maximumConcurrentFetchesPerOrigin: 2,
+              maximumFetchesPerMinute: 60,
+              maximumFetchesPerOriginPerMinute: 10,
+            },
+            maxCacheEntries: 256,
+            originBoundFields: [
+              "post_logout_redirect_uris",
+              "client_uri",
+              "jwks_uri",
+              "policy_uri",
+              "tos_uri",
+            ],
+            isMetadataDocumentUrlAllowed: isMcpClientMetadataUrlAllowed,
           }),
           username({
             displayUsername: false,
