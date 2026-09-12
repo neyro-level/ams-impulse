@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { adminAuthStatePath } from "./auth-state.ts";
+import { signIn } from "./sign-in.ts";
 
 const canonicalWidths = new Set([375, 768, 1280, 1440]);
 const criticalScreens = [
@@ -11,7 +11,9 @@ const criticalScreens = [
 ] as const;
 
 test.describe("Private visual QA baseline", () => {
-  test.use({ storageState: adminAuthStatePath });
+  test.beforeEach(async ({ page }, testInfo) => {
+    await signIn(page, testInfo, "e2e.platform.admin");
+  });
 
   test("captures critical screens without page-level overflow", async ({ page }, testInfo) => {
     const width = page.viewportSize()?.width;

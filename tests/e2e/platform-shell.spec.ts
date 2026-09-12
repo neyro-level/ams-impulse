@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { adminAuthStatePath } from "./auth-state.ts";
+import { signIn } from "./sign-in.ts";
 
 const syntheticAlphaProjectName = "Synthetic Alpha Organization";
 
@@ -10,7 +10,7 @@ test("preserves the public AMS IMPULSE surface", async ({ page, request }) => {
   await expect(
     page.getByRole("heading", { level: 1, name: "Продвижение в Яндексе с контролем позиций" }),
   ).toBeVisible();
-  await expect(page.getByRole("button", { name: /обсудить продвижение/i })).toBeVisible();
+  await expect(page.getByRole("button", { name: /обсудить продвижение/i }).first()).toBeVisible();
   await expect(page.getByRole("contentinfo")).toBeVisible();
 
   const faviconResponse = await request.get("/ams-favicon.svg");
@@ -64,18 +64,13 @@ test("opens the cabinet immediately after the first login", async ({ page }, tes
   const username = usernameByProject[testInfo.project.name];
   if (!username) throw new Error(`Missing client identity for ${testInfo.project.name}`);
 
-  await page.goto("/?login=1");
-  await page.getByLabel("Логин").fill(username);
-  await page.getByLabel("Пароль").fill("E2e!2026");
-  await page
-    .getByRole("dialog", { name: "Вход в кабинет" })
-    .getByRole("button", { name: "Войти", exact: true })
-    .click();
-  await expect(page).toHaveURL(/\/dashboard\/?$/);
+  await signIn(page, testInfo, username);
 });
 
 test.describe("Platform Admin", () => {
-  test.use({ storageState: adminAuthStatePath });
+  test.beforeEach(async ({ page }, testInfo) => {
+    await signIn(page, testInfo, "e2e.platform.admin");
+  });
 
   test("opens for a platform administrator", async ({ page }) => {
     await page.goto("/admin/organizations/");

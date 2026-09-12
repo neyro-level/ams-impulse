@@ -25,6 +25,12 @@ describe("production configuration boundary", () => {
     expect(playwrightConfig).toContain('RESEARCH_QUERY_ESTIMATE_KOPECKS: "100"');
     expect(playwrightConfig).toContain('RESEARCH_DAILY_LIMIT_KOPECKS: "10000"');
     expect(playwrightConfig).toContain('RESEARCH_MONTHLY_LIMIT_KOPECKS: "100000"');
+    expect(playwrightConfig).toContain('"x-real-ip"');
+    expect(playwrightConfig).not.toContain('"x-forwarded-for"');
+
+    const seed = readFileSync("scripts/seed-e2e-admin.ts", "utf8");
+    expect(seed).toContain("${E2E_RESEARCH.budgetResearchId}, 'SUCCEEDED'");
+    expect(seed).toContain('"actualCostKopecks"=50000');
   });
 
   it("closes both Prisma and its PostgreSQL pool in E2E helper processes", () => {

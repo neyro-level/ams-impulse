@@ -4,6 +4,7 @@ import { expect, test } from "@playwright/test";
 
 import { E2E_RESEARCH } from "../../scripts/e2e-research-contract.ts";
 import { researchAnalystAuthStatePath } from "./auth-state.ts";
+import { signIn } from "./sign-in.ts";
 
 const allowedListUrl = `/tools/research/?organizationId=${E2E_RESEARCH.allowedOrganizationId}&projectId=${E2E_RESEARCH.allowedProjectId}`;
 const detailUrl = (researchId: string, organizationId: string, projectId: string) =>
@@ -29,7 +30,7 @@ test.describe("Research golden journey", () => {
     await page.getByRole("button", { name: "Рассчитать стоимость" }).click();
     await expect(page.getByRole("heading", { name: "Подтвердите платный запуск" })).toBeVisible();
     const estimateUrl = new URL(page.url());
-    const runId = estimateUrl.searchParams.get("estimateRunId");
+    const runId = estimateUrl.searchParams.get("runId");
     if (!runId) throw new Error("Estimated run ID is missing from the confirmation URL");
     await expect(page.getByText(/2 запросов, оценка/u)).toBeVisible();
     await page.getByRole("button", { name: "Подтвердить" }).click();
@@ -109,15 +110,7 @@ test.describe("Research golden journey", () => {
       "desktop-1280": "e2e.client.desktop1280",
       "desktop-1440": "e2e.client.desktop1440",
     };
-    await page.context().clearCookies();
-    await page.goto("/?login=1");
-    await page.getByLabel("Логин").fill(usernameByProject[testInfo.project.name]!);
-    await page.getByLabel("Пароль").fill("E2e!2026");
-    await page
-      .getByRole("dialog", { name: "Вход в кабинет" })
-      .getByRole("button", { name: "Войти", exact: true })
-      .click();
-    await expect(page).toHaveURL(/\/dashboard\/?$/);
+    await signIn(page, testInfo, usernameByProject[testInfo.project.name]!);
     await page.goto(allowedListUrl);
     await expect(page.getByRole("heading", { level: 1, name: "Страница не существует" })).toBeVisible();
   });

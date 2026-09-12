@@ -50,13 +50,14 @@ export default defineConfig({
     {
       name: "setup",
       testMatch: /auth\.setup\.ts/,
+      use: { extraHTTPHeaders: { "x-real-ip": "192.0.2.10" } },
     },
     {
       name: "mobile-375",
       use: {
         ...devices["Desktop Chrome"],
         viewport: { width: 375, height: 812 },
-        extraHTTPHeaders: { "x-forwarded-for": "192.0.2.11" },
+        extraHTTPHeaders: { "x-real-ip": "192.0.2.40" },
       },
       dependencies: ["setup"],
       testIgnore: /auth\.setup\.ts/,
@@ -66,7 +67,7 @@ export default defineConfig({
       use: {
         ...devices["Desktop Chrome"],
         viewport: { width: 768, height: 1024 },
-        extraHTTPHeaders: { "x-forwarded-for": "192.0.2.12" },
+        extraHTTPHeaders: { "x-real-ip": "192.0.2.80" },
       },
       dependencies: ["setup"],
       testIgnore: /auth\.setup\.ts/,
@@ -76,7 +77,7 @@ export default defineConfig({
       use: {
         ...devices["Desktop Chrome"],
         viewport: { width: 1280, height: 800 },
-        extraHTTPHeaders: { "x-forwarded-for": "192.0.2.13" },
+        extraHTTPHeaders: { "x-real-ip": "192.0.2.120" },
       },
       dependencies: ["setup"],
       testIgnore: /auth\.setup\.ts/,
@@ -86,7 +87,7 @@ export default defineConfig({
       use: {
         ...devices["Desktop Chrome"],
         viewport: { width: 1440, height: 900 },
-        extraHTTPHeaders: { "x-forwarded-for": "192.0.2.14" },
+        extraHTTPHeaders: { "x-real-ip": "192.0.2.160" },
       },
       dependencies: ["setup"],
       testIgnore: /auth\.setup\.ts/,
