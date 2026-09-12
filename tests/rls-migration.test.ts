@@ -39,6 +39,7 @@ describe("PostgreSQL RLS foundation", () => {
     expect(roles).toContain("REVOKE ALL PRIVILEGES ON ALL TABLES IN SCHEMA %I FROM ams_web");
     expect(roles).toContain("GRANT USAGE ON SCHEMA %I TO ams_worker, ams_backup");
     expect(roles).toContain("GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA %I TO ams_worker");
+    expect(roles).toContain('GRANT EXECUTE ON FUNCTION "platform"."stale_research_run_scopes"(timestamptz)');
   });
 
   it("mentions every registered tenant-owned model in the effective RLS migrations", () => {

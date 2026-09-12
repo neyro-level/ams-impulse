@@ -48,7 +48,14 @@ switch (mode) {
     await run(process.execPath, [".next/standalone/server.js"]);
     break;
   case "outbox-worker":
-    await run(process.execPath, ["scripts/worker-daemon.mjs"]);
+    await run(process.execPath, [
+      "dist-collector/src/worker/main.js",
+      "outbox-daemon",
+      process.env.OUTBOX_WORKER_ID ?? "seo-monitor-outbox",
+    ]);
+    break;
+  case "research-worker":
+    await run(process.execPath, ["dist-collector/src/worker/main.js", "research-daemon"]);
     break;
   case "outbox-drain":
     await run(process.execPath, [

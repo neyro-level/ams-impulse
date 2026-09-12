@@ -2,11 +2,26 @@ import type { JobWithMetadata, PgBoss } from "pg-boss";
 import { getPgBoss, stopPgBoss } from "../platform-operations/queue.ts";
 import { researchRunJobSchema, RESEARCH_RUN_QUEUE, type ResearchRunJob } from "./domain/research-queue.ts";
 import { ResearchExecutionService } from "./application/research-execution-service.ts";
-import { PrismaResearchExecutionRepository } from "./infrastructure/prisma-research-execution-repository.ts";
+import { listStaleResearchRunScopes, PrismaResearchExecutionRepository } from "./infrastructure/prisma-research-execution-repository.ts";
 import { XmlRiverClient } from "./infrastructure/xmlriver-client.ts";
+import { setTimeout as sleep } from "node:timers/promises";
+import { recordRuntimeHeartbeat, RESEARCH_WORKER_RUNTIME, RUNTIME_HEARTBEAT_WRITE_INTERVAL_MS } from "../platform-operations/index.ts";
+import { RESEARCH_STALE_RUN_AFTER_MS, RESEARCH_WORKER_POLL_DELAY_MS } from "../../platform/workers/timing-policy.ts";
+import { closePrismaClient } from "../../platform/database/prisma/client.ts";
 
 type QueueClient = Pick<PgBoss, "fetch" | "complete">;
 type ExecutionFactory = (job: ResearchRunJob) => Promise<ResearchExecutionService>;
+
+export async function recoverStaleResearchRunsWithDependencies(
+  startedBefore: Date,
+  listScopes: (startedBefore: Date) => Promise<Array<{ organizationId: string; projectId: string }>>,
+  recoverScope: (scope: { organizationId: string; projectId: string }, startedBefore: Date) => Promise<number>,
+) {
+  const scopes = await listScopes(startedBefore);
+  let recovered = 0;
+  for (const scope of scopes) recovered += await recoverScope(scope, startedBefore);
+  return recovered;
+}
 
 export async function runNextResearchJobWithDependencies(queue: QueueClient, createExecution: ExecutionFactory) {
   const jobs = await queue.fetch<ResearchRunJob>(RESEARCH_RUN_QUEUE, { batchSize: 1, includeMetadata: true });
@@ -35,11 +50,65 @@ export async function runNextResearchJob(env: Record<string, string | undefined>
           organizationId: job.toolsOrganizationId,
           projectId: job.toolsProjectId,
         });
-        await repository.failStaleRuns(new Date(Date.now() - 20 * 60 * 1000));
+        await repository.failStaleRuns(new Date(Date.now() - RESEARCH_STALE_RUN_AFTER_MS));
         return new ResearchExecutionService(repository, new XmlRiverClient({ user, key }));
       },
     );
   } finally {
     await stopPgBoss();
+  }
+}
+
+export async function runResearchWorkerDaemon(
+  env: Record<string, string | undefined> = process.env,
+  signal?: AbortSignal,
+) {
+  const user = env.XMLRIVER_USER?.trim(); const key = env.XMLRIVER_KEY?.trim();
+  if (!user || !key) throw new Error("XMLRIVER_CONFIGURATION_MISSING");
+  const pollDelayMs = RESEARCH_WORKER_POLL_DELAY_MS;
+  const workerId = env.RESEARCH_WORKER_ID?.trim() || "seo-monitor-research";
+  if (!Number.isInteger(pollDelayMs) || pollDelayMs < 100 || pollDelayMs > 60_000) {
+    throw new Error("RESEARCH_POLL_DELAY_MS_INVALID");
+  }
+
+  const boss = await getPgBoss();
+  const heartbeat = () => recordRuntimeHeartbeat({ runtime: RESEARCH_WORKER_RUNTIME, workerId });
+  let heartbeatTimer: ReturnType<typeof setInterval> | null = null;
+  try {
+    await heartbeat();
+    heartbeatTimer = setInterval(() => void heartbeat(), RUNTIME_HEARTBEAT_WRITE_INTERVAL_MS);
+    while (!signal?.aborted) {
+      const staleBefore = new Date(Date.now() - RESEARCH_STALE_RUN_AFTER_MS);
+      await recoverStaleResearchRunsWithDependencies(
+        staleBefore,
+        listStaleResearchRunScopes,
+        (scope, cutoff) => new PrismaResearchExecutionRepository(scope).failStaleRuns(cutoff),
+      );
+      const result = await runNextResearchJobWithDependencies(
+        boss,
+        async (job) => {
+          const repository = new PrismaResearchExecutionRepository({
+            organizationId: job.toolsOrganizationId,
+            projectId: job.toolsProjectId,
+          });
+          await repository.failStaleRuns(new Date(Date.now() - RESEARCH_STALE_RUN_AFTER_MS));
+          return new ResearchExecutionService(repository, new XmlRiverClient({ user, key }));
+        },
+      );
+      if (result.status === "idle") {
+        try {
+          await sleep(pollDelayMs, undefined, { signal });
+        } catch (error) {
+          if (!signal?.aborted) throw error;
+        }
+      }
+    }
+  } finally {
+    if (heartbeatTimer) clearInterval(heartbeatTimer);
+    try {
+      await stopPgBoss();
+    } finally {
+      await closePrismaClient();
+    }
   }
 }

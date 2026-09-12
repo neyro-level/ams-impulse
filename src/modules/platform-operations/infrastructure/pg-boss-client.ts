@@ -11,6 +11,7 @@ import {
   OUTBOX_RETRY_DELAY_SECONDS,
 } from "../domain/pg-boss.ts";
 import { RESEARCH_RUN_QUEUE } from "../../research/index.ts";
+import { RESEARCH_JOB_EXPIRE_IN_SECONDS, RESEARCH_JOB_RETRY_DELAY_SECONDS, RESEARCH_JOB_RETRY_LIMIT } from "../../../platform/workers/timing-policy.ts";
 
 const logger = getLogger({ component: "pg-boss" });
 
@@ -25,6 +26,7 @@ function createBoss() {
     password: typeof pool.password === "string" ? pool.password : undefined,
     database: pool.database,
     ssl: pool.ssl,
+    connectionTimeoutMillis: pool.connectionTimeoutMillis,
     schema: "pgboss",
     max: OUTBOX_PGBOSS_CONNECTION_MAX,
     application_name: "seo-monitor-pgboss",
@@ -45,8 +47,9 @@ async function ensureQueue(boss: PgBoss) {
   });
   await boss.createQueue(RESEARCH_RUN_QUEUE, {
     policy: "singleton",
-    retryLimit: 0,
-    expireInSeconds: 900,
+    retryLimit: RESEARCH_JOB_RETRY_LIMIT,
+    retryDelay: RESEARCH_JOB_RETRY_DELAY_SECONDS,
+    expireInSeconds: RESEARCH_JOB_EXPIRE_IN_SECONDS,
     deleteAfterSeconds: 0,
   });
 }

@@ -362,14 +362,19 @@ enable_runtime_timers
 
 WEB_CONTAINER_ID="$(docker compose -f "$ROOT/current/docker-compose.production.yml" ps -q web)"
 WORKER_CONTAINER_ID="$(docker compose -f "$ROOT/current/docker-compose.production.yml" ps -q worker)"
+RESEARCH_WORKER_CONTAINER_ID="$(docker compose -f "$ROOT/current/docker-compose.production.yml" ps -q research-worker)"
 [ -n "$WEB_CONTAINER_ID" ]
 [ -n "$WORKER_CONTAINER_ID" ]
+[ -n "$RESEARCH_WORKER_CONTAINER_ID" ]
 [ "$(docker inspect --format '{{.Image}}' "$WEB_CONTAINER_ID")" = "$IMAGE_DIGEST" ]
 [ "$(docker inspect --format '{{.Image}}' "$WORKER_CONTAINER_ID")" = "$IMAGE_DIGEST" ]
+[ "$(docker inspect --format '{{.Image}}' "$RESEARCH_WORKER_CONTAINER_ID")" = "$IMAGE_DIGEST" ]
 curl -fsS http://127.0.0.1:3000/api/health/live | python3 -c 'import json,sys; payload=json.load(sys.stdin); assert payload["releaseSha"] == sys.argv[1]' "$SHA"
 READINESS_CONFIRMED=false
 for _attempt in $(seq 1 30); do
-  if curl -fsS http://127.0.0.1:3000/api/health/ready | python3 -c 'import json,sys; payload=json.load(sys.stdin); deps=payload["dependencies"]; assert payload["releaseSha"] == sys.argv[1]; assert deps["postgresql"] == "ready"; assert deps["auth"] == "configured"; assert deps["outbox"]["status"] == "healthy"; assert deps["worker"]["status"] == "healthy"; assert deps["integrationFreshness"]["status"] == "fresh"' "$SHA"; then
+  OUTBOX_HEALTH="$(docker inspect --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}missing{{end}}' "$WORKER_CONTAINER_ID")"
+  RESEARCH_HEALTH="$(docker inspect --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}missing{{end}}' "$RESEARCH_WORKER_CONTAINER_ID")"
+  if [ "$OUTBOX_HEALTH" = healthy ] && [ "$RESEARCH_HEALTH" = healthy ] && curl -fsS http://127.0.0.1:3000/api/health/ready | python3 -c 'import json,sys; payload=json.load(sys.stdin); deps=payload["dependencies"]; assert payload["releaseSha"] == sys.argv[1]; assert deps["postgresql"] == "ready"; assert deps["auth"] == "configured"; assert deps["outbox"]["status"] == "healthy"; assert deps["worker"]["status"] == "healthy"; assert deps["integrationFreshness"]["status"] == "fresh"' "$SHA"; then
     READINESS_CONFIRMED=true
     break
   fi

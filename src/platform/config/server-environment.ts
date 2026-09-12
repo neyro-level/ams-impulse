@@ -18,6 +18,7 @@ const databaseEnvironmentSchema = z
     DATABASE_PASSWORD: optionalEnvironmentValue,
     DATABASE_NAME: optionalEnvironmentValue,
     DATABASE_SSLMODE: optionalEnvironmentValue,
+    DATABASE_RUNTIME: z.enum(["web", "worker", "migrator"]).optional(),
   })
   .superRefine((value, context) => {
     const componentKeys = [

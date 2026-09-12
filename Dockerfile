@@ -40,6 +40,5 @@ COPY --from=build /app/scripts ./scripts
 COPY --from=build /app/next-env.d.ts ./next-env.d.ts
 COPY --from=build /app/docker-compose.production.yml ./docker-compose.production.yml
 USER node
-HEALTHCHECK --interval=30s --timeout=10s --retries=5 CMD node -e "fetch('http://127.0.0.1:3000/api/health/live').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"
 ENTRYPOINT ["node", "scripts/container-entrypoint.mjs"]
 CMD ["web"]

@@ -1,6 +1,8 @@
 import { z } from "zod";
+import { setTimeout as sleep } from "node:timers/promises";
 import type { JobWithMetadata, PgBoss } from "pg-boss";
 import { getWorkerReliabilityService } from "../../infrastructure/worker-service-container.ts";
+import { closePrismaClient } from "../../platform/database/prisma/client.ts";
 import { createJobPrincipal } from "../../platform/authorization/principal-factories.ts";
 import { syncProjectToDatabase } from "../data-ingestion/worker.ts";
 import { setupSiteIntegrations, syncSiteCompetitors } from "../data-ingestion/worker.ts";
@@ -259,6 +261,42 @@ export async function drainOutbox(options: DrainOutboxOptions): Promise<DrainOut
       heartbeat: (workerId) =>
         recordRuntimeHeartbeat({ runtime: OUTBOX_WORKER_RUNTIME, workerId }),
     });
+  } finally {
+    try {
+      await stopPgBoss();
+    } finally {
+      await closePrismaClient();
+    }
+  }
+}
+
+export async function runOutboxWorkerDaemon(options: {
+  workerId: string;
+  pollDelayMs: number;
+  signal?: AbortSignal;
+  onCycle?: (result: DrainOutboxResult) => void;
+}) {
+  const pollDelayMs = z.number().int().min(100).max(60_000).parse(options.pollDelayMs);
+  const boss = await getPgBoss();
+  const dependencies: OutboxDrainDependencies = {
+    boss,
+    reliability: getWorkerReliabilityService(),
+    heartbeat: (workerId) =>
+      recordRuntimeHeartbeat({ runtime: OUTBOX_WORKER_RUNTIME, workerId }),
+  };
+  try {
+    while (!options.signal?.aborted) {
+      const result = await drainOutboxWithDependencies(
+        { workerId: options.workerId },
+        dependencies,
+      );
+      options.onCycle?.(result);
+      try {
+        await sleep(pollDelayMs, undefined, { signal: options.signal });
+      } catch (error) {
+        if (!options.signal?.aborted) throw error;
+      }
+    }
   } finally {
     await stopPgBoss();
   }

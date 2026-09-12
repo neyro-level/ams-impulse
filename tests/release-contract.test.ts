@@ -105,7 +105,7 @@ describe("production compose networking", () => {
   it("keeps host-local PostgreSQL and web loopback reachable without bridge exposure", () => {
     const compose = readFileSync("docker-compose.production.yml", "utf8");
 
-    expect(compose.match(/network_mode: host/g)).toHaveLength(4);
+    expect(compose.match(/network_mode: host/g)).toHaveLength(5);
     expect(compose).toContain("HOSTNAME: 127.0.0.1");
     expect(compose).not.toContain('"127.0.0.1:3000:3000"');
   });
@@ -121,6 +121,19 @@ describe("production compose networking", () => {
       "export COMPOSE_PROJECT_NAME=ams-seo-monitor",
     );
     expect(webUnit).toContain("Environment=COMPOSE_PROJECT_NAME=ams-seo-monitor");
+  });
+
+  it("starts and verifies the persistent research worker during rollout", () => {
+    const compose = readFileSync("docker-compose.production.yml", "utf8");
+    const deployScript = readFileSync("scripts/deploy-production.mjs", "utf8");
+    const webUnit = readFileSync("ops/systemd/seo-monitor-web.service", "utf8");
+
+    expect(compose).toContain("research-worker:");
+    expect(compose).toContain("command: [\"research-worker\"]");
+    expect(webUnit).toContain("up -d web worker research-worker");
+    expect(webUnit).toContain("stop web worker research-worker");
+    expect(deployScript).toContain("RESEARCH_WORKER_CONTAINER_ID");
+    expect(deployScript).toContain('[ "$RESEARCH_HEALTH" = healthy ]');
   });
 });
 

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { ResearchExecutionService, ResearchProviderError, type ClaimedResearchRun, type ResearchExecutionRepository, type ResearchProvider } from "../src/modules/research/index.ts";
+import { recoverStaleResearchRunsWithDependencies } from "../src/modules/research/worker.ts";
 
 class ExecutionRepository implements ResearchExecutionRepository {
   run: ClaimedResearchRun | null = { runId: "run-1", organizationId: "org-1", projectId: "project-1", researchId: "research-1", approvedCostKopecks: 200, queries: [{ queryRunId: "qr-1", queryId: "q-1", text: "купить квартиру" }, { queryRunId: "qr-2", queryId: "q-2", text: "цены на жильё" }] };
@@ -49,6 +50,28 @@ describe("ResearchExecutionService", () => {
     expect(calls).toBe(1);
     expect(repository.started).toEqual(["qr-1"]);
     expect(repository.runStatus).toBe("FAILED:PROVIDER_RESULT_AMBIGUOUS");
+  });
+
+  it("recovers an interrupted run after restart without repeating a paid call", async () => {
+    const repository = new ExecutionRepository();
+    repository.runStatus = "RUNNING";
+    let providerCalls = 0;
+    const restartedProvider: ResearchProvider = {
+      ...provider,
+      collectYandexSerp: async () => { providerCalls += 1; return []; },
+    };
+
+    const recovered = await recoverStaleResearchRunsWithDependencies(
+      new Date("2026-09-12T12:00:00.000Z"),
+      async () => [{ organizationId: "org-1", projectId: "project-1" }],
+      async () => { repository.runStatus = "FAILED:WORKER_INTERRUPTED_AMBIGUOUS"; return 1; },
+    );
+    const result = await new ResearchExecutionService(repository, restartedProvider).execute("run-1");
+
+    expect(recovered).toBe(1);
+    expect(result).toEqual({ status: "ignored" });
+    expect(providerCalls).toBe(0);
+    expect(repository.runStatus).toBe("FAILED:WORKER_INTERRUPTED_AMBIGUOUS");
   });
 
   it("ignores duplicate queue delivery after the run leaves QUEUED", async () => {

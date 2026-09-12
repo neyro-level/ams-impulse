@@ -6,3 +6,9 @@ export type {
   OutboxHealth,
   ReliabilityRepository,
 } from "./application/ports/reliability-repository.ts";
+export {
+  OUTBOX_WORKER_RUNTIME,
+  RESEARCH_WORKER_RUNTIME,
+  RUNTIME_HEARTBEAT_WRITE_INTERVAL_MS,
+  recordRuntimeHeartbeat,
+} from "./infrastructure/runtime-heartbeat.ts";

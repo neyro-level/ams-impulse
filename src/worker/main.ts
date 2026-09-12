@@ -3,10 +3,11 @@ import type { CreateSyncRunInput } from "../modules/data-ingestion/index.ts";
 import { startScheduledTopvisorChecks, syncAllConfiguredCompetitors, syncProjectToDatabase } from "../modules/data-ingestion/worker.ts";
 import {
   drainOutbox,
+  runOutboxWorkerDaemon,
   runReliabilityRetention,
 } from "../modules/platform-operations/worker.ts";
 import { getLogger } from "../platform/observability/logger.ts";
-import { runNextResearchJob } from "../modules/research/worker.ts";
+import { runNextResearchJob, runResearchWorkerDaemon } from "../modules/research/worker.ts";
 
 const command = process.argv[2] ?? null;
 const argument = process.argv[3] ?? null;
@@ -44,6 +45,41 @@ async function main() {
     const result = await runNextResearchJob(process.env);
     logger.info({ event: "research_run_finished", ...result }, "research run finished");
     if (result.status === "failed") process.exitCode = 1;
+    return;
+  }
+
+  if (command === "outbox-daemon") {
+    const controller = new AbortController();
+    const stop = () => controller.abort();
+    process.once("SIGTERM", stop);
+    process.once("SIGINT", stop);
+    try {
+      await runOutboxWorkerDaemon({
+        workerId: argument ?? process.env.OUTBOX_WORKER_ID?.trim() ?? "seo-monitor-outbox",
+        pollDelayMs: Number(process.env.OUTBOX_POLL_DELAY_MS ?? 5_000),
+        signal: controller.signal,
+        onCycle: (result) => logger.info({ event: "outbox_drain_finished", ...result }, "outbox drain finished"),
+      });
+      logger.info({ event: "outbox_worker_stopped" }, "outbox worker stopped");
+    } finally {
+      process.off("SIGTERM", stop);
+      process.off("SIGINT", stop);
+    }
+    return;
+  }
+
+  if (command === "research-daemon") {
+    const controller = new AbortController();
+    const stop = () => controller.abort();
+    process.once("SIGTERM", stop);
+    process.once("SIGINT", stop);
+    try {
+      await runResearchWorkerDaemon(process.env, controller.signal);
+      logger.info({ event: "research_worker_stopped" }, "research worker stopped");
+    } finally {
+      process.off("SIGTERM", stop);
+      process.off("SIGINT", stop);
+    }
     return;
   }
 
@@ -85,7 +121,7 @@ async function main() {
 
   if (command !== "project-sync" || !argument) {
     throw new Error(
-      "Usage: worker projects-sync [trigger] | topvisor-checks | competitors-sync | project-sync <project-slug> [trigger] | outbox-drain [worker-id] | outbox-retention | research-run",
+      "Usage: worker projects-sync [trigger] | topvisor-checks | competitors-sync | project-sync <project-slug> [trigger] | outbox-drain [worker-id] | outbox-daemon [worker-id] | outbox-retention | research-run | research-daemon",
     );
   }
   if (!allowedTriggers.includes(requestedTrigger as CreateSyncRunInput["trigger"])) {

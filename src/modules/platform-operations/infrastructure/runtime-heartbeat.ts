@@ -1,8 +1,10 @@
 import { Prisma } from "../../../generated/prisma/client.ts";
 import { getPrismaClient } from "../../../platform/database/prisma/client.ts";
+import { RESEARCH_HEARTBEAT_WRITE_INTERVAL_MS } from "../../../platform/workers/timing-policy.ts";
 
 export const OUTBOX_WORKER_RUNTIME = "outbox-worker";
-export const RUNTIME_HEARTBEAT_WRITE_INTERVAL_MS = 60_000;
+export const RESEARCH_WORKER_RUNTIME = "research-worker";
+export const RUNTIME_HEARTBEAT_WRITE_INTERVAL_MS = RESEARCH_HEARTBEAT_WRITE_INTERVAL_MS;
 
 export interface RecordRuntimeHeartbeatInput {
   runtime: string;

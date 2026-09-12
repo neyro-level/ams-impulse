@@ -4,6 +4,17 @@ services:
     command: ["web"]
     restart: always
     network_mode: host
+    cap_drop: ["ALL"]
+    security_opt: ["no-new-privileges:true"]
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m,mode=1777
+      - /app/.next/cache:size=256m,uid=1000,gid=1000,mode=0750
+    mem_limit: 1g
+    pids_limit: 256
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "5" }
     env_file:
       - path: /etc/ams-platform/ams-seo-monitor-web.env
         required: false
@@ -14,12 +25,28 @@ services:
       HOSTNAME: 127.0.0.1
       PORT: 3000
       NODE_ENV: production
+      DATABASE_RUNTIME: web
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/api/health/live').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
 
   worker:
     image: ${AMS_SEO_MONITOR_IMAGE:?Set AMS_SEO_MONITOR_IMAGE}
     command: ["outbox-worker"]
     restart: always
+    stop_grace_period: 2m
     network_mode: host
+    cap_drop: ["ALL"]
+    security_opt: ["no-new-privileges:true"]
+    read_only: true
+    tmpfs: [/tmp:size=32m,mode=1777]
+    mem_limit: 768m
+    pids_limit: 128
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "5" }
     env_file:
       - path: /etc/ams-platform/ams-seo-monitor-worker.env
         required: false
@@ -29,12 +56,60 @@ services:
       APP_ENV: production
       NODE_ENV: production
       OUTBOX_WORKER_ID: seo-monitor-outbox
+      DATABASE_RUNTIME: worker
+      PGOPTIONS: -c statement_timeout=60000 -c lock_timeout=5000 -c idle_in_transaction_session_timeout=15000
+    healthcheck:
+      test: ["CMD", "node", "dist-collector/src/worker/healthcheck.js", "outbox-worker", "seo-monitor-outbox"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+
+  research-worker:
+    image: ${AMS_SEO_MONITOR_IMAGE:?Set AMS_SEO_MONITOR_IMAGE}
+    command: ["research-worker"]
+    restart: always
+    stop_grace_period: 2m
+    network_mode: host
+    cap_drop: ["ALL"]
+    security_opt: ["no-new-privileges:true"]
+    read_only: true
+    tmpfs: [/tmp:size=64m,mode=1777]
+    mem_limit: 768m
+    pids_limit: 128
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "5" }
+    env_file:
+      - path: /etc/ams-platform/ams-seo-monitor-worker.env
+        required: false
+      - path: /opt/ams-platform/ams-seo-monitor/shared/release.env
+        required: false
+    environment:
+      APP_ENV: production
+      NODE_ENV: production
+      RESEARCH_WORKER_ID: seo-monitor-research
+      DATABASE_RUNTIME: worker
+      PGOPTIONS: -c statement_timeout=60000 -c lock_timeout=5000 -c idle_in_transaction_session_timeout=15000
+    healthcheck:
+      test: ["CMD", "node", "dist-collector/src/worker/healthcheck.js", "research-worker", "seo-monitor-research"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
 
   migrate:
     image: ${AMS_SEO_MONITOR_IMAGE:?Set AMS_SEO_MONITOR_IMAGE}
     command: ["migrate"]
     restart: "no"
     network_mode: host
+    cap_drop: ["ALL"]
+    security_opt: ["no-new-privileges:true"]
+    read_only: true
+    tmpfs: [/tmp:size=64m,mode=1777]
+    mem_limit: 1g
+    pids_limit: 128
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "5" }
     profiles: ["manual"]
     env_file:
       - path: /etc/ams-platform/ams-seo-monitor-migrator.env
@@ -44,12 +119,25 @@ services:
     environment:
       APP_ENV: production
       NODE_ENV: production
+      DATABASE_RUNTIME: migrator
+      PGOPTIONS: -c statement_timeout=900000 -c lock_timeout=10000 -c idle_in_transaction_session_timeout=60000 -c application_name=ams-impulse-migrator
+    healthcheck:
+      disable: true
 
   maintenance:
     image: ${AMS_SEO_MONITOR_IMAGE:?Set AMS_SEO_MONITOR_IMAGE}
     command: ["outbox-retention"]
     restart: "no"
     network_mode: host
+    cap_drop: ["ALL"]
+    security_opt: ["no-new-privileges:true"]
+    read_only: true
+    tmpfs: [/tmp:size=32m,mode=1777]
+    mem_limit: 512m
+    pids_limit: 128
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "5" }
     profiles: ["manual"]
     env_file:
       - path: /etc/ams-platform/ams-seo-monitor-worker.env
@@ -59,3 +147,7 @@ services:
     environment:
       APP_ENV: production
       NODE_ENV: production
+      DATABASE_RUNTIME: worker
+      PGOPTIONS: -c statement_timeout=60000 -c lock_timeout=5000 -c idle_in_transaction_session_timeout=15000
+    healthcheck:
+      disable: true

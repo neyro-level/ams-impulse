@@ -36,3 +36,17 @@ export function getPrismaPool() {
   getPrismaClient();
   return globalForPrisma.prismaPool!;
 }
+
+export async function closePrismaClient(): Promise<void> {
+  const prisma = globalForPrisma.prisma;
+  const pool = globalForPrisma.prismaPool;
+  delete globalForPrisma.prisma;
+  delete globalForPrisma.prismaAdapter;
+  delete globalForPrisma.prismaPool;
+
+  try {
+    if (prisma) await prisma.$disconnect();
+  } finally {
+    if (pool) await pool.end();
+  }
+}

@@ -135,6 +135,11 @@ BEGIN
 END
 $grants$;
 
+REVOKE ALL ON FUNCTION "platform"."stale_research_run_scopes"(timestamptz)
+  FROM PUBLIC, ams_web, ams_backup;
+GRANT EXECUTE ON FUNCTION "platform"."stale_research_run_scopes"(timestamptz)
+  TO ams_worker;
+
 DO $verify$
 BEGIN
   IF to_regclass('pgboss.job') IS NOT NULL AND (

@@ -1,7 +1,7 @@
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "../../../generated/prisma/client.ts";
 import { Pool } from "pg";
-import { createPgPoolConfigFromEnvironment } from "./pool-config.ts";
+import { createPgPoolConfigFromEnvironment, databaseRuntimeProfile } from "./pool-config.ts";
 import type { DatabaseEnvironment } from "../../config/server-environment.ts";
 
 export interface PrismaContext {
@@ -14,7 +14,14 @@ export interface PrismaContext {
 export function createPrismaContext(environment: DatabaseEnvironment): PrismaContext {
   const pool = new Pool(createPgPoolConfigFromEnvironment(environment));
   const adapter = new PrismaPg(pool);
-  const prisma = new PrismaClient({ adapter });
+  const runtime = databaseRuntimeProfile(environment.DATABASE_RUNTIME ?? "web");
+  const prisma = new PrismaClient({
+    adapter,
+    transactionOptions: {
+      maxWait: runtime.transactionMaxWaitMs,
+      timeout: runtime.transactionTimeoutMs,
+    },
+  });
 
   return {
     adapter,

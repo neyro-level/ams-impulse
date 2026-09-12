@@ -10,8 +10,8 @@ RemainAfterExit=yes
 WorkingDirectory=/opt/ams-platform/ams-seo-monitor/current
 Environment=COMPOSE_PROJECT_NAME=ams-seo-monitor
 EnvironmentFile=-/opt/ams-platform/ams-seo-monitor/shared/release.env
-ExecStart=/usr/bin/docker compose -f /opt/ams-platform/ams-seo-monitor/current/docker-compose.production.yml up -d web worker
-ExecReload=/usr/bin/docker compose -f /opt/ams-platform/ams-seo-monitor/current/docker-compose.production.yml up -d web worker
-ExecStop=/usr/bin/docker compose -f /opt/ams-platform/ams-seo-monitor/current/docker-compose.production.yml stop web worker
+ExecStart=/usr/bin/docker compose -f /opt/ams-platform/ams-seo-monitor/current/docker-compose.production.yml up -d web worker research-worker
+ExecReload=/usr/bin/docker compose -f /opt/ams-platform/ams-seo-monitor/current/docker-compose.production.yml up -d web worker research-worker
+ExecStop=/usr/bin/docker compose -f /opt/ams-platform/ams-seo-monitor/current/docker-compose.production.yml stop web worker research-worker
 TimeoutStartSec=10min
 TimeoutStopSec=5min

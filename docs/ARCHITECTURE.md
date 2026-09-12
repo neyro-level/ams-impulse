@@ -154,6 +154,23 @@ UI / MCP
 
 Paid call runs only after a persisted estimate, matching confirmed amount, idempotency reservation and active permission. Ambiguous provider outcome becomes `FAILED` with a safe code and is not retried automatically.
 
+Production runs `research-worker` as a separate long-lived Compose service with
+the dedicated worker managed-database identity and server-only provider environment. The process keeps
+one pg-boss runtime, consumes one job at a time and closes queue/database resources
+on `SIGTERM`/`SIGINT`. Its database role has DML only; schema and queue migrations
+remain the one-shot migrator's responsibility.
+
+Research queue timing has one code-owned policy: 5-second polling, 60-second
+heartbeat writes, 3-minute stale heartbeat, 15-minute job expiry and 20-minute
+stale-run recovery. Queue retry count and retry delay are both zero because an
+ambiguous paid provider effect must never be repeated automatically.
+
+After an ungraceful restart, the worker obtains only stale tenant/project scopes
+through a narrow `SECURITY DEFINER` function restricted to `ams_worker`. It then
+re-enters normal job-scoped RLS context and marks interrupted runs and active query
+steps `FAILED / WORKER_INTERRUPTED_AMBIGUOUS`. The original queue item has no
+automatic retry, so recovery never repeats a possibly completed paid call.
+
 ## MCP
 
 Canonical endpoint: `/mcp`, Streamable HTTP. OAuth 2.1 + PKCE maps token subject to Better Auth user. Token scopes can narrow but never expand current AMS grants. MCP exposes bounded Research tools and no SQL/database/provider credentials.
@@ -171,7 +188,25 @@ PWA uses `app/manifest.ts`, 192/512 PNG icons and a service worker with an expli
 
 ## Runtime And Delivery
 
-Current production: host Nginx -> web/outbox worker containers -> Timeweb Managed PostgreSQL 18 over private network/TLS. The database has no public IP. Existing AMS server public IP remains because it serves HTTPS domains and SSH.
+Current production: host Nginx -> web/outbox/research worker containers -> Timeweb Managed PostgreSQL 18 over private network/TLS. The database has no public IP. Existing AMS server public IP remains because it serves HTTPS domains and SSH. Each persistent worker keeps one process, one Prisma pool and one pg-boss runtime across polling cycles; shutdown drains through the shared abort signal and closes queue resources once.
+
+Health is runtime-specific: web uses `/api/health/live`; persistent workers prove
+a fresh database heartbeat for their exact runtime/worker identity. Migrator and
+maintenance are one-shot services and have Docker healthchecks disabled.
+
+All production services drop Linux capabilities, prohibit privilege escalation,
+use a read-only root filesystem, bounded tmpfs, process/memory limits and rotated
+local logs. Web receives a dedicated writable Next.js cache tmpfs; workers and
+one-shot jobs receive only `/tmp`. Persistent services restart automatically,
+while migrator and maintenance never restart as daemons.
+
+Database sessions use explicit runtime profiles. Web statements/transactions are
+bounded to 15/10 seconds with a 3-second lock wait; workers use 60-second
+statement/transaction limits and a 5-second lock wait; migrator allows up to 15
+minutes but waits at most 10 seconds for a lock. Every profile sets
+`application_name`, a 5-second connection timeout and an idle-in-transaction
+timeout. Prisma interactive transactions inherit profile-specific `maxWait` and
+`timeout`; the migration CLI receives the equivalent PostgreSQL `PGOPTIONS`.
 
 Web, worker, migrator and backup use separate provider-managed identities. The previous self-managed database is read-only through `2026-09-25`; deletion requires a separate owner decision. Research worker входит в текущую production topology и выполняет только project-scoped jobs.
 

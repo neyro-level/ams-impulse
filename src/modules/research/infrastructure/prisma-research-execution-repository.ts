@@ -115,3 +115,13 @@ export class PrismaResearchExecutionRepository implements ResearchExecutionRepos
     });
   }
 }
+
+export async function listStaleResearchRunScopes(
+  startedBefore: Date,
+  prisma: PrismaClient = getPrismaClient(),
+): Promise<DatabaseJobContext[]> {
+  return prisma.$queryRaw<DatabaseJobContext[]>(Prisma.sql`
+    SELECT "organizationId", "projectId"
+    FROM "platform"."stale_research_run_scopes"(${startedBefore})
+  `);
+}
