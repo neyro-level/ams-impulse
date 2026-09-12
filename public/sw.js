@@ -1,29 +1,36 @@
-const CACHE_VERSION = "ams-static-v1";
-const ALLOWED_STATIC_PATHS = ["/_next/static/", "/fonts/", "/pwa-icon-"];
-const ALLOWED_STATIC_FILES = new Set(["/ams-favicon.svg"]);
+const CACHE_NAMESPACE = "ams-static-";
+const CACHE_VERSION = `${CACHE_NAMESPACE}v2`;
+const NEXT_STATIC_PREFIX = "/_next/static/";
+const ALLOWED_STATIC_FILES = new Set(["/ams-favicon.svg", "/pwa-icon-192.png", "/pwa-icon-512.png"]);
+
+function isApprovedStaticRequest(request, url) {
+  if (request.method !== "GET" || request.mode === "navigate") return false;
+  if (url.origin !== self.location.origin || url.search || url.hash) return false;
+  if (request.headers.has("authorization") || request.headers.has("cookie")) return false;
+  return ALLOWED_STATIC_FILES.has(url.pathname) || url.pathname.startsWith(NEXT_STATIC_PREFIX);
+}
 
 self.addEventListener("install", () => self.skipWaiting());
 
 self.addEventListener("activate", (event) => {
   event.waitUntil(
-    caches.keys().then((keys) => Promise.all(keys.filter((key) => key.startsWith("ams-static-") && key !== CACHE_VERSION).map((key) => caches.delete(key)))).then(() => self.clients.claim()),
+    caches.keys().then((keys) => Promise.all(keys.filter((key) => key.startsWith(CACHE_NAMESPACE) && key !== CACHE_VERSION).map((key) => caches.delete(key)))).then(() => self.clients.claim()),
   );
 });
 
 self.addEventListener("fetch", (event) => {
   const request = event.request;
-  if (request.method !== "GET") return;
   const url = new URL(request.url);
-  if (url.origin !== self.location.origin) return;
-  const cacheAllowed = ALLOWED_STATIC_FILES.has(url.pathname) || ALLOWED_STATIC_PATHS.some((prefix) => url.pathname.startsWith(prefix));
-  if (!cacheAllowed) return;
+  if (!isApprovedStaticRequest(request, url)) return;
 
   event.respondWith(
     caches.open(CACHE_VERSION).then(async (cache) => {
       const cached = await cache.match(request);
       if (cached) return cached;
       const response = await fetch(request, { cache: "no-cache", credentials: "omit" });
-      if (response.ok && response.type === "basic" && !response.headers.has("set-cookie")) await cache.put(request, response.clone());
+      const cacheControl = response.headers.get("cache-control") ?? "";
+      const responseForbidsCache = /(?:^|,)\s*(?:private(?:\s*=|\s|,|$)|no-store(?:\s|,|$))/i.test(cacheControl);
+      if (response.ok && response.type === "basic" && !responseForbidsCache && !response.headers.has("set-cookie")) await cache.put(request, response.clone());
       return response;
     }),
   );

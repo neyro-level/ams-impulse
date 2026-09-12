@@ -115,6 +115,29 @@ test.describe("Platform Admin", () => {
     expect(hasHorizontalOverflow).toBe(false);
   });
 
+  test("does not expose private content from history or offline cache after logout", async ({ page, context }) => {
+    await page.goto("/");
+    await page.goto("/admin/organizations/");
+    await expect(page.getByRole("heading", { level: 1, name: "Организации" })).toBeVisible();
+    await page.getByRole("button", { name: "Выйти из кабинета" }).click();
+    await expect(page).toHaveURL(/\/$/);
+    await expect(page.getByRole("heading", { level: 1, name: "Организации" })).toHaveCount(0);
+
+    await page.goBack();
+    await expect(page.getByRole("heading", { level: 1, name: "Организации" })).toHaveCount(0);
+
+    const cachedPaths = await page.evaluate(async () => {
+      const requests = await Promise.all((await caches.keys()).map(async (name) => (await caches.open(name)).keys()));
+      return requests.flat().map((request) => new URL(request.url).pathname);
+    });
+    expect(cachedPaths.every((path) => path.startsWith("/_next/static/") || ["/ams-favicon.svg", "/pwa-icon-192.png", "/pwa-icon-512.png"].includes(path))).toBe(true);
+
+    await context.setOffline(true);
+    await expect(page.goto("/admin/organizations/", { waitUntil: "domcontentloaded" })).rejects.toThrow();
+    await expect(page.getByRole("heading", { level: 1, name: "Организации" })).toHaveCount(0);
+    await context.setOffline(false);
+  });
+
   test("renders the Project reference slice with URL-owned filters", async ({ page }) => {
     await page.goto("/admin/projects/");
     await expect(page.getByRole("heading", { level: 1, name: "Проекты" })).toBeVisible();

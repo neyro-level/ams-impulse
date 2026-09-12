@@ -104,7 +104,7 @@ Every chart must answer a specific question and show period, units, timezone/sou
 
 ## Mobile / Installable Readiness
 
-Private UI must remain web-mobile first. Adding `manifest.ts` and icons later is allowed as a small installable shell. Service worker/offline caching is not allowed until a RISKY security design defines what may be cached and proves private reports/PII are excluded.
+Private UI remains web-mobile first. The installable shell includes `manifest.ts` and PWA icons. Its service worker is restricted to versioned immutable static assets and exact icon paths; private navigation and data remain network-only with `no-store` and must never have an offline fallback.
 
 ## Acceptance
 

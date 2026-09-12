@@ -113,7 +113,8 @@ The migrator owns schema changes. `ams_web` and `ams_worker` are login roles wit
 - Research URL and form IDs are requested selections only; the server resolves an exact pair from fresh Tools project options before calling the application service.
 - Client-side permission checks improve UX only.
 - Private responses use `Cache-Control: no-store` where relevant.
-- Service worker cannot cache session, API, report, export, research or PII responses.
+- Service worker intercepts only immutable `/_next/static/*` assets and exact PWA icon/favicon paths without query, cookie or authorization headers. It cannot cache navigation, session, API, MCP, OAuth, report, export, research or PII responses.
+- Logout performs a hard public navigation; a private shell restored from BFCache is reloaded and reauthorized. Offline navigation to a private route has no service-worker response.
 - Private S3 object keys are never public and are bound to the exact Tools organization, project, research and export id. Download URLs are HTTPS-only, contain no URL credentials, are capped at 60 seconds and are issued only after fresh `research:export` authorization.
 
 ### Public Lead Form

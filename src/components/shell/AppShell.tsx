@@ -1,8 +1,8 @@
 "use client";
 
 import { LogOut } from "lucide-react";
-import { usePathname, useRouter } from "next/navigation";
-import { useState, type ReactNode } from "react";
+import { usePathname } from "next/navigation";
+import { useEffect, useState, type ReactNode } from "react";
 import type { NavigationSection } from "../../platform/navigation/types.ts";
 import { authClient } from "../../platform/auth/client.ts";
 import { Button } from "../ui/button.tsx";
@@ -22,9 +22,16 @@ type AppShellProps = {
 
 export function AppShell({ sections, accountLabel, notificationSummary, children }: AppShellProps) {
   const pathname = usePathname();
-  const router = useRouter();
   const [collapsed, setCollapsed] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
+
+  useEffect(() => {
+    const revalidateRestoredPage = (event: PageTransitionEvent) => {
+      if (event.persisted) window.location.reload();
+    };
+    window.addEventListener("pageshow", revalidateRestoredPage);
+    return () => window.removeEventListener("pageshow", revalidateRestoredPage);
+  }, []);
 
   const activeLabel = sections
     .flatMap((section) => section.items.flatMap((item) => [item, ...(item.children ?? [])]))
@@ -33,8 +40,7 @@ export function AppShell({ sections, accountLabel, notificationSummary, children
   async function signOut() {
     setSigningOut(true);
     await authClient.signOut();
-    router.replace("/");
-    router.refresh();
+    window.location.replace("/");
   }
 
   return (

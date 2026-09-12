@@ -36,4 +36,11 @@ describe("private route cache policy", () => {
     expect(storage).toContain('CacheControl: "private, no-store"');
     expect(storage).toContain('ResponseCacheControl: "private, no-store"');
   });
+
+  it("marks discovery and every private surface no-store", () => {
+    const config = readFileSync("next.config.ts", "utf8");
+    expect(config).toContain('source: "/.well-known/:path*"');
+    expect(config).toContain('{ key: "Cache-Control", value: "no-store" }');
+    expect(config).toContain('{ key: "Cache-Control", value: "private, no-store" }');
+  });
 });

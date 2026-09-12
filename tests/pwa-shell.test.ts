@@ -12,10 +12,15 @@ describe("PWA shell", () => {
   it("caches only explicit static asset paths", async () => {
     const source = await readFile(new URL("../public/sw.js", import.meta.url), "utf8");
     expect(source).toContain('"/_next/static/"');
-    expect(source).toContain('"/fonts/"');
+    expect(source).toContain('"/pwa-icon-192.png"');
+    expect(source).toContain('"/pwa-icon-512.png"');
     expect(source).not.toContain('caches.match(event.request)');
+    expect(source).toContain('request.mode === "navigate"');
+    expect(source).toContain('request.headers.has("authorization")');
+    expect(source).toContain('request.headers.has("cookie")');
     expect(source).not.toContain('"/api/"');
     expect(source).not.toContain('"/mcp"');
     expect(source).not.toContain('"/tools/"');
+    expect(source).toContain('const CACHE_VERSION = `${CACHE_NAMESPACE}v2`');
   });
 });
