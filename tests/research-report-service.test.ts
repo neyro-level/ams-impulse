@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { ResearchReportService, type PrivateExportStorage, type ResearchReportRepository, type ResearchRunReport } from "../src/modules/research/index.ts";
+import type { PrivateExportStorage, ResearchReportRepository, ResearchRunReport } from "../src/modules/research/index.ts";
+import { ResearchReportService } from "../src/modules/research/server.ts";
 import { AuthorizationService } from "../src/platform/authorization/authorization-service.ts";
 import { createPlatformAnalystPrincipal, createTenantUserPrincipal } from "./helpers/principal.ts";
 

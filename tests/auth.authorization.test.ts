@@ -5,7 +5,7 @@ import { PrismaClient, SystemRole } from "../src/generated/prisma/client.ts"
 import { createLocalAccountIssuer } from "better-auth/db";
 import { hashPassword } from "better-auth/crypto";
 import { Pool } from "pg";
-import { ProjectService } from "../src/modules/project-registry/index.ts";
+import { ProjectService } from "../src/modules/project-registry/server.ts";
 import { PrismaProjectRepository } from "../src/modules/project-registry/server.ts";
 import { PrismaAccessGrantRepository } from "../src/modules/identity-access/server.ts";
 import { AuthorizationService } from "../src/platform/authorization/authorization-service.ts";

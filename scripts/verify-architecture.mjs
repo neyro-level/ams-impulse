@@ -1,9 +1,9 @@
 import { readdir, readFile } from "node:fs/promises";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 
 const rootDir = path.resolve(import.meta.dirname, "..");
 const sourceDir = path.join(rootDir, "src");
-const failures = [];
 
 async function collectFiles(directory) {
   const entries = await readdir(directory, { withFileTypes: true });
@@ -21,88 +21,106 @@ async function collectFiles(directory) {
   return files;
 }
 
-for (const relativePath of [
-  "src/platform/database/prisma/client.ts",
-  "src/platform/database/prisma/context.ts",
-  "src/platform/database/transaction.ts",
-  "src/platform/database/tenant-owned-models.ts",
-  "src/platform/commands/define-command.ts",
-  "src/platform/actions/define-action.ts",
-  "src/platform/navigation/types.ts",
-  "src/modules/product-catalog/index.ts",
-]) {
-  try {
-    await readFile(path.join(rootDir, relativePath));
-  } catch {
-    failures.push(`Missing required platform boundary: ${relativePath}`);
+function importSpecifiers(source) {
+  const specifiers = [];
+  for (const match of source.matchAll(/\bfrom\s+["']([^"']+)["']|\bimport\s+["']([^"']+)["']/g)) {
+    specifiers.push(match[1] ?? match[2]);
   }
+  return specifiers;
 }
 
-for (const relativePath of [
-  "src/app/admin/_actions/goals.ts",
-  "src/app/admin/_actions/providers.ts",
-  "src/app/admin/_actions/query-clusters.ts",
-  "src/app/admin/_actions/sites.ts",
-  "src/app/admin/_actions/thresholds.ts",
-  "src/app/admin/_actions/tracked-queries.ts",
-  "src/app/admin/_components/GoalDefinitionAdminForms.tsx",
-  "src/app/admin/_components/ProviderConnectionAdminForms.tsx",
-  "src/app/admin/_components/QueryClusterProfileAdminForms.tsx",
-  "src/app/admin/_components/SiteAdminForms.tsx",
-  "src/app/admin/_components/ThresholdProfileAdminForms.tsx",
-  "src/app/admin/_components/TrackedQuerySetAdminForms.tsx",
-]) {
-  try {
-    await readFile(path.join(rootDir, relativePath));
-  } catch {
-    failures.push(`Missing bounded Platform Admin adapter: ${relativePath}`);
-  }
+function resolveProjectImport(relativePath, specifier) {
+  if (specifier.startsWith("@/")) return `src/${specifier.slice(2)}`;
+  if (!specifier.startsWith(".")) return null;
+  return path.posix.normalize(path.posix.join(path.posix.dirname(relativePath), specifier));
 }
 
-for (const relativePath of [
-  "src/app/admin/actions.ts",
-  "src/app/admin/_components/RegistryAdminForms.tsx",
-  "src/modules/export/.gitkeep",
-  "src/modules/metrica-analytics/.gitkeep",
-  "src/modules/seo-opportunities/.gitkeep",
-  "src/modules/webmaster-analytics/.gitkeep",
-]) {
-  try {
-    await readFile(path.join(rootDir, relativePath));
-    failures.push(`Obsolete architecture placeholder: ${relativePath}`);
-  } catch {
-    // Absence is the required state.
-  }
-}
+export function inspectArchitectureSource(relativePath, source) {
+  const failures = [];
+  const normalizedPath = relativePath.replaceAll("\\", "/");
+  const sourceModule = normalizedPath.match(/^src\/modules\/([^/]+)\//)?.[1] ?? null;
+  const specifiers = importSpecifiers(source);
 
-for (const filePath of await collectFiles(sourceDir)) {
-  const source = await readFile(filePath, "utf8");
-  const relativePath = path.relative(rootDir, filePath).replaceAll("\\", "/");
   if (source.includes('from "@prisma/client"') || source.includes("from '@prisma/client'")) {
-    failures.push(`Legacy generated Prisma import: ${relativePath}`);
+    failures.push(`Legacy generated Prisma import: ${normalizedPath}`);
   }
   if (/\$queryRawUnsafe\s*\(/.test(source) || /\$executeRawUnsafe\s*\(/.test(source)) {
-    failures.push(`Unsafe raw SQL: ${relativePath}`);
+    failures.push(`Unsafe raw SQL: ${normalizedPath}`);
   }
   if (source.includes("infrastructure/database/prisma")) {
-    failures.push(`Legacy database boundary import: ${relativePath}`);
+    failures.push(`Legacy database boundary import: ${normalizedPath}`);
   }
   if (source.includes("ActorContext")) {
-    failures.push(`Legacy authorization context: ${relativePath}`);
+    failures.push(`Legacy authorization context: ${normalizedPath}`);
+  }
+
+  for (const specifier of specifiers) {
+    const target = resolveProjectImport(normalizedPath, specifier);
+    const targetModule = target?.match(/^src\/modules\/([^/]+)\/(domain|application|infrastructure|presentation|mcp)\//)?.[1];
+    if (targetModule && targetModule !== sourceModule) {
+      failures.push(`Cross-module deep import: ${normalizedPath} -> ${target}`);
+    }
+
+    if (/^src\/app\//.test(normalizedPath) && target && (
+      /^src\/infrastructure\//.test(target) ||
+      /^src\/modules\/[^/]+\/infrastructure\//.test(target)
+    )) {
+      failures.push(`App imports infrastructure: ${normalizedPath} -> ${target}`);
+    }
+
+    if (/^src\/modules\/[^/]+\/(domain|presentation)\//.test(normalizedPath) && (
+      specifier.startsWith("@prisma") ||
+      (target != null && (/generated\/prisma\//.test(target) || /platform\/database\//.test(target)))
+    )) {
+      failures.push(`Prisma in domain/presentation: ${normalizedPath}`);
+    }
+
+    if (/^["']use client["'];?\s*/.test(source) && (
+      specifier === "server-only" ||
+      (target != null && (
+        /\/(server|worker)(?:\.(?:ts|tsx|mts|cts))?$/.test(target) ||
+        /platform\/database\//.test(target) ||
+        /platform\/auth\/(?!client(?:\.|$))/.test(target)
+      ))
+    )) {
+      failures.push(`Client imports server-only boundary: ${normalizedPath} -> ${specifier}`);
+    }
+  }
+
+  if (specifiers.includes("next/cache") && normalizedPath !== "src/platform/actions/define-action.ts") {
+    failures.push(`Raw revalidation outside action adapter: ${normalizedPath}`);
+  }
+  if (/^["']use server["'];?\s*/.test(source)
+    && /\.(create|update|archive|confirm|save|set|remove|request)[A-Za-z]*\s*\(/.test(source)
+    && !/\b(defineAction|platformAdminAction)\b/.test(source)) {
+    failures.push(`Server action bypasses action boundary: ${normalizedPath}`);
   }
   if (
-    relativePath.includes("/infrastructure/") &&
-    (relativePath.includes("/research/") ||
-      relativePath.includes("/tools-workspace/") ||
-      relativePath.includes("/identity-access/")) &&
-    /\brandomUUID\s*\(|\bgen_random_uuid\s*\(/.test(source)
+    normalizedPath.includes("/infrastructure/")
+    && /\/modules\/(research|tools-workspace|identity-access)\//.test(normalizedPath)
+    && /\brandomUUID\s*\(|\bgen_random_uuid\s*\(/.test(source)
   ) {
-    failures.push(`Domain ID bypasses platform identifier policy: ${relativePath}`);
+    failures.push(`Domain ID bypasses platform identifier policy: ${normalizedPath}`);
+  }
+
+  return failures;
+}
+
+export async function verifyArchitecture() {
+  const failures = [];
+  for (const filePath of await collectFiles(sourceDir)) {
+    const source = await readFile(filePath, "utf8");
+    const relativePath = path.relative(rootDir, filePath).replaceAll("\\", "/");
+    failures.push(...inspectArchitectureSource(relativePath, source));
+  }
+
+  if (failures.length > 0) {
+    throw new Error(`Architecture guard failed:\n${failures.join("\n")}`);
   }
 }
 
-if (failures.length > 0) {
-  throw new Error(`Architecture guard failed:\n${failures.join("\n")}`);
+const isMain = process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.argv[1]);
+if (isMain) {
+  await verifyArchitecture();
+  process.stdout.write("architecture_static_guards=valid\n");
 }
-
-process.stdout.write("architecture_static_guards=valid\n");

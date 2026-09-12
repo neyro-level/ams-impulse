@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { shouldCollectTopvisor } from "../src/modules/data-ingestion/application/sync-service.ts";
+import { shouldCollectTopvisor } from "../src/modules/data-ingestion/index.ts";
 
 describe("Topvisor schedule", () => {
   it("collects daily positions only on Monday", () => {

@@ -1,7 +1,8 @@
 import { z } from "zod";
 import { setTimeout as sleep } from "node:timers/promises";
 import type { JobWithMetadata, PgBoss } from "pg-boss";
-import { getWorkerReliabilityService } from "../../infrastructure/worker-service-container.ts";
+import { ReliabilityService } from "./application/reliability-service.ts";
+import { PrismaReliabilityRepository } from "./infrastructure/prisma-reliability-repository.ts";
 import { closePrismaClient } from "../../platform/database/prisma/client.ts";
 import { createJobPrincipal } from "../../platform/authorization/principal-factories.ts";
 import { syncProjectToDatabase } from "../data-ingestion/worker.ts";
@@ -23,6 +24,20 @@ import {
 } from "./infrastructure/runtime-heartbeat.ts";
 import { RESEARCH_RUN_QUEUE, RESEARCH_RUN_SCHEMA, type ResearchRunJob } from "../research/index.ts";
 
+export { ReliabilityService } from "./application/reliability-service.ts";
+export type { ClaimedReliabilityEvent } from "./application/ports/reliability-repository.ts";
+export { OUTBOX_DELIVERY_QUEUE, outboxDispatchJobSchema } from "./domain/pg-boss.ts";
+export type { OutboxDispatchJob } from "./domain/pg-boss.ts";
+export { getOperationalReadiness } from "./infrastructure/readiness-runtime.ts";
+export {
+  OUTBOX_WORKER_RUNTIME,
+  recordRuntimeHeartbeat,
+} from "./infrastructure/runtime-heartbeat.ts";
+export {
+  WORKER_HEARTBEAT_STALE_MS,
+  toWorkerStatus,
+} from "./infrastructure/readiness-runtime.ts";
+
 const projectSyncPayloadSchema = z.object({
   projectSlug: z.string().trim().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/),
   trigger: z.enum(["daily", "manual", "preflight", "backfill"]).default("manual"),
@@ -34,6 +49,13 @@ type ReliabilityWorker = Pick<
   "claim" | "takeOver" | "complete" | "fail"
 >;
 type OutboxQueueClient = Pick<PgBoss, "send" | "fetch" | "complete">;
+
+let reliabilityService: ReliabilityService | null = null;
+
+function getWorkerReliabilityService() {
+  reliabilityService ??= new ReliabilityService(new PrismaReliabilityRepository());
+  return reliabilityService;
+}
 
 export interface OutboxDrainDependencies {
   boss: OutboxQueueClient;

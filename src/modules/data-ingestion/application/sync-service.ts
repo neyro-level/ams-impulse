@@ -35,9 +35,8 @@ import type {
   StoredSourceRunRecord,
   SyncRepository,
 } from "./ports/sync-repository.ts";
-import { MonitoringService } from "../../project-registry/index.ts";
-import { ProjectService } from "../../project-registry/index.ts";
-import { ReportService } from "../../reporting/index.ts";
+import type { MonitoringService, ProjectService } from "../../project-registry/index.ts";
+import type { ReportService } from "../../reporting/index.ts";
 import { createCorrelationId } from "../../../platform/http/correlation.ts";
 
 export interface SyncProjectToDatabaseArgs {

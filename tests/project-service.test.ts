@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ProjectService } from "../src/modules/project-registry/index.ts";
+import { ProjectService } from "../src/modules/project-registry/server.ts";
 import type {
   ProjectAccessScope,
   ProjectRepository,

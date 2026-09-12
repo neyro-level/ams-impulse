@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { ReportService } from "../src/modules/reporting/index.ts";
-import { ProjectService } from "../src/modules/project-registry/index.ts";
+import { ReportService } from "../src/modules/reporting/server.ts";
+import { ProjectService } from "../src/modules/project-registry/server.ts";
 import { AuthorizationService } from "../src/platform/authorization/authorization-service.ts";
 import type {
   ProjectAccessScope,

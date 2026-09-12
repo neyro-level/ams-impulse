@@ -114,3 +114,7 @@ export function createActionBoundary(dependencies: ActionBoundaryDependencies) {
 }
 
 export const defineAction = createActionBoundary(defaultDependencies);
+
+export function revalidateApplicationPath(path: string, type?: "layout" | "page") {
+  defaultDependencies.revalidate(path, type);
+}

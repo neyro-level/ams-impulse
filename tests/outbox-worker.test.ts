@@ -1,8 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import type { JobWithMetadata, PgBoss } from "pg-boss";
-import type { ClaimedReliabilityEvent } from "../src/modules/platform-operations/application/ports/reliability-repository.ts";
-import type { OutboxDispatchJob } from "../src/modules/platform-operations/domain/pg-boss.ts";
-import { drainOutboxWithDependencies } from "../src/modules/platform-operations/worker.ts";
+import { drainOutboxWithDependencies, type ClaimedReliabilityEvent, type OutboxDispatchJob } from "../src/modules/platform-operations/worker.ts";
 
 const event: ClaimedReliabilityEvent = {
   outboxEventId: "event-1",

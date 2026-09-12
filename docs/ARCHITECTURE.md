@@ -66,8 +66,10 @@ Research не создаёт собственные organizations/projects.
 - Application зависит от domain и typed ports.
 - Infrastructure реализует repositories/providers/storage.
 - Presentation вызывает только module facade.
-- Cross-module consumers используют root entrypoints `index.ts`, `server.ts`, `worker.ts`; MCP adapter находится в `research/mcp/`.
-- Deep imports другого module запрещает architecture guard.
+- `index.ts` публикует browser-safe contracts, pure domain values and types; server runtime composition принадлежит `server.ts`, worker composition — `worker.ts`.
+- Route и worker entrypoints получают готовые services из module-owned composition roots; глобального service locator нет.
+- Cross-module consumers используют только публичные module entrypoints (`index.ts`, `contracts.ts`, `presentation.ts`, `actions.ts`, `server.ts`, `worker.ts`); MCP composition публикуется через `research/server.ts`.
+- Deep imports другого module, app-to-infrastructure, client-to-server, Prisma in domain/presentation, raw unsafe SQL, raw revalidation и mutation server actions вне `defineAction` запрещает architecture guard.
 
 ## Product Catalog
 
@@ -222,6 +224,18 @@ migrator contains only its database schema/configuration and migration entrypoin
 Web, worker, migrator and backup use separate provider-managed identities. The previous self-managed database is read-only through `2026-09-25`; deletion requires a separate owner decision. Research worker входит в текущую production topology и выполняет только project-scoped jobs.
 
 ## Verification
+
+SourceCraft keeps the automatic pull-request workflow intentionally cheap: `pr-check`
+runs `verify:quick` only and does not claim merge readiness. Merge evidence is started
+manually against the reviewed exact head SHA:
+
+- `standard-check` runs `verify:quick` plus an explicit allowlisted set of relevant unit tests;
+- `risky-check` runs `verify:quick`, explicit relevant unit and PostgreSQL integration tests,
+  and adds Semgrep and/or a production build only when the classified risk requires them;
+- `release-check` remains the full exact-head release proof for canonical `main`.
+
+The test file inputs are data, not shell fragments: the scoped runner accepts only existing
+`tests/*.test.ts` paths and invokes Node processes without a shell.
 
 - `pnpm architecture:check` - dependency/import boundaries.
 - `pnpm test:unit` - domain and contracts.

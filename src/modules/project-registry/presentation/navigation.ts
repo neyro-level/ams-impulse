@@ -6,8 +6,8 @@ import type {
   NavigationItem,
   NavigationSection,
 } from "../../../platform/navigation/types.ts";
-import { getProjectService } from "../../../infrastructure/service-container.ts";
-import { getAuthorizationService } from "../../../infrastructure/service-container.ts";
+import { getAuthorizationService } from "../../identity-access/server.ts";
+import { getProjectService } from "../server.ts";
 import { getProductDefinition, getToolDefinition } from "../../product-catalog/index.ts";
 
 export type { NavigationChild, NavigationItem, NavigationSection } from "../../../platform/navigation/types.ts";

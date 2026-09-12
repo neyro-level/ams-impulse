@@ -11,7 +11,7 @@ import {
 } from "../../modules/identity-access/server.ts";
 import { buildAnalystOverview } from "../../modules/project-registry/presentation.ts";
 import { hasPermission } from "../../platform/authorization/principal.ts";
-import { getAuthorizationService } from "../../infrastructure/service-container.ts";
+import { getAuthorizationService } from "../../modules/identity-access/server.ts";
 
 export default async function DashboardPage() {
   const cabinetRedirect = await getCurrentCabinetRedirect();

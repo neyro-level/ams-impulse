@@ -10,8 +10,8 @@ import {
 import {
   getMonitoringService,
   getProjectService,
-  getReportService,
-} from "../../../../infrastructure/service-container.ts";
+} from "../../../../modules/project-registry/server.ts";
+import { getReportService } from "../../../../modules/reporting/server.ts";
 import { reportPeriodKeySchema, type ReportPeriodKey } from "../../../../shared/schemas/report.ts";
 
 type SiteReportPageProps = {

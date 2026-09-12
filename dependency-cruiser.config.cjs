@@ -1,3 +1,18 @@
+const { readdirSync } = require("node:fs");
+const path = require("node:path");
+
+const modulesDirectory = path.join(__dirname, "src", "modules");
+const modulePrivacyRules = readdirSync(modulesDirectory, { withFileTypes: true })
+  .filter((entry) => entry.isDirectory())
+  .map((entry) => ({
+    name: `module-internals-are-private:${entry.name}`,
+    severity: "error",
+    from: { pathNot: `^src/modules/${entry.name}/` },
+    to: {
+      path: `^src/modules/${entry.name}/(domain|application|infrastructure|presentation|mcp)/`,
+    },
+  }));
+
 module.exports = {
   forbidden: [
     {
@@ -92,66 +107,7 @@ module.exports = {
       from: { path: "^src/modules/[^/]+/application/" },
       to: { path: "^src/modules/[^/]+/(infrastructure|presentation)/" },
     },
-    {
-      name: "identity-access-internals-are-private",
-      severity: "error",
-      from: { pathNot: "^src/modules/identity-access/" },
-      to: { path: "^src/modules/identity-access/(domain|application|infrastructure|presentation)/" },
-    },
-    {
-      name: "product-catalog-internals-are-private",
-      severity: "error",
-      from: { pathNot: "^src/modules/product-catalog/" },
-      to: { path: "^src/modules/product-catalog/(domain|application|infrastructure|presentation)/" },
-    },
-    {
-      name: "research-internals-are-private",
-      severity: "error",
-      from: { pathNot: "^src/modules/research/" },
-      to: { path: "^src/modules/research/(domain|application|infrastructure|presentation)/" },
-    },
-    {
-      name: "tools-workspace-internals-are-private",
-      severity: "error",
-      from: { pathNot: "^src/modules/tools-workspace/" },
-      to: { path: "^src/modules/tools-workspace/(domain|application|infrastructure|presentation)/" },
-    },
-    {
-      name: "project-registry-internals-are-private",
-      severity: "error",
-      from: { pathNot: "^src/modules/project-registry/" },
-      to: { path: "^src/modules/project-registry/(domain|application|infrastructure|presentation)/" },
-    },
-    {
-      name: "reporting-internals-are-private",
-      severity: "error",
-      from: { pathNot: "^src/modules/reporting/" },
-      to: { path: "^src/modules/reporting/(domain|application|infrastructure|presentation)/" },
-    },
-    {
-      name: "ranking-analytics-internals-are-private",
-      severity: "error",
-      from: { pathNot: "^src/modules/ranking-analytics/" },
-      to: { path: "^src/modules/ranking-analytics/(domain|application|infrastructure|presentation)/" },
-    },
-    {
-      name: "data-ingestion-internals-are-private",
-      severity: "error",
-      from: { pathNot: "^src/modules/data-ingestion/" },
-      to: { path: "^src/modules/data-ingestion/(domain|application|infrastructure|presentation)/" },
-    },
-    {
-      name: "platform-operations-internals-are-private",
-      severity: "error",
-      from: { pathNot: "^src/modules/platform-operations/" },
-      to: { path: "^src/modules/platform-operations/(domain|application|infrastructure|presentation)/" },
-    },
-    {
-      name: "admin-cms-internals-are-private",
-      severity: "error",
-      from: { pathNot: "^src/modules/admin-cms/" },
-      to: { path: "^src/modules/admin-cms/(domain|application|infrastructure|presentation)/" },
-    },
+    ...modulePrivacyRules,
     {
       name: "only-platform-database-imports-generated-prisma-client",
       severity: "error",

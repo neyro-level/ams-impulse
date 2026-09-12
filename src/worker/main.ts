@@ -1,4 +1,4 @@
-import { getWorkerMonitoringService } from "../infrastructure/worker-service-container.ts";
+import { getWorkerMonitoringService } from "../modules/project-registry/worker.ts";
 import type { CreateSyncRunInput } from "../modules/data-ingestion/index.ts";
 import { startScheduledTopvisorChecks, syncAllConfiguredCompetitors, syncProjectToDatabase } from "../modules/data-ingestion/worker.ts";
 import {

@@ -9,6 +9,10 @@ import { recordRuntimeHeartbeat, RESEARCH_WORKER_RUNTIME, RUNTIME_HEARTBEAT_WRIT
 import { RESEARCH_STALE_RUN_AFTER_MS, RESEARCH_WORKER_POLL_DELAY_MS } from "../../platform/workers/timing-policy.ts";
 import { closePrismaClient } from "../../platform/database/prisma/client.ts";
 
+export { ResearchExecutionService } from "./application/research-execution-service.ts";
+export { PrismaResearchExecutionRepository } from "./infrastructure/prisma-research-execution-repository.ts";
+export { XmlRiverClient, parseXmlRiverSerp, parseXmlRiverSuggestions, parseXmlRiverWordstat } from "./infrastructure/xmlriver-client.ts";
+
 type QueueClient = Pick<PgBoss, "fetch" | "complete">;
 type ExecutionFactory = (job: ResearchRunJob) => Promise<ResearchExecutionService>;
 

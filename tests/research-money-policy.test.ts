@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ConfiguredResearchBudgetPolicy, ConfiguredResearchPricing } from "../src/modules/research/index.ts";
+import { ConfiguredResearchBudgetPolicy, ConfiguredResearchPricing } from "../src/modules/research/server.ts";
 
 describe("configured Research money policy", () => {
   it("reads pricing and budget limits from mandatory server configuration", () => {

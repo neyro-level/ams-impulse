@@ -1,7 +1,7 @@
 import { Client, InMemoryTransport } from "@modelcontextprotocol/client";
 import { describe, expect, it } from "vitest";
 import { ResearchError, type ResearchService, type ResearchReportService } from "../src/modules/research/index.ts";
-import { createResearchMcpServer } from "../src/modules/research/mcp/research-mcp-server.ts";
+import { createResearchMcpServer } from "../src/modules/research/server.ts";
 import { createPlatformAnalystPrincipal } from "./helpers/principal.ts";
 
 async function connect(input: { research: Partial<ResearchService>; reports: Partial<ResearchReportService> }) {

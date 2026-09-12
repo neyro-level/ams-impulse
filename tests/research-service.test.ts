@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
-import { ResearchService, type ResearchRecord, type ResearchRepository } from "../src/modules/research/index.ts";
+import type { ResearchRecord, ResearchRepository } from "../src/modules/research/index.ts";
+import { ResearchService } from "../src/modules/research/server.ts";
 import { AuthorizationService } from "../src/platform/authorization/authorization-service.ts";
 import { createPlatformAnalystPrincipal, createTenantUserPrincipal } from "./helpers/principal.ts";
 

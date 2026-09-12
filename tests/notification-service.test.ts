@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createNotificationService, type NotificationRepository } from "../src/modules/notifications/application/notification-service.ts";
+import { createNotificationService, type NotificationRepository } from "../src/modules/notifications/server.ts";
 import type { PrincipalContext } from "../src/platform/authorization/principal.ts";
 
 function repository(): NotificationRepository {

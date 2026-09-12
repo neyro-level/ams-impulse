@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getMonitoringService } from "../../../../infrastructure/service-container.ts";
+import { getMonitoringService } from "../../../../modules/project-registry/server.ts";
 import { hasAuthConfiguration } from "../../../../modules/identity-access/server.ts";
 import { getOperationalReadiness } from "../../../../modules/platform-operations/server.ts";
 import { readReleaseSha } from "../../../../platform/config/server-environment.ts";

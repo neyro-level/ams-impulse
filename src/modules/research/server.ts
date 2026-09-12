@@ -1,3 +1,5 @@
+import "server-only";
+
 import { PrismaAccessGrantRepository } from "../identity-access/server.ts";
 import { AuthorizationService } from "../../platform/authorization/authorization-service.ts";
 import type { PrincipalContext } from "../../platform/authorization/principal.ts";
@@ -8,6 +10,14 @@ import { PrismaResearchRepository } from "./infrastructure/prisma-research-repos
 import { S3PrivateExportStorage } from "./infrastructure/s3-private-export-storage.ts";
 import { ResearchReportService } from "./application/research-report-service.ts";
 import { ResearchService } from "./application/research-service.ts";
+
+export { ResearchService } from "./application/research-service.ts";
+export { ResearchReportService } from "./application/research-report-service.ts";
+export { PrismaResearchRepository } from "./infrastructure/prisma-research-repository.ts";
+export { PrismaResearchReportRepository } from "./infrastructure/prisma-research-report-repository.ts";
+export { S3PrivateExportStorage } from "./infrastructure/s3-private-export-storage.ts";
+export { ConfiguredResearchBudgetPolicy, ConfiguredResearchPricing } from "./infrastructure/configured-research-pricing.ts";
+export { createResearchMcpServer } from "./mcp/research-mcp-server.ts";
 
 function databaseUserId(principal: PrincipalContext) {
   if (principal.kind === "api-client" || principal.kind === "job") throw new Error("USER_PRINCIPAL_REQUIRED");

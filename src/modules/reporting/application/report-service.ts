@@ -1,7 +1,7 @@
 import type { DirectorAnalytics, ReportRepository, StoredReportSnapshotRecord } from "./ports/report-repository.ts";
 import type { ReportPeriodKey, SiteReportSnapshot } from "../../../shared/schemas/report.ts";
 import { hasPermission, type PrincipalContext } from "../../../platform/authorization/principal.ts";
-import { ProjectService } from "../../project-registry/index.ts";
+import type { ProjectService } from "../../project-registry/index.ts";
 
 export class ReportService {
   private readonly projectService: ProjectService;

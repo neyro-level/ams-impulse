@@ -5,8 +5,8 @@ import {
 import {
   createProjectInputSchema,
   nextProjectVersion,
-} from "../src/modules/project-registry/domain/project.ts";
-import type { ProjectReferenceRepository } from "../src/modules/project-registry/application/ports/project-reference-repository.ts";
+} from "../src/modules/project-registry/contracts.ts";
+import type { ProjectReferenceRepository } from "../src/modules/project-registry/index.ts";
 import type { PrincipalContext } from "../src/platform/authorization/principal.ts";
 import { PrismaProjectReferenceRepository } from "../src/modules/project-registry/infrastructure/prisma-project-reference-repository.ts";
 import type { DatabaseTransaction } from "../src/platform/database/transaction.ts";

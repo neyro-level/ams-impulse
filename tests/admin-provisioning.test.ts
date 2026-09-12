@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   fixedPasswordSchema,
   provisionClientInputSchema,
-} from "../src/modules/identity-access/domain/admin-identity.ts";
+} from "../src/modules/identity-access/index.ts";
 
 describe("Platform Admin client provisioning contract", () => {
   const site = { name: "Основной сайт", slug: "main", url: "https://example.test", timezone: "Europe/Moscow", regionName: "Россия", regionCountryCode: "RU", yandexRegionKey: 225, googleRegionKey: 225, queries: Array.from({ length: 20 }, (_, index) => `запрос ${index + 1}`) };

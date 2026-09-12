@@ -1,4 +1,4 @@
-export { ReportService } from "./application/report-service.ts";
+export type { ReportService } from "./application/report-service.ts";
 export type {
   ReportRepository,
   StoredReportSnapshotRecord,

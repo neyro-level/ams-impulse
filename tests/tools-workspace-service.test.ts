@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { ToolsWorkspaceService, type ToolsWorkspaceRepository } from "../src/modules/tools-workspace/index.ts";
+import type { ToolsWorkspaceRepository } from "../src/modules/tools-workspace/index.ts";
+import { ToolsWorkspaceService } from "../src/modules/tools-workspace/server.ts";
 import { AuthorizationService } from "../src/platform/authorization/authorization-service.ts";
 import { createPlatformAdminPrincipal, createTenantUserPrincipal } from "./helpers/principal.ts";
 

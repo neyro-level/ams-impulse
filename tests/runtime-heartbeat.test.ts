@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   WORKER_HEARTBEAT_STALE_MS,
   toWorkerStatus,
-} from "../src/modules/platform-operations/infrastructure/readiness-runtime.ts";
+} from "../src/modules/platform-operations/worker.ts";
 
 describe("runtime heartbeat readiness", () => {
   const now = new Date("2026-09-06T12:00:00.000Z");

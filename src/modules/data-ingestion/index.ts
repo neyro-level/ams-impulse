@@ -1,8 +1,9 @@
 export {
   mergeWebmasterTechnicalData,
   summarizeSourceRun,
-  SyncService,
+  shouldCollectTopvisor,
 } from "./application/sync-service.ts";
+export type { SyncService } from "./application/sync-service.ts";
 export type {
   SyncProjectPeriodResult,
   SyncProjectSiteResult,

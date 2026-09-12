@@ -1,3 +1,5 @@
+import "server-only";
+
 export { auth, hasAuthConfiguration } from "../../platform/auth/auth.ts";
 export {
   getCurrentCabinetRedirect,
@@ -14,6 +16,15 @@ export {
 } from "../../platform/authorization/principal-factories.ts";
 export { PrismaIdentityAdminRepository } from "./infrastructure/prisma-identity-admin-repository.ts";
 export { PrismaAccessGrantRepository } from "./infrastructure/prisma-access-grant-repository.ts";
+import { AuthorizationService } from "../../platform/authorization/authorization-service.ts";
+import { PrismaAccessGrantRepository } from "./infrastructure/prisma-access-grant-repository.ts";
+
+let authorizationService: AuthorizationService | null = null;
+
+export function getAuthorizationService() {
+  authorizationService ??= new AuthorizationService(new PrismaAccessGrantRepository());
+  return authorizationService;
+}
 export {
   createMembership,
   createSeoProjectAccess,

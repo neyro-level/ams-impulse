@@ -1,9 +1,17 @@
 import type { SiteSourceCollectors } from "./application/ports/provider-collectors.ts";
 import type { CreateSyncRunInput } from "./application/ports/sync-repository.ts";
+import { SyncService } from "./application/sync-service.ts";
+import { PinoSyncLogger } from "./infrastructure/pino-sync-logger.ts";
+import { PrismaSyncRepository } from "./infrastructure/prisma-sync-repository.ts";
 import { createLiveSiteCollectors } from "../../../collector/orchestration/live-collectors.ts";
-import { getWorkerSyncService } from "../../infrastructure/worker-service-container.ts";
+import {
+  getWorkerMonitoringService,
+  getWorkerProjectService,
+} from "../project-registry/worker.ts";
+import { getWorkerReportService } from "../reporting/worker.ts";
 import type { ReportPeriodKey, SiteReportSnapshot } from "../../shared/schemas/report.ts";
 export { setupSiteIntegrations, startScheduledTopvisorChecks, syncSiteCompetitors, syncAllConfiguredCompetitors } from "./infrastructure/site-integration-setup.ts";
+export { SyncService } from "./application/sync-service.ts";
 
 export interface SyncProjectToDatabaseArgs {
   projectSlug: string;
@@ -33,6 +41,19 @@ export interface SyncProjectToDatabaseResult {
   projectSlug: string;
   status: "success" | "partial" | "failed";
   sites: SyncProjectSiteResult[];
+}
+
+let syncService: SyncService | null = null;
+
+function getWorkerSyncService() {
+  syncService ??= new SyncService({
+    monitoringService: getWorkerMonitoringService(),
+    projectService: getWorkerProjectService(),
+    reportService: getWorkerReportService(),
+    syncRepository: new PrismaSyncRepository(),
+    logger: new PinoSyncLogger(),
+  });
+  return syncService;
 }
 
 export async function syncProjectToDatabase(

@@ -1,6 +1,7 @@
 export {
   changeProjectStatusInputSchema,
   createProjectInputSchema,
+  nextProjectVersion,
   PROJECT_STATUSES,
   projectStatusSchema,
   updateProjectSettingsInputSchema,

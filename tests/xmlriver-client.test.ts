@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseXmlRiverSerp, parseXmlRiverSuggestions, parseXmlRiverWordstat, XmlRiverClient } from "../src/modules/research/index.ts";
+import { parseXmlRiverSerp, parseXmlRiverSuggestions, parseXmlRiverWordstat, XmlRiverClient } from "../src/modules/research/worker.ts";
 
 const serp = `<?xml version="1.0" encoding="utf-8"?>
 <yandexsearch><response><results><grouping><group><doc><url>https://www.example.ru/page</url><title>Пример</title><passages><passage>Описание результата</passage></passages></doc></group></grouping></results><topads><query><url>ads.example.ru</url><title>Реклама</title><snippet>Предложение</snippet></query></topads><addresults><relatedSearches><query><title>похожий запрос</title></query></relatedSearches></addresults></response></yandexsearch>`;

@@ -1,8 +1,7 @@
 import { createMcpHandler } from "@modelcontextprotocol/server";
 import { requireMcpAuth } from "@better-auth/mcp";
 import { auth } from "@/modules/identity-access/server";
-import { createResearchMcpServer } from "@/modules/research/mcp/research-mcp-server";
-import { createResearchMcpServices } from "@/modules/research/server";
+import { createResearchMcpServer, createResearchMcpServices } from "@/modules/research/server";
 import { getConfiguredMcpResource, MCP_SCOPE } from "@/platform/auth/mcp-config";
 import {
   consumeMcpSubjectRateLimit,

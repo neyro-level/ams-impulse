@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { ResearchExecutionService, ResearchProviderError, type ClaimedResearchRun, type ResearchExecutionRepository, type ResearchProvider } from "../src/modules/research/index.ts";
-import { recoverStaleResearchRunsWithDependencies } from "../src/modules/research/worker.ts";
+import { ResearchProviderError, type ClaimedResearchRun, type ResearchExecutionRepository, type ResearchProvider } from "../src/modules/research/index.ts";
+import { ResearchExecutionService, recoverStaleResearchRunsWithDependencies } from "../src/modules/research/worker.ts";
 
 class ExecutionRepository implements ResearchExecutionRepository {
   run: ClaimedResearchRun | null = { runId: "run-1", organizationId: "org-1", projectId: "project-1", researchId: "research-1", approvedCostKopecks: 200, queries: [{ queryRunId: "qr-1", queryId: "q-1", text: "купить квартиру" }, { queryRunId: "qr-2", queryId: "q-2", text: "цены на жильё" }] };

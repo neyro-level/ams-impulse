@@ -2,15 +2,15 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "../src/generated/prisma/client.ts"
 import { Pool } from "pg";
-import { ReliabilityService } from "../src/modules/platform-operations/index.ts";
+import { ReliabilityService } from "../src/modules/platform-operations/server.ts";
 import { PrismaReliabilityRepository } from "../src/modules/platform-operations/server.ts";
 import { createPgPoolConfigFromEnvironment } from "../src/platform/database/prisma/pool-config.ts";
 import { drainOutbox } from "../src/modules/platform-operations/worker.ts";
-import { runReliabilityRetention } from "../src/modules/platform-operations/infrastructure/retention-runtime.ts";
+import { runReliabilityRetention } from "../src/modules/platform-operations/worker.ts";
 import {
   OUTBOX_WORKER_RUNTIME,
   recordRuntimeHeartbeat,
-} from "../src/modules/platform-operations/infrastructure/runtime-heartbeat.ts";
+} from "../src/modules/platform-operations/worker.ts";
 
 const integrationEnabled = Boolean(
   process.env.TEST_DATABASE_HOST &&
