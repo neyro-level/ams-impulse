@@ -49,6 +49,19 @@ Restore procedure:
 
 `ops/postgres/restore-smoke.sh` must never restore over production.
 
+### Managed PostgreSQL restore drill
+
+Run an isolated provider restore every 3–6 months and before especially destructive data work. This drill never authorizes or performs a production restore.
+
+1. Select a completed Timeweb physical backup and record its ID.
+2. Restore it through Timeweb into a new temporary PostgreSQL 18 target in the private network. The target provider ID must differ from the production source ID.
+3. Start a temporary application instance against that target on loopback or an RFC1918 private address.
+4. Put the identifiers, separate restore credentials, production host/name fingerprint, private application URL and `RESTORE_PROOF_FILE` in a root-owned env file.
+5. Run `env -i PATH="$PATH" bash -c 'set -a; source /etc/ams-platform/ams-restore-drill.env; set +a; /opt/ams-platform/ams-seo-monitor/current/ops/postgres/managed-restore-proof.sh'`.
+6. Preserve the generated `0600` JSON proof in the protected operations evidence store, then delete the temporary app and restore target.
+
+The executable gate refuses a source/target ID match, a production host/database match and a public application URL. It proves PostgreSQL 18, completed Prisma migrations, required tables and application/database readiness. Credentials, database coordinates, row data and PII are not written to the proof.
+
 ## Failure Classes
 
 - Web release failure: rollback code/assets only.
@@ -66,4 +79,5 @@ Restore procedure:
 - worker status and timestamps;
 - backup checksum and offsite confirmation;
 - temporary restore row-count checks;
+- latest managed restore proof (maximum six months; repeat immediately before especially destructive data work);
 - incident timeline without secrets/PII.

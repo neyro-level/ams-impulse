@@ -208,6 +208,17 @@ minutes but waits at most 10 seconds for a lock. Every profile sets
 timeout. Prisma interactive transactions inherit profile-specific `maxWait` and
 `timeout`; the migration CLI receives the equivalent PostgreSQL `PGOPTIONS`.
 
+The OCI build has separate dependency boundaries: build dependencies compile the
+application, production dependencies feed the web/worker runtime, and a distinct
+one-shot migrator target contains Prisma migration tooling. Web and workers never
+receive TypeScript, ESLint, Playwright, dependency-cruiser or other dev-only packages.
+
+The runtime filesystem contains only Next.js standalone output (including public
+and static assets), compiled collector/worker code, production dependencies and a
+small runtime entrypoint. Source TypeScript, Prisma schema/tooling, tsconfig,
+framework build configuration, Compose and build scripts are absent. The separate
+migrator contains only its database schema/configuration and migration entrypoint.
+
 Web, worker, migrator and backup use separate provider-managed identities. The previous self-managed database is read-only through `2026-09-25`; deletion requires a separate owner decision. Research worker входит в текущую production topology и выполняет только project-scoped jobs.
 
 ## Verification

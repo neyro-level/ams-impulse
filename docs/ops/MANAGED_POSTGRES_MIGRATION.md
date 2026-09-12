@@ -14,7 +14,7 @@ Production was moved after the explicit owner command. This document now records
 
 `ams_web` and `ams_worker` are `NOBYPASSRLS` runtime roles. `ams_migrator` owns schema changes but is never used by the application. Timeweb Managed PostgreSQL does not currently allow the project administrator to grant `BYPASSRLS`; therefore provider physical backups are the complete recovery source after `FORCE RLS` is enabled. The independent logical S3 backup has a fail-closed RLS preflight and must never publish a partial dump.
 
-With `BACKUP_STRATEGY=provider-physical`, deployment requires a root-owned proof file for a Timeweb backup created within the previous two hours and disables the logical backup timer. A missing or stale proof stops release before migrations.
+With `BACKUP_STRATEGY=provider-physical`, deployment calls the Timeweb Cloud API immediately before migrations, requires a completed backup created within the previous two hours, writes a root-only proof and disables the logical backup timer. A missing token, API failure, incomplete or stale backup stops release. `TIMEWEB_CLOUD_TOKEN` and `TIMEWEB_DATABASE_ID` belong only in the protected backup env file. A destructive migration additionally requires `DESTRUCTIVE_MIGRATION=true` and an explicit `TIMEWEB_RESTORE_POINT_ID` that resolves to the completed fresh backup.
 
 ## Completed proof
 

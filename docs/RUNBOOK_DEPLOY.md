@@ -20,10 +20,11 @@ Project topology:
 - exact commit SHA reviewed and SourceCraft Merge Gate green;
 - release target and previous release are known;
 - Docker Engine + Compose available on target Linux host;
-- required protected env files exist;
+- required protected env files exist, including a dedicated least-privilege read-only live-proof user that is not Platform Admin;
 - no secret value is printed;
 - current rollback target is readable;
 - backup/offsite/restore smoke tooling is available.
+- a managed PostgreSQL restore drill is reproducible through `ops/postgres/managed-restore-proof.sh`; run it every 3–6 months and again before especially destructive data work.
 
 ## Build Artifact
 
@@ -36,7 +37,7 @@ Artifact includes:
 - `docker-image.tar`;
 - `docker-compose.production.yml`;
 - reviewed `ops/` assets;
-- `release-manifest.json` with exact SHA, image tag, image digest and lock checksum.
+- `release-manifest.json` with exact SHA, build timestamp, pinned Node base digest, separate runtime/migrator image tags and digests, and lock checksum.
 
 Artifact does not include DB data, local env or secrets.
 
@@ -74,8 +75,9 @@ After preparation:
 8. enable sync, Topvisor, competitors, outbox-retention and backup timers;
 9. verify web and worker containers use the exact image digest;
 10. require loopback live/ready DTOs to report exact target SHA, DB/auth/outbox/worker/integration freshness;
-11. record previous release and deployed SHA;
-12. remove uploaded temp artifact/checksum.
+11. sign in with the protected proof identity and GET the configured private main route and changed critical read flow;
+12. write a root-only release record with SHA, runtime/migrator digests, artifact checksum, health, DB, worker, queue and timer evidence;
+13. record previous release and deployed SHA, then remove uploaded temp artifact/checksum.
 
 ## Post-Deploy Smoke
 
@@ -113,7 +115,7 @@ Rollback does not reverse PostgreSQL migrations/data. Migrations must be backwar
 
 ## Production Proof
 
-Record outside source docs:
+The release writes `/opt/ams-platform/ams-seo-monitor/shared/release-proofs/<SHA>.json`. It contains no credentials, URLs, user data or response bodies. Record or link this protected evidence from the release ticket:
 
 - deployed SHA;
 - artifact checksum;

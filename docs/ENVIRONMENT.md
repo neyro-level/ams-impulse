@@ -13,9 +13,11 @@ This document is the canonical registry of AMS IMPULSE environment variable owne
 
 One credential must not be reused between web, worker, migrator, tests and backup.
 
-`BACKUP_STRATEGY` is `logical` only while the backup identity can produce a complete dump. Production switches it to `provider-physical` when `FORCE RLS` is active; release then requires a root-owned provider backup proof newer than two hours and keeps the incompatible logical timer disabled.
+`BACKUP_STRATEGY` is `logical` only while the backup identity can produce a complete dump. Production switches it to `provider-physical` when `FORCE RLS` is active; release then verifies a completed Timeweb backup live, writes a root-only proof and keeps the incompatible logical timer disabled. The protected backup env owns `TIMEWEB_CLOUD_TOKEN`, `TIMEWEB_DATABASE_ID` and optional `PROVIDER_BACKUP_MAX_AGE_SECONDS` (default: 7200). Destructive migrations also require `DESTRUCTIVE_MIGRATION=true` and the explicit `TIMEWEB_RESTORE_POINT_ID`.
 
 Production DB credentials currently live in root-owned server env files separated by web, worker, migrator and backup. Synchronizing their rotated replacements into the dedicated AMS IMPULSE Doppler scope remains an owner action because the current Codex service identity is read-only. Timeweb account tokens are operator credentials and never become application runtime variables.
+
+Post-deploy proof uses a fifth root-owned file, `/etc/ams-platform/ams-seo-monitor-live-proof.env`. It owns `LIVE_PROOF_EMAIL`, `LIVE_PROOF_PASSWORD` and optional public/loopback origins plus `LIVE_PROOF_PRIVATE_PATH` and `LIVE_PROOF_CRITICAL_PATH`. The identity is a dedicated least-privilege read-only product user, never Platform Admin, and has access only to the two proof paths. Both paths are GET-only private UI reads; API paths are rejected. These credentials are release-operator secrets and never enter application containers or proof records.
 
 ## Database Variables
 

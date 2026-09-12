@@ -54,6 +54,7 @@ const remoteScript = String.raw`
 set -euo pipefail
 SHA="$1"
 ARTIFACT_NAME="$2"
+ARTIFACT_SHA256="$3"
 ROOT=/opt/ams-platform/ams-seo-monitor
 RELEASE="$ROOT/releases/$SHA"
 ARTIFACT="/tmp/$ARTIFACT_NAME"
@@ -65,6 +66,7 @@ WEB_ENV_FILE=/etc/ams-platform/ams-seo-monitor-web.env
 WORKER_ENV_FILE=/etc/ams-platform/ams-seo-monitor-worker.env
 MIGRATOR_ENV_FILE=/etc/ams-platform/ams-seo-monitor-migrator.env
 BACKUP_ENV_FILE=/etc/ams-platform/ams-seo-monitor-backup.env
+LIVE_PROOF_ENV_FILE=/etc/ams-platform/ams-seo-monitor-live-proof.env
 PROVIDER_BACKUP_PROOF_FILE=/etc/ams-platform/ams-managed-postgres-backup.proof
 BACKUP_STRATEGY=logical
 export COMPOSE_PROJECT_NAME=ams-seo-monitor
@@ -89,10 +91,14 @@ write_release_env() {
   local release_sha="$1"
   local image_tag="$2"
   local image_digest="$3"
+  local migrator_image_tag="$4"
+  local migrator_image_digest="$5"
   cat > "$ROOT/shared/release.env.next" <<EOF
 RELEASE_SHA=$release_sha
 AMS_SEO_MONITOR_IMAGE=$image_tag
 AMS_SEO_MONITOR_IMAGE_DIGEST=$image_digest
+AMS_SEO_MONITOR_MIGRATOR_IMAGE=$migrator_image_tag
+AMS_SEO_MONITOR_MIGRATOR_IMAGE_DIGEST=$migrator_image_digest
 EOF
   chown root:www-data "$ROOT/shared/release.env.next"
   chmod 0640 "$ROOT/shared/release.env.next"
@@ -117,9 +123,11 @@ rollback_previous() {
     mv -Tf "$ROOT/current.rollback" "$ROOT/current"
     PREVIOUS_SHA="$(basename "$PREVIOUS")"
     PREVIOUS_IMAGE="ams-seo-monitor:$PREVIOUS_SHA"
+    PREVIOUS_MIGRATOR_IMAGE="ams-seo-monitor-migrator:$PREVIOUS_SHA"
     PREVIOUS_DIGEST="$(docker image inspect "$PREVIOUS_IMAGE" --format '{{.Id}}' 2>/dev/null || true)"
-    if [[ "$PREVIOUS_SHA" =~ ^[0-9a-f]{40}$ ]] && [ -n "$PREVIOUS_DIGEST" ]; then
-      write_release_env "$PREVIOUS_SHA" "$PREVIOUS_IMAGE" "$PREVIOUS_DIGEST"
+    PREVIOUS_MIGRATOR_DIGEST="$(docker image inspect "$PREVIOUS_MIGRATOR_IMAGE" --format '{{.Id}}' 2>/dev/null || true)"
+    if [[ "$PREVIOUS_SHA" =~ ^[0-9a-f]{40}$ ]] && [ -n "$PREVIOUS_DIGEST" ] && [ -n "$PREVIOUS_MIGRATOR_DIGEST" ]; then
+      write_release_env "$PREVIOUS_SHA" "$PREVIOUS_IMAGE" "$PREVIOUS_DIGEST" "$PREVIOUS_MIGRATOR_IMAGE" "$PREVIOUS_MIGRATOR_DIGEST"
     fi
     if [ -f "$PREVIOUS/ops/nginx/ams-seo-monitor.conf" ]; then
       install -m 0644 "$PREVIOUS/ops/nginx/ams-seo-monitor.conf" "$NGINX_LIVE"
@@ -232,11 +240,13 @@ tar -xzf "$ARTIFACT" -C "$RELEASE"
 MANIFEST_SHA="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1], encoding="utf-8"))["commitSha"])' "$MANIFEST_FILE")"
 IMAGE_TAG="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1], encoding="utf-8"))["imageTag"])' "$MANIFEST_FILE")"
 IMAGE_DIGEST="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1], encoding="utf-8"))["imageDigest"])' "$MANIFEST_FILE")"
+MIGRATOR_IMAGE_TAG="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1], encoding="utf-8"))["migratorImageTag"])' "$MANIFEST_FILE")"
+MIGRATOR_IMAGE_DIGEST="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1], encoding="utf-8"))["migratorImageDigest"])' "$MANIFEST_FILE")"
 if [ "$MANIFEST_SHA" != "$SHA" ]; then
   echo "Release manifest mismatch" >&2
   exit 1
 fi
-for env_file in "$WEB_ENV_FILE" "$WORKER_ENV_FILE" "$MIGRATOR_ENV_FILE" "$BACKUP_ENV_FILE"; do
+for env_file in "$WEB_ENV_FILE" "$WORKER_ENV_FILE" "$MIGRATOR_ENV_FILE" "$BACKUP_ENV_FILE" "$LIVE_PROOF_ENV_FILE"; do
   if [ ! -f "$env_file" ]; then
     echo "Missing env file: $env_file" >&2
     exit 1
@@ -296,13 +306,21 @@ if [ "$ACTUAL_IMAGE_ID" != "$IMAGE_DIGEST" ]; then
   echo "Image digest mismatch: expected $IMAGE_DIGEST, got $ACTUAL_IMAGE_ID" >&2
   exit 1
 fi
+ACTUAL_MIGRATOR_IMAGE_ID="$(docker image inspect "$MIGRATOR_IMAGE_TAG" --format '{{.Id}}')"
+if [ "$ACTUAL_MIGRATOR_IMAGE_ID" != "$MIGRATOR_IMAGE_DIGEST" ]; then
+  echo "Migrator image digest mismatch: expected $MIGRATOR_IMAGE_DIGEST, got $ACTUAL_MIGRATOR_IMAGE_ID" >&2
+  exit 1
+fi
 export AMS_SEO_MONITOR_IMAGE="$IMAGE_TAG"
 export AMS_SEO_MONITOR_IMAGE_DIGEST="$IMAGE_DIGEST"
+export AMS_SEO_MONITOR_MIGRATOR_IMAGE="$MIGRATOR_IMAGE_TAG"
+export AMS_SEO_MONITOR_MIGRATOR_IMAGE_DIGEST="$MIGRATOR_IMAGE_DIGEST"
 
 run_with_env_file "$WEB_ENV_FILE" docker compose -f "$COMPOSE_FILE" config >/dev/null
 
 install -m 0755 "$RELEASE/ops/postgres/backup.sh" /usr/local/bin/seo-monitor-db-backup.sh
 install -m 0755 "$RELEASE/ops/postgres/restore-smoke.sh" /usr/local/bin/seo-monitor-db-restore-smoke.sh
+install -m 0755 "$RELEASE/ops/release/live-proof.sh" /usr/local/bin/seo-monitor-live-proof.sh
 BACKUP_ROOT_PATH="$(python3 - "$BACKUP_ENV_FILE" <<'PY'
 from pathlib import Path
 import sys
@@ -327,15 +345,11 @@ if [ "$BACKUP_STRATEGY" = "logical" ]; then
   run_with_env_file "$BACKUP_ENV_FILE" runuser -u postgres -- /usr/bin/env REQUIRE_OFFSITE=true /usr/local/bin/seo-monitor-db-backup.sh >/dev/null
   run_with_env_file "$BACKUP_ENV_FILE" /usr/local/bin/seo-monitor-db-restore-smoke.sh >/dev/null
 else
-  if [ ! -s "$PROVIDER_BACKUP_PROOF_FILE" ]; then
-    echo "provider_backup_proof_missing=true" >&2
-    exit 1
-  fi
-  PROOF_AGE_SECONDS=$(( $(date +%s) - $(stat -c %Y "$PROVIDER_BACKUP_PROOF_FILE") ))
-  if [ "$PROOF_AGE_SECONDS" -lt 0 ] || [ "$PROOF_AGE_SECONDS" -gt 7200 ]; then
-    echo "provider_backup_proof_stale=true" >&2
-    exit 1
-  fi
+  rm -f "$PROVIDER_BACKUP_PROOF_FILE.next"
+  run_with_env_file "$BACKUP_ENV_FILE" /usr/bin/env \
+    PROVIDER_BACKUP_PROOF_FILE="$PROVIDER_BACKUP_PROOF_FILE" \
+    node "$RELEASE/scripts/verify-managed-backup.mjs"
+  [ -s "$PROVIDER_BACKUP_PROOF_FILE" ] || { echo "provider_backup_proof_missing=true" >&2; exit 1; }
 fi
 
 run_with_env_file "$MIGRATOR_ENV_FILE" docker compose -f "$COMPOSE_FILE" run --rm -e PGBOSS_RUNTIME_ROLE="$WORKER_DATABASE_ROLE" migrate
@@ -351,7 +365,7 @@ trap post_switch_rollback ERR
 rm -f "$ROOT/current.next"
 ln -s "$RELEASE" "$ROOT/current.next"
 mv -Tf "$ROOT/current.next" "$ROOT/current"
-write_release_env "$SHA" "$IMAGE_TAG" "$IMAGE_DIGEST"
+write_release_env "$SHA" "$IMAGE_TAG" "$IMAGE_DIGEST" "$MIGRATOR_IMAGE_TAG" "$MIGRATOR_IMAGE_DIGEST"
 
 systemctl daemon-reload
 nginx -t
@@ -360,27 +374,8 @@ systemctl restart seo-monitor-web.service
 systemctl start seo-monitor-worker.service
 enable_runtime_timers
 
-WEB_CONTAINER_ID="$(docker compose -f "$ROOT/current/docker-compose.production.yml" ps -q web)"
-WORKER_CONTAINER_ID="$(docker compose -f "$ROOT/current/docker-compose.production.yml" ps -q worker)"
-RESEARCH_WORKER_CONTAINER_ID="$(docker compose -f "$ROOT/current/docker-compose.production.yml" ps -q research-worker)"
-[ -n "$WEB_CONTAINER_ID" ]
-[ -n "$WORKER_CONTAINER_ID" ]
-[ -n "$RESEARCH_WORKER_CONTAINER_ID" ]
-[ "$(docker inspect --format '{{.Image}}' "$WEB_CONTAINER_ID")" = "$IMAGE_DIGEST" ]
-[ "$(docker inspect --format '{{.Image}}' "$WORKER_CONTAINER_ID")" = "$IMAGE_DIGEST" ]
-[ "$(docker inspect --format '{{.Image}}' "$RESEARCH_WORKER_CONTAINER_ID")" = "$IMAGE_DIGEST" ]
-curl -fsS http://127.0.0.1:3000/api/health/live | python3 -c 'import json,sys; payload=json.load(sys.stdin); assert payload["releaseSha"] == sys.argv[1]' "$SHA"
-READINESS_CONFIRMED=false
-for _attempt in $(seq 1 30); do
-  OUTBOX_HEALTH="$(docker inspect --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}missing{{end}}' "$WORKER_CONTAINER_ID")"
-  RESEARCH_HEALTH="$(docker inspect --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}missing{{end}}' "$RESEARCH_WORKER_CONTAINER_ID")"
-  if [ "$OUTBOX_HEALTH" = healthy ] && [ "$RESEARCH_HEALTH" = healthy ] && curl -fsS http://127.0.0.1:3000/api/health/ready | python3 -c 'import json,sys; payload=json.load(sys.stdin); deps=payload["dependencies"]; assert payload["releaseSha"] == sys.argv[1]; assert deps["postgresql"] == "ready"; assert deps["auth"] == "configured"; assert deps["outbox"]["status"] == "healthy"; assert deps["worker"]["status"] == "healthy"; assert deps["integrationFreshness"]["status"] == "fresh"' "$SHA"; then
-    READINESS_CONFIRMED=true
-    break
-  fi
-  sleep 2
-done
-[ "$READINESS_CONFIRMED" = true ]
+run_with_env_file "$LIVE_PROOF_ENV_FILE" /usr/local/bin/seo-monitor-live-proof.sh \
+  "$SHA" "$IMAGE_DIGEST" "$MIGRATOR_IMAGE_DIGEST" "$ARTIFACT_SHA256"
 rm -f "$ARTIFACT" "$CHECKSUM"
 printf '%s\n' "$PREVIOUS" > "$ROOT/shared/previous-release.txt"
 printf '%s\n' "$SHA" > "$ROOT/shared/deployed-sha.txt"
@@ -389,7 +384,7 @@ trap - ERR
 
 const deployResult = spawnSync(
   "ssh",
-  ["-o", "BatchMode=yes", "ams", "bash", "-s", "--", commitSha, artifactName],
+  ["-o", "BatchMode=yes", "ams", "bash", "-s", "--", commitSha, artifactName, (await readFile(checksumPath, "utf8")).trim().split(/\s+/)[0]],
   {
     cwd: rootDir,
     input: remoteScript,
@@ -410,6 +405,9 @@ console.log(
       artifactSha256: checksum,
       imageTag: manifestProbe.imageTag,
       imageDigest: manifestProbe.imageDigest,
+      migratorImageTag: manifestProbe.migratorImageTag,
+      migratorImageDigest: manifestProbe.migratorImageDigest,
+      baseImageDigest: manifestProbe.baseImageDigest,
       productionUrl: "https://impulse.ams24.ru",
     },
     null,

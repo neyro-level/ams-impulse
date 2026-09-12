@@ -19,6 +19,29 @@ describe("production backup identity", () => {
 });
 
 describe("production configuration boundary", () => {
+  it("separates production runtime dependencies from migration tooling", () => {
+    const dockerfile = readFileSync("Dockerfile", "utf8");
+    const compose = readFileSync("docker-compose.production.yml", "utf8");
+
+    expect(dockerfile).toContain("FROM base AS runtime-deps");
+    expect(dockerfile).toContain("RUN pnpm install --prod --frozen-lockfile");
+    expect(dockerfile).toContain("FROM runtime-base AS migrator");
+    expect(dockerfile).toContain("COPY --from=runtime-deps /app/node_modules ./node_modules");
+    expect(compose).toContain("AMS_SEO_MONITOR_MIGRATOR_IMAGE");
+  });
+
+  it("pins the Node base and records both immutable application images", () => {
+    const dockerfile = readFileSync("Dockerfile", "utf8");
+    const build = readFileSync("scripts/build-release.mjs", "utf8");
+
+    expect(dockerfile).toContain("node:24.20.0-bookworm-slim@sha256:ba849c60");
+    expect(build).toContain('buildImage("runtime"');
+    expect(build).toContain('buildImage("migrator"');
+    expect(build).toContain("baseImageDigest");
+    expect(build).toContain("migratorImageDigest");
+    expect(build).toContain("buildTimestamp");
+  });
+
   it("deploys migrations without importing operator configuration", () => {
     const deployScript = readFileSync("scripts/deploy-production.mjs", "utf8");
     const integrationRunner = readFileSync("scripts/run-integration-tests.mjs", "utf8");
@@ -39,12 +62,19 @@ describe("production configuration boundary", () => {
     expect(migrationScript).not.toContain("GRANT ALL PRIVILEGES");
   });
 
-  it("requires recent provider proof and disables logical backup timer for FORCE RLS", () => {
+  it("verifies a fresh Timeweb backup live and disables the incompatible logical timer", () => {
     const deployScript = readFileSync("scripts/deploy-production.mjs", "utf8");
+    const verifier = readFileSync("scripts/verify-managed-backup.mjs", "utf8");
 
     expect(deployScript).toContain('BACKUP_STRATEGY=logical');
     expect(deployScript).toContain('provider_backup_proof_missing=true');
-    expect(deployScript).toContain('PROOF_AGE_SECONDS');
+    expect(deployScript).toContain('node "$RELEASE/scripts/verify-managed-backup.mjs"');
+    expect(verifier).toContain("/api/v1/dbs/${encodeURIComponent(databaseId)}/backups");
+    expect(verifier).toContain('const DEFAULT_API_ORIGIN = "https://api.timeweb.cloud"');
+    expect(verifier).not.toContain("TIMEWEB_CLOUD_API_ORIGIN");
+    expect(verifier).toContain('backup.status === "done"');
+    expect(verifier).toContain('required("TIMEWEB_RESTORE_POINT_ID"');
+    expect(verifier).not.toContain("console.log");
     expect(deployScript).toContain('systemctl disable --now seo-monitor-db-backup.timer');
   });
 
@@ -59,9 +89,26 @@ describe("production configuration boundary", () => {
 
   it("requires a healthy worker before completing production rollout", () => {
     const deployScript = readFileSync("scripts/deploy-production.mjs", "utf8");
+    const liveProof = readFileSync("ops/release/live-proof.sh", "utf8");
 
-    expect(deployScript).toContain('deps["worker"]["status"] == "healthy"');
-    expect(deployScript).not.toContain('("healthy", "stale", "unknown")');
+    expect(deployScript).toContain("seo-monitor-live-proof.sh");
+    expect(liveProof).toContain('dependencies["worker"]["status"] == "healthy"');
+    expect(liveProof).not.toContain('("healthy", "stale", "unknown")');
+  });
+
+  it("records a read-only production live proof for the exact release", () => {
+    const liveProof = readFileSync("ops/release/live-proof.sh", "utf8");
+
+    expect(liveProof).toContain("production-live-proof");
+    expect(liveProof).toContain("docker inspect --format '{{.Image}}'");
+    expect(liveProof).toContain('/api/health/live');
+    expect(liveProof).toContain('/api/health/ready');
+    expect(liveProof).toContain('/api/auth/sign-in/email');
+    expect(liveProof).toContain('criticalReadFlow');
+    expect(liveProof).toContain("systemctl is-active --quiet seo-monitor-web.service");
+    expect(liveProof).not.toContain("systemctl is-active --quiet seo-monitor-web.service seo-monitor-worker.service");
+    expect(liveProof).toContain('"businessMutation": "none"');
+    expect(liveProof).not.toMatch(/curl[^\n]+(?:--request|-X)\s+(?:POST|PUT|PATCH|DELETE)/);
   });
 
   it("excludes private operator configuration from the image build context", () => {
@@ -99,6 +146,21 @@ describe("production restore readiness", () => {
     );
     expect(restoreScript).not.toContain("BACKUP_DIR_MOUNT");
   });
+
+  it("proves a managed backup restore only on an isolated PostgreSQL target", () => {
+    const proofScript = readFileSync(
+      "ops/postgres/managed-restore-proof.sh",
+      "utf8",
+    );
+
+    expect(proofScript).toContain('restore_target_is_source=true');
+    expect(proofScript).toContain('restore_target_is_production=true');
+    expect(proofScript).toContain("server_version_num");
+    expect(proofScript).toContain('to_regclass(\'public."OutboxEvent"\')');
+    expect(proofScript).toContain('/api/health/ready');
+    expect(proofScript).toContain('"kind": "managed-postgres-isolated-restore"');
+    expect(proofScript).not.toContain("DATABASE_URL");
+  });
 });
 
 describe("production compose networking", () => {
@@ -125,15 +187,15 @@ describe("production compose networking", () => {
 
   it("starts and verifies the persistent research worker during rollout", () => {
     const compose = readFileSync("docker-compose.production.yml", "utf8");
-    const deployScript = readFileSync("scripts/deploy-production.mjs", "utf8");
+    const liveProof = readFileSync("ops/release/live-proof.sh", "utf8");
     const webUnit = readFileSync("ops/systemd/seo-monitor-web.service", "utf8");
 
     expect(compose).toContain("research-worker:");
     expect(compose).toContain("command: [\"research-worker\"]");
     expect(webUnit).toContain("up -d web worker research-worker");
     expect(webUnit).toContain("stop web worker research-worker");
-    expect(deployScript).toContain("RESEARCH_WORKER_CONTAINER_ID");
-    expect(deployScript).toContain('[ "$RESEARCH_HEALTH" = healthy ]');
+    expect(liveProof).toContain("RESEARCH_WORKER_CONTAINER_ID");
+    expect(liveProof).toContain('[ "$RESEARCH_HEALTH" = healthy ]');
   });
 });
 
@@ -141,14 +203,25 @@ describe("production worker module boundary", () => {
   it("schedules every active database project instead of a hardcoded client", () => {
     const workerUnit = readFileSync("ops/systemd/seo-monitor-worker.service", "utf8");
     const containerEntrypoint = readFileSync(
-      "scripts/container-entrypoint.mjs",
+      "scripts/runtime-entrypoint.mjs",
       "utf8",
     );
 
     expect(workerUnit).toContain("maintenance projects-sync daily");
     expect(workerUnit).not.toContain("project-sync alpha");
     expect(containerEntrypoint).toContain('case "projects-sync":');
+    expect(containerEntrypoint).toContain('case "topvisor-checks":');
+    expect(containerEntrypoint).toContain('case "competitors-sync":');
     expect(containerEntrypoint).toContain('args[0] ?? "daily"');
+  });
+
+  it("copies only executable runtime artifacts into the runtime target", () => {
+    const dockerfile = readFileSync("Dockerfile", "utf8");
+    const runtime = dockerfile.slice(dockerfile.indexOf("FROM runtime-base AS runtime"));
+
+    expect(runtime).toContain("/app/.next/standalone ./");
+    expect(runtime).toContain("/app/dist-collector ./dist-collector");
+    expect(runtime).not.toMatch(/\/app\/(src|prisma|tsconfig|next\.config|postcss\.config|docker-compose)/);
   });
 
   it(

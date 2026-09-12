@@ -97,7 +97,7 @@ services:
       retries: 3
 
   migrate:
-    image: ${AMS_SEO_MONITOR_IMAGE:?Set AMS_SEO_MONITOR_IMAGE}
+    image: ${AMS_SEO_MONITOR_MIGRATOR_IMAGE:?Set AMS_SEO_MONITOR_MIGRATOR_IMAGE}
     command: ["migrate"]
     restart: "no"
     network_mode: host

@@ -33,8 +33,12 @@ const stagingDir = path.join(artifactsDir, "staging", commitSha);
 const artifactName = `ams-seo-monitor-${commitSha}.tar.gz`;
 const artifactPath = path.join(artifactsDir, artifactName);
 const imageTag = `ams-seo-monitor:${commitSha}`;
+const migratorImageTag = `ams-seo-monitor-migrator:${commitSha}`;
 const imageTarPath = path.join(stagingDir, "docker-image.tar");
 const imageIidPath = path.join(stagingDir, "image.iid");
+const migratorImageIidPath = path.join(stagingDir, "migrator-image.iid");
+const baseImage = "node:24.20.0-bookworm-slim";
+const baseImageDigest = "sha256:ba849c60be29959425b8734d57b8b4b7d56f98edd9504c9af091d5281095a71e";
 
 await rm(stagingDir, { recursive: true, force: true });
 await mkdir(stagingDir, { recursive: true });
@@ -42,6 +46,11 @@ await mkdir(stagingDir, { recursive: true });
 for (const directory of ["ops"]) {
   await cp(path.join(rootDir, directory), path.join(stagingDir, directory), { recursive: true });
 }
+await mkdir(path.join(stagingDir, "scripts"), { recursive: true });
+await cp(
+  path.join(rootDir, "scripts", "verify-managed-backup.mjs"),
+  path.join(stagingDir, "scripts", "verify-managed-backup.mjs"),
+);
 for (const file of [
   ".dockerignore",
   "Dockerfile",
@@ -67,33 +76,36 @@ for (const relativePath of [
   "ops/systemd/seo-monitor-db-backup.timer",
   "ops/postgres/backup.sh",
   "ops/postgres/restore-smoke.sh",
+  "ops/postgres/managed-restore-proof.sh",
+  "ops/release/live-proof.sh",
 ]) {
   const targetPath = path.join(stagingDir, relativePath);
   const content = await readFile(targetPath, "utf8");
   await writeFile(targetPath, content.replace(/\r\n/g, "\n"), "utf8");
 }
 
-const buildResult = spawnSync(
-  "docker",
-  [
+function buildImage(target, tag, iidPath) {
+  const result = spawnSync("docker", [
     "buildx",
     "build",
     "--platform",
     "linux/amd64",
+    "--target",
+    target,
     "--tag",
-    imageTag,
+    tag,
     "--iidfile",
-    imageIidPath,
+    iidPath,
     "--load",
     ".",
-  ],
-  { cwd: rootDir, encoding: "utf8", stdio: "inherit" },
-);
-if (buildResult.status !== 0) {
-  throw new Error(`docker buildx build failed with status ${buildResult.status}.`);
+  ], { cwd: rootDir, encoding: "utf8", stdio: "inherit" });
+  if (result.status !== 0) throw new Error(`docker buildx ${target} failed with status ${result.status}.`);
 }
 
-const saveResult = spawnSync("docker", ["save", "--output", imageTarPath, imageTag], {
+buildImage("runtime", imageTag, imageIidPath);
+buildImage("migrator", migratorImageTag, migratorImageIidPath);
+
+const saveResult = spawnSync("docker", ["save", "--output", imageTarPath, imageTag, migratorImageTag], {
   cwd: rootDir,
   encoding: "utf8",
   stdio: "inherit",
@@ -105,16 +117,22 @@ if (saveResult.status !== 0) {
 const lockBytes = await readFile(path.join(rootDir, "pnpm-lock.yaml"));
 const dependencyLockSha256 = createHash("sha256").update(lockBytes).digest("hex");
 const imageDigest = (await readFile(imageIidPath, "utf8")).trim();
+const migratorImageDigest = (await readFile(migratorImageIidPath, "utf8")).trim();
 const manifest = {
   application: "ams-seo-monitor",
-  repository: "integrator-p/ams-seo-monitor",
+  repository: "integrator-p/ams-impulse",
   source: "SourceCraft main",
   commitSha,
   createdAt: new Date().toISOString(),
+  buildTimestamp: new Date().toISOString(),
   runtime: "docker-node-v24.20.0-linux-amd64",
+  baseImage,
+  baseImageDigest,
   artifactFormat: "tar.gz",
   imageTag,
   imageDigest,
+  migratorImageTag,
+  migratorImageDigest,
   dependencyLockSha256,
   deploymentStrategy: "build-off-host-load-image-and-compose-up",
 };
@@ -147,6 +165,9 @@ console.log(
       dependencyLockSha256,
       imageTag,
       imageDigest,
+      migratorImageTag,
+      migratorImageDigest,
+      baseImageDigest,
     },
     null,
     2,
