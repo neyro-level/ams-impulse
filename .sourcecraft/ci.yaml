@@ -1,22 +1,24 @@
 on:
-  pull_request:
-    - workflows: [pr-check]
-      filter:
-        target_branches: ["main"]
-
   schedule:
     - workflows: [daily]
       cron: "0 1 * * *"
       description: "Nightly full verification of canonical main"
 
 workflows:
-  pr-check:
+  standard-check:
+    inputs:
+      expected_commit_sha:
+        type: string
+        required: true
+        description: "Reviewed standard PR head SHA"
     checkout:
       fetch_depth: 0
     settings:
       max_cube_duration: 20m
     tasks:
-      - name: cheap-contract
+      - name: exact-head-standard
+        env:
+          EXPECTED_COMMIT_SHA: ${{ inputs.expected_commit_sha }}
         cubes:
           - name: verify
             image: docker.io/library/node:24.20.0-bookworm
@@ -24,6 +26,7 @@ workflows:
               - corepack enable
               - corepack prepare pnpm@11.5.1 --activate
               - pnpm install --frozen-lockfile
+              - node scripts/ci/verify-exact-head.mjs
               - pnpm verify:quick
 
   risky-check:

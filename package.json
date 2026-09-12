@@ -20,6 +20,7 @@
     "lint": "eslint src collector tests scripts eslint.config.mjs next.config.ts playwright.config.ts vitest.config.mts vitest.integration.config.mts postcss.config.mjs",
     "typecheck": "pnpm prisma:generate && tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.collector.json && tsc --noEmit -p tsconfig.tests.json",
     "architecture:check": "depcruise src collector --config dependency-cruiser.config.cjs --output-type err-long && node scripts/verify-architecture.mjs",
+    "risk:classify": "tsx scripts/risk-classify.ts",
     "test": "pnpm test:unit",
     "test:unit": "vitest run",
     "test:integration": "node scripts/run-integration-tests.mjs",
