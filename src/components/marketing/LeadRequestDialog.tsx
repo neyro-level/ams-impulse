@@ -106,6 +106,10 @@ export function LeadRequestDialog() {
         honeypot,
         openedAt,
         utm: getUtmPayload(),
+        consent: {
+          acceptedAt: new Date().toISOString(),
+          scope: "lead_response",
+        },
       });
       setSubmitState("success");
     } catch (error) {
@@ -117,7 +121,7 @@ export function LeadRequestDialog() {
   return (
     <>
       <MarketingButton type="button" size="lg" className="group gap-3" onClick={openDialog}>
-        Бесплатный тест-драйв
+        Обсудить продвижение
         <ArrowUpRight className="transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" strokeWidth={1.8} aria-hidden />
       </MarketingButton>
 
@@ -138,8 +142,8 @@ export function LeadRequestDialog() {
             <>
               <DialogHeader>
                 <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--ch-accent)]">AMS IMPULSE</p>
-                <DialogTitle className="mt-2 text-[32px] font-extrabold leading-tight tracking-[-0.04em] text-[var(--ch-white)] sm:text-[34px]">Запустить бесплатный тест-драйв</DialogTitle>
-                <p className="mt-2 max-w-md text-sm leading-6 text-[var(--ch-muted-ondark)]">Оставьте имя и телефон. Уточним задачу и запустим пробный период.</p>
+                <DialogTitle className="mt-2 text-[32px] font-extrabold leading-tight tracking-[-0.04em] text-[var(--ch-white)] sm:text-[34px]">Обсудить продвижение</DialogTitle>
+                <p className="mt-2 max-w-md text-sm leading-6 text-[var(--ch-muted-ondark)]">Оставьте имя и телефон. Уточним задачу, оценим применимость услуги и согласуем следующий шаг.</p>
               </DialogHeader>
 
               <form className="mt-8 border-t border-[var(--ch-border-subtle)] pt-8" onSubmit={handleSubmit} noValidate>
@@ -148,18 +152,18 @@ export function LeadRequestDialog() {
                     <span className="mb-3 block text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--ch-label-ondark)]">Имя</span>
                     <span className="group relative flex min-h-14 items-center">
                       <UserRound className="pointer-events-none absolute left-4 z-10 size-[18px] text-[var(--ch-icon-ondark)] group-focus-within:text-[var(--ch-accent)]" strokeWidth={1.6} aria-hidden />
-                      <Input type="text" value={name} onChange={(event) => { setName(event.target.value); if (errors.name) setErrors((current) => ({ ...current, name: undefined })); }} className="min-h-14 rounded-none border-[var(--ch-border-control)] bg-[var(--ch-bg-dark)]/72 py-3 pl-12 pr-4 text-base font-medium text-[var(--ch-white)] placeholder:text-[var(--ch-placeholder-ondark)] focus-visible:border-[var(--ch-accent)]" autoComplete="name" autoFocus aria-invalid={Boolean(errors.name)} />
+                      <Input type="text" value={name} onChange={(event) => { setName(event.target.value); if (errors.name) setErrors((current) => ({ ...current, name: undefined })); }} className="min-h-14 rounded-none border-[var(--ch-border-control)] bg-[var(--ch-bg-dark)]/72 py-3 pl-12 pr-4 text-base font-medium text-[var(--ch-white)] placeholder:text-[var(--ch-placeholder-ondark)] focus-visible:border-[var(--ch-accent)]" autoComplete="name" autoFocus aria-invalid={Boolean(errors.name)} aria-describedby={errors.name ? "lead-name-error" : undefined} />
                     </span>
-                    {errors.name ? <span className="mt-2 block text-xs text-[var(--ch-error)]">{errors.name}</span> : null}
+                    {errors.name ? <span id="lead-name-error" className="mt-2 block text-xs text-[var(--ch-error)]">{errors.name}</span> : null}
                   </label>
 
                   <label className="block">
                     <span className="mb-3 block text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--ch-label-ondark)]">Телефон</span>
                     <span className="group relative flex min-h-14 items-center">
                       <Phone className="pointer-events-none absolute left-4 z-10 size-[18px] text-[var(--ch-icon-ondark)] group-focus-within:text-[var(--ch-accent)]" strokeWidth={1.6} aria-hidden />
-                      <Input type="tel" value={phone} onChange={(event) => { setPhone(formatPhone(event.target.value)); if (errors.phone) setErrors((current) => ({ ...current, phone: undefined })); }} className="min-h-14 rounded-none border-[var(--ch-border-control)] bg-[var(--ch-bg-dark)]/72 py-3 pl-12 pr-4 text-base font-medium text-[var(--ch-white)] placeholder:text-[var(--ch-placeholder-ondark)] focus-visible:border-[var(--ch-accent)]" autoComplete="tel" inputMode="tel" placeholder="+7 (999) 999-99-99" aria-invalid={Boolean(errors.phone)} />
+                      <Input type="tel" value={phone} onChange={(event) => { setPhone(formatPhone(event.target.value)); if (errors.phone) setErrors((current) => ({ ...current, phone: undefined })); }} className="min-h-14 rounded-none border-[var(--ch-border-control)] bg-[var(--ch-bg-dark)]/72 py-3 pl-12 pr-4 text-base font-medium text-[var(--ch-white)] placeholder:text-[var(--ch-placeholder-ondark)] focus-visible:border-[var(--ch-accent)]" autoComplete="tel" inputMode="tel" placeholder="+7 (999) 999-99-99" aria-invalid={Boolean(errors.phone)} aria-describedby={errors.phone ? "lead-phone-error" : undefined} />
                     </span>
-                    {errors.phone ? <span className="mt-2 block text-xs text-[var(--ch-error)]">{errors.phone}</span> : null}
+                    {errors.phone ? <span id="lead-phone-error" className="mt-2 block text-xs text-[var(--ch-error)]">{errors.phone}</span> : null}
                   </label>
                 </div>
 
@@ -175,17 +179,19 @@ export function LeadRequestDialog() {
                       if (errors.consent) setErrors((current) => ({ ...current, consent: undefined }));
                     }}
                     className="mt-0.5 rounded-none border-[var(--ch-border-strong)] bg-[var(--ch-surface-subtle)] data-checked:border-[var(--ch-accent)] data-checked:bg-[var(--ch-accent)]"
-                    aria-label="Даю согласие на обработку персональных данных"
+                    aria-label="Даю согласие на обработку персональных данных для ответа на заявку"
+                    aria-invalid={Boolean(errors.consent)}
+                    aria-describedby={errors.consent ? "lead-consent-error" : "lead-consent-description"}
                   />
-                  <p className="text-xs leading-5 text-[var(--ch-body-ondark)]">Даю согласие на{" "}<Link href="/politika/" className="font-semibold text-[var(--ch-strong-ondark)] underline decoration-[var(--ch-accent)]/70 underline-offset-3 transition hover:text-[var(--ch-white)]">обработку персональных данных</Link></p>
+                  <p id="lead-consent-description" className="text-xs leading-5 text-[var(--ch-body-ondark)]">Ознакомлен с <Link href="/politika/" target="_blank" rel="noopener noreferrer" className="font-semibold text-[var(--ch-strong-ondark)] underline decoration-[var(--ch-accent)]/70 underline-offset-3 transition hover:text-[var(--ch-white)]">политикой обработки данных</Link> и даю <Link href="/soglasie/" target="_blank" rel="noopener noreferrer" className="font-semibold text-[var(--ch-strong-ondark)] underline decoration-[var(--ch-accent)]/70 underline-offset-3 transition hover:text-[var(--ch-white)]">согласие</Link> на их обработку для ответа на заявку.</p>
                 </div>
-                {errors.consent ? <p className="mt-2 text-xs text-[var(--ch-error)]">{errors.consent}</p> : null}
+                {errors.consent ? <p id="lead-consent-error" className="mt-2 text-xs text-[var(--ch-error)]">{errors.consent}</p> : null}
 
                 {submitState === "error" ? <p className="mt-6 border border-[var(--ch-error-border)] bg-[var(--ch-error-soft)] px-4 py-3 text-sm leading-5 text-[var(--ch-error)]" role="alert">{submitError}</p> : null}
 
                 <MarketingButton type="submit" size="lg" disabled={submitState === "loading"} className="mt-7 min-h-14 w-full focus-visible:ring-[var(--ch-white)] focus-visible:ring-offset-[var(--ch-bg-deeper)]">
                   {submitState === "loading" ? <Loader2 className="animate-spin" strokeWidth={1.7} aria-hidden /> : null}
-                  {submitState === "loading" ? "Отправляем…" : "Запустить тест-драйв"}
+                  {submitState === "loading" ? "Отправляем…" : "Отправить заявку"}
                 </MarketingButton>
               </form>
             </>

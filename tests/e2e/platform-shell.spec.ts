@@ -10,7 +10,7 @@ test("preserves the public AMS IMPULSE surface", async ({ page, request }) => {
   await expect(
     page.getByRole("heading", { level: 1, name: "Быстрое продвижение сайтов в SEO" }),
   ).toBeVisible();
-  await expect(page.getByRole("button", { name: /бесплатный тест-драйв/i })).toBeVisible();
+  await expect(page.getByRole("button", { name: /обсудить продвижение/i })).toBeVisible();
   await expect(page.getByRole("contentinfo")).toBeVisible();
 
   const faviconResponse = await request.get("/ams-favicon.svg");

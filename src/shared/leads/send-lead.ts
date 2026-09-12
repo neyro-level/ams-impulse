@@ -15,6 +15,10 @@ export type SendLeadPayload = {
   honeypot: string;
   openedAt: number;
   utm: LeadUtmPayload;
+  consent: {
+    acceptedAt: string;
+    scope: "lead_response";
+  };
 };
 
 type LeadApiResponse = {
@@ -51,14 +55,17 @@ export async function sendLead(payload: SendLeadPayload): Promise<LeadApiRespons
         referrer: document.referrer,
         user_agent: navigator.userAgent,
         method: "call",
+        consent_accepted_at: payload.consent.acceptedAt,
+        consent_scope: payload.consent.scope,
+        consent_document: "/soglasie/",
+        privacy_policy: "/politika/",
       },
     }),
   });
 
   const result = (await response.json().catch(() => null)) as LeadApiResponse | null;
   if (!response.ok || !result?.ok) {
-    const message = typeof result?.error === "string" ? result.error : result?.error?.message;
-    throw new Error(message || "Не удалось отправить заявку.");
+    throw new Error("Не удалось отправить заявку. Повторите попытку позже.");
   }
 
   return result;

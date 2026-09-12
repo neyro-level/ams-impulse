@@ -116,6 +116,15 @@ The migrator owns schema changes. `ams_web` and `ams_worker` are login roles wit
 - Service worker cannot cache session, API, report, export, research or PII responses.
 - Private S3 object keys are never public; download URLs are short-lived and issued after fresh authorization.
 
+### Public Lead Form
+
+- The form collects only name, phone, source/UTM context and anti-spam fields required by the AMS Leads API.
+- Submission requires explicit consent for responding to the request and links both the privacy policy and consent document.
+- The request records consent time, scope and document paths in lead metadata.
+- Browser PII is sent only to the exact allowlisted `https://ams24.ru/api/leads` endpoint. Invalid public configuration fails before `fetch`.
+- This repository does not persist public lead PII. Downstream storage, access, deletion and the documented three-year retention period belong to the AMS Leads API contract and require independent operational proof.
+- The current public runtime does not install analytics or marketing cookies. Enabling them requires a separately reviewed consent control and an update of the published cookie text before activation.
+
 ## MCP
 
 - Production transport uses OAuth 2.1 + PKCE.
