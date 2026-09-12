@@ -24,6 +24,8 @@ export function LoginDialog({ initialOpen = false, oauthLoginRequested = false }
   const [open, setOpen] = useState(initialOpen);
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [totpCode, setTotpCode] = useState("");
+  const [requiresTotp, setRequiresTotp] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const loginSucceededRef = useRef(false);
   const [pending, setPending] = useState(false);
@@ -33,6 +35,8 @@ export function LoginDialog({ initialOpen = false, oauthLoginRequested = false }
     setOpen(nextOpen);
     if (!nextOpen) {
       setErrorMessage(null);
+      setTotpCode("");
+      setRequiresTotp(false);
       if (!loginSucceededRef.current && window.location.search.includes("login=")) {
         window.history.replaceState(null, "", "/");
       }
@@ -46,9 +50,30 @@ export function LoginDialog({ initialOpen = false, oauthLoginRequested = false }
     setErrorMessage(null);
 
     try {
+      if (requiresTotp) {
+        const verification = await authClient.twoFactor.verifyTotp({
+          code: totpCode,
+          trustDevice: false,
+        });
+        if (verification.error) {
+          setErrorMessage("Неверный или просроченный код. Проверьте приложение-аутентификатор.");
+          return;
+        }
+
+        loginSucceededRef.current = true;
+        setOpen(false);
+        if (!oauthLoginRequested) router.replace("/dashboard/");
+        return;
+      }
+
       const result = await authClient.signIn.username({ username, password, rememberMe: true });
       if (result.error) {
         setErrorMessage("Не удалось войти. Проверьте логин и пароль.");
+        return;
+      }
+      if (result.data && "twoFactorRedirect" in result.data && result.data.twoFactorRedirect) {
+        setRequiresTotp(true);
+        setTotpCode("");
         return;
       }
 
@@ -86,12 +111,29 @@ export function LoginDialog({ initialOpen = false, oauthLoginRequested = false }
           <DialogHeader>
             <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--ch-accent)]">AMS IMPULSE</p>
             <DialogTitle className="mt-2 text-[32px] font-extrabold leading-tight tracking-[-0.04em] text-[var(--ch-white)] sm:text-[34px]">
-              Вход в кабинет
+              {requiresTotp ? "Подтвердите вход" : "Вход в кабинет"}
             </DialogTitle>
+            {requiresTotp ? <p className="mt-2 text-sm leading-6 text-[var(--ch-muted-ondark)]">Введите шестизначный код из приложения-аутентификатора.</p> : null}
           </DialogHeader>
 
           <form className="mt-9 border-t border-[var(--ch-border-subtle)] pt-8" onSubmit={handleSubmit}>
-            <div className="space-y-6">
+            {requiresTotp ? (
+              <label className="block">
+                <span className="mb-3 block text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--ch-label-ondark)]">Код из приложения</span>
+                <Input
+                  type="text"
+                  value={totpCode}
+                  onChange={(event) => setTotpCode(event.target.value.replace(/\D/g, "").slice(0, 6))}
+                  className="min-h-14 rounded-none border-[var(--ch-border-control)] bg-[var(--ch-bg-dark)]/72 px-4 py-3 text-center font-mono text-xl tracking-[0.3em] text-[var(--ch-white)] focus-visible:border-[var(--ch-accent)] focus-visible:ring-[var(--ch-focus-soft)]"
+                  autoComplete="one-time-code"
+                  inputMode="numeric"
+                  maxLength={6}
+                  minLength={6}
+                  autoFocus
+                  required
+                />
+              </label>
+            ) : <div className="space-y-6">
               <label className="block">
                 <span className="mb-3 block text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--ch-label-ondark)]">Логин</span>
                 <span className="group relative flex min-h-14 items-center">
@@ -124,7 +166,7 @@ export function LoginDialog({ initialOpen = false, oauthLoginRequested = false }
                   />
                 </span>
               </label>
-            </div>
+            </div>}
 
             {errorMessage ? (
               <p className="mt-6 border border-[var(--ch-error-border)] bg-[var(--ch-error-soft)] px-4 py-3 text-sm leading-5 text-[var(--ch-error)]" role="alert">
@@ -138,7 +180,7 @@ export function LoginDialog({ initialOpen = false, oauthLoginRequested = false }
               disabled={pending}
               className="mt-7 min-h-14 w-full focus-visible:ring-[var(--ch-white)] focus-visible:ring-offset-[var(--ch-bg-deeper)]"
             >
-              {pending ? "Входим…" : "Войти"}
+              {pending ? (requiresTotp ? "Проверяем…" : "Входим…") : (requiresTotp ? "Подтвердить" : "Войти")}
               {!pending ? <LogIn strokeWidth={1.7} aria-hidden /> : null}
             </MarketingButton>
           </form>

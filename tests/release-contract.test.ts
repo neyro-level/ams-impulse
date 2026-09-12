@@ -33,6 +33,19 @@ describe("production configuration boundary", () => {
     expect(seed).toContain('"actualCostKopecks"=50000');
   });
 
+  it("completes Platform Admin sign-in through the verified TOTP challenge", () => {
+    const client = readFileSync("src/platform/auth/client.ts", "utf8");
+    const dialog = readFileSync("src/modules/identity-access/presentation/LoginDialog.tsx", "utf8");
+    const seed = readFileSync("scripts/seed-e2e-admin.ts", "utf8");
+
+    expect(client).toContain("twoFactorClient()");
+    expect(dialog).toContain("twoFactorRedirect");
+    expect(dialog).toContain("authClient.twoFactor.verifyTotp");
+    expect(dialog).toContain('router.replace("/dashboard/")');
+    expect(seed).toContain("twoFactorEnabled: input.systemRole === \"PLATFORM_ADMIN\"");
+    expect(seed).toContain("verified: true");
+  });
+
   it("closes both Prisma and its PostgreSQL pool in E2E helper processes", () => {
     for (const scriptPath of [
       "scripts/seed-e2e-admin.ts",

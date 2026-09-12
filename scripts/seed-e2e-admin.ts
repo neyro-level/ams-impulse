@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { hashPassword } from "better-auth/crypto";
+import { hashPassword, symmetricEncrypt } from "better-auth/crypto";
 import { createLocalAccountIssuer } from "better-auth/db";
 import { Prisma } from "../src/generated/prisma/client.ts";
 import {
@@ -7,6 +7,7 @@ import {
   getPrismaClient,
 } from "../src/platform/database/prisma/client.ts";
 import { E2E_RESEARCH } from "./e2e-research-contract.ts";
+import { E2E_PLATFORM_ADMIN_TOTP_SECRET } from "./e2e-auth-contract.ts";
 
 const E2E_PASSWORD = "E2e!2026";
 const CLIENT_USERNAMES = [
@@ -46,6 +47,7 @@ async function main() {
           name: input.name,
           username: input.username,
           systemRole: input.systemRole,
+          twoFactorEnabled: input.systemRole === "PLATFORM_ADMIN",
           disabledAt: null,
         },
         create: {
@@ -54,6 +56,7 @@ async function main() {
           username: input.username,
           name: input.name,
           systemRole: input.systemRole,
+          twoFactorEnabled: input.systemRole === "PLATFORM_ADMIN",
           emailVerified: false,
         },
       });
@@ -72,11 +75,32 @@ async function main() {
       return userId;
     };
 
-    await provisionUser({
+    const platformAdminUserId = await provisionUser({
       username: "e2e.platform.admin",
       email: "e2e-platform-admin@example.invalid",
       name: "E2E Platform Admin",
       systemRole: "PLATFORM_ADMIN",
+    });
+    const authSecret = process.env.BETTER_AUTH_SECRET?.trim();
+    if (!authSecret) throw new Error("BETTER_AUTH_SECRET is required for the E2E Platform Admin TOTP");
+    const encryptedTotpSecret = await symmetricEncrypt({ key: authSecret, data: E2E_PLATFORM_ADMIN_TOTP_SECRET });
+    const disabledBackupCodes = await symmetricEncrypt({ key: authSecret, data: "[]" });
+    await prisma.twoFactor.upsert({
+      where: { userId: platformAdminUserId },
+      update: {
+        secret: encryptedTotpSecret,
+        backupCodes: disabledBackupCodes,
+        verified: true,
+        failedVerificationCount: 0,
+        lockedUntil: null,
+      },
+      create: {
+        id: randomUUID(),
+        userId: platformAdminUserId,
+        secret: encryptedTotpSecret,
+        backupCodes: disabledBackupCodes,
+        verified: true,
+      },
     });
 
     const analystUserId = await provisionUser({

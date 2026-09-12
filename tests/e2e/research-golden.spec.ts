@@ -34,7 +34,7 @@ test.describe("Research golden journey", () => {
     if (!runId) throw new Error("Estimated run ID is missing from the confirmation URL");
     await expect(page.getByText(/2 запросов, оценка/u)).toBeVisible();
     await page.getByRole("button", { name: "Подтвердить" }).click();
-    await expect(page.getByRole("status")).toContainText("поставлено в очередь");
+    await expect(page.getByRole("status").filter({ hasText: "поставлено в очередь" })).toBeVisible();
 
     execFileSync(
       process.execPath,
@@ -102,7 +102,7 @@ test.describe("Research golden journey", () => {
       E2E_RESEARCH.budgetProjectId,
     ));
     await page.getByRole("button", { name: "Рассчитать стоимость" }).click();
-    await expect(page.getByText("Не удалось открыть исследования")).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Дневной лимит исчерпан" })).toBeVisible();
 
     const usernameByProject: Record<string, string> = {
       "mobile-375": "e2e.client.mobile",

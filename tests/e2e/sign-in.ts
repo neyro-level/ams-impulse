@@ -1,4 +1,6 @@
 import { expect, type Page, type TestInfo } from "@playwright/test";
+import { createOTP } from "@better-auth/utils/otp";
+import { E2E_PLATFORM_ADMIN_TOTP_SECRET } from "../../scripts/e2e-auth-contract.ts";
 
 const projectIpBase: Record<string, number> = {
   setup: 10,
@@ -23,5 +25,14 @@ export async function signIn(page: Page, testInfo: TestInfo, username: string) {
     .getByRole("dialog", { name: "Вход в кабинет" })
     .getByRole("button", { name: "Войти", exact: true })
     .click();
-  await expect(page).toHaveURL(/\/dashboard\/?$/, { timeout: 15_000 });
+  if (username === "e2e.platform.admin") {
+    await expect(page.getByRole("heading", { name: "Подтвердите вход" })).toBeVisible();
+    const code = await createOTP(E2E_PLATFORM_ADMIN_TOTP_SECRET, { digits: 6, period: 30 }).totp();
+    await page.getByLabel("Код из приложения").fill(code);
+    await page.getByRole("button", { name: "Подтвердить", exact: true }).click();
+  }
+  const expectedLanding = username === "e2e.research.analyst"
+    ? /\/tools\/research(?:\/|\?)/
+    : /\/dashboard\/?$/;
+  await expect(page).toHaveURL(expectedLanding, { timeout: 15_000 });
 }
