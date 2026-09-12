@@ -1,8 +1,8 @@
-import { randomUUID } from "node:crypto";
 import { Prisma, type PrismaClient } from "../../../generated/prisma/client.ts";
 import { getPrismaClient } from "../../../platform/database/prisma/client.ts";
 import { setDatabaseAuthorizationContext } from "../../../platform/database/authorization-context.ts";
 import type { DatabaseTransaction } from "../../../platform/database/transaction.ts";
+import { newId } from "../../../platform/identifiers/new-id.ts";
 import type {
   CreateResearchInput,
   ResearchRecord,
@@ -44,7 +44,7 @@ async function appendAudit(
     INSERT INTO "public"."AuditEvent"
       ("id", "productCode", "organizationId", "projectId", "actorType", "actorId", "action", "entityType", "entityId", "beforeMarker", "afterMarker", "source", "correlationId", "createdAt")
     VALUES
-      (${randomUUID()}, 'tools', ${input.organizationId}, ${input.projectId}, 'USER', ${input.actorId}, ${input.action}, 'Research', ${input.entityId}, NULL, ${JSON.stringify(input.marker)}::jsonb, 'research', ${input.correlationId}, CURRENT_TIMESTAMP)
+      (${newId()}, 'tools', ${input.organizationId}, ${input.projectId}, 'USER', ${input.actorId}, ${input.action}, 'Research', ${input.entityId}, NULL, ${JSON.stringify(input.marker)}::jsonb, 'research', ${input.correlationId}, CURRENT_TIMESTAMP)
   `);
 }
 
@@ -115,7 +115,7 @@ export class PrismaResearchRepository implements ResearchRepository {
   }
 
   async create(input: CreateResearchInput & { createdByUserId: string; correlationId: string }, transaction: DatabaseTransaction): Promise<ResearchRecord> {
-    const researchId = randomUUID();
+    const researchId = newId();
     await transaction.$executeRaw(Prisma.sql`
         INSERT INTO "research"."Research"
           ("id", "organizationId", "projectId", "title", "brief", "status", "createdByUserId", "version", "createdAt", "updatedAt")
@@ -125,7 +125,7 @@ export class PrismaResearchRepository implements ResearchRepository {
     for (const [position, text] of input.queries.entries()) {
       await transaction.$executeRaw(Prisma.sql`
           INSERT INTO "research"."Query" ("id", "organizationId", "projectId", "researchId", "text", "position", "createdAt")
-          VALUES (${randomUUID()}, ${input.organizationId}, ${input.projectId}, ${researchId}, ${text}, ${position}, CURRENT_TIMESTAMP)
+          VALUES (${newId()}, ${input.organizationId}, ${input.projectId}, ${researchId}, ${text}, ${position}, CURRENT_TIMESTAMP)
       `);
     }
     return (await this.findById({ organizationId: input.organizationId, projectId: input.projectId, researchId }, transaction))!;
@@ -146,7 +146,7 @@ export class PrismaResearchRepository implements ResearchRepository {
     for (const [position, text] of input.queries.entries()) {
       await transaction.$executeRaw(Prisma.sql`
           INSERT INTO "research"."Query" ("id", "organizationId", "projectId", "researchId", "text", "position", "createdAt")
-          VALUES (${randomUUID()}, ${input.organizationId}, ${input.projectId}, ${input.researchId}, ${text}, ${position}, CURRENT_TIMESTAMP)
+          VALUES (${newId()}, ${input.organizationId}, ${input.projectId}, ${input.researchId}, ${text}, ${position}, CURRENT_TIMESTAMP)
       `);
     }
     return this.findById(input, transaction);
@@ -163,7 +163,7 @@ export class PrismaResearchRepository implements ResearchRepository {
   }
 
   async reserveRunEstimate(input: { ref: ResearchRef; idempotencyKey: string; queryCount: number; estimatedCostKopecks: number; now: Date; dailyLimitKopecks: number; monthlyLimitKopecks: number }, transaction: DatabaseTransaction) {
-    const runId = randomUUID();
+    const runId = newId();
     await transaction.$executeRaw(
       Prisma.sql`SELECT pg_advisory_xact_lock(hashtextextended(${`research.budget:${input.ref.organizationId}`}, 0))`,
     );
@@ -261,7 +261,7 @@ export class PrismaResearchRepository implements ResearchRepository {
           "confirmedByUserId"=${input.actorId}, "confirmedAt"=${input.now}, "updatedAt"=CURRENT_TIMESTAMP
         WHERE "id"=${run.id}
       `);
-      const outboxEventId = randomUUID();
+      const outboxEventId = newId();
       // OutboxEvent is a platform-owned delivery record. The versioned payload is
       // the authoritative Tools scope; its legacy SEO organization FK stays null.
       await transaction.$executeRaw(Prisma.sql`

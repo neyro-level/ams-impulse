@@ -1240,8 +1240,8 @@ model OutboxEvent {
   idempotencyKey IdempotencyKey?
   jobRuns        JobRun[]
 
-  @@index([status, availableAt])
-  @@index([lockedAt])
+  @@index([status, availableAt, createdAt])
+  @@index([status, lockedAt])
   @@index([organizationId, topic, createdAt])
 }
 

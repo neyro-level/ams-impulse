@@ -118,7 +118,7 @@ function ProviderConnectionEditCard({ item }: { item: ProviderConnectionListItem
   const [confirmingGoals, setConfirmingGoals] = useState(false);
   async function confirmGoals() {
     setConfirmingGoals(true);
-    const result = await confirmMetricaGoalsAction({ siteId: item.siteId, leadGoalId, phoneGoalId });
+    const result = await confirmMetricaGoalsAction({ siteId: item.siteId, version: item.version, leadGoalId, phoneGoalId });
     setConfirmingGoals(false);
     if (!result.ok) { setFeedback(feedbackFrom(result)); return; }
     setFeedback({ kind: "success", message: "Цели Метрики подтверждены" });

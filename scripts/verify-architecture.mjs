@@ -90,6 +90,15 @@ for (const filePath of await collectFiles(sourceDir)) {
   if (source.includes("ActorContext")) {
     failures.push(`Legacy authorization context: ${relativePath}`);
   }
+  if (
+    relativePath.includes("/infrastructure/") &&
+    (relativePath.includes("/research/") ||
+      relativePath.includes("/tools-workspace/") ||
+      relativePath.includes("/identity-access/")) &&
+    /\brandomUUID\s*\(|\bgen_random_uuid\s*\(/.test(source)
+  ) {
+    failures.push(`Domain ID bypasses platform identifier policy: ${relativePath}`);
+  }
 }
 
 if (failures.length > 0) {

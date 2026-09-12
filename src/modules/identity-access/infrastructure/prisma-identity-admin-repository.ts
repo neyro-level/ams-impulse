@@ -1,7 +1,7 @@
 import { Prisma, type PrismaClient } from "../../../generated/prisma/client.ts";
-import { randomUUID } from "node:crypto";
 import { createLocalAccountIssuer } from "better-auth/db";
 import type { DatabaseTransaction } from "../../../platform/database/transaction.ts";
+import { newId } from "../../../platform/identifiers/new-id.ts";
 import {
   IdentityAdminError,
   type CreateMembershipInput,
@@ -320,7 +320,7 @@ export class PrismaIdentityAdminRepository implements IdentityAdminRepository {
         },
         select: { id: true },
       });
-      const userId = randomUUID();
+      const userId = newId();
       const user = await this.prisma.user.create({
         data: {
           id: userId,
@@ -334,7 +334,7 @@ export class PrismaIdentityAdminRepository implements IdentityAdminRepository {
       });
       await this.prisma.account.create({
         data: {
-          id: randomUUID(),
+          id: newId(),
           userId: user.id,
           issuer: createLocalAccountIssuer("credential"),
           accountId: user.id,

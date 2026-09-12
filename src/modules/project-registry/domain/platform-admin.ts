@@ -97,6 +97,7 @@ export const saveProviderConnectionInputSchema = z.union([
 
 export const confirmMetricaGoalsInputSchema = z.object({
   siteId: idSchema,
+  version: positiveVersionSchema,
   leadGoalId: idSchema,
   phoneGoalId: idSchema,
 }).refine((value) => value.leadGoalId !== value.phoneGoalId, {

@@ -651,7 +651,7 @@ export class PrismaProjectRegistryAdminRepository
   async confirmMetricaGoals(input: ConfirmMetricaGoalsInput, organizationId: string) {
     const connection = await this.prisma.providerConnection.findFirst({
       where: { organizationId, siteId: input.siteId, provider: "YANDEX_METRIKA", enabled: true },
-      select: { id: true, settingsJson: true, site: { select: { projectId: true, name: true } } },
+      select: { id: true, settingsJson: true, version: true, site: { select: { projectId: true, name: true } } },
     });
     if (!connection) throw new ProjectRegistryAdminError("PROVIDER_CONNECTION_NOT_FOUND_OR_FORBIDDEN");
     const suggestions = readGoalSuggestions(connection.settingsJson);
@@ -676,7 +676,18 @@ export class PrismaProjectRegistryAdminRepository
         create: { organizationId, goalDefinitionId: goal.id, siteId: input.siteId },
       });
     }
-    await this.prisma.providerConnection.update({ where: { id: connection.id }, data: { status: "CONNECTED", statusCode: null, connectedAt: new Date(), lastCheckedAt: new Date(), settingsJson: { goalProfile: "seo-conversion", selectedGoals: definitions.map((item) => ({ externalGoalId: item.externalGoalId, category: item.category })) } } });
+    const updated = await this.prisma.providerConnection.updateMany({
+      where: { id: connection.id, organizationId, version: input.version },
+      data: {
+        status: "CONNECTED",
+        statusCode: null,
+        connectedAt: new Date(),
+        lastCheckedAt: new Date(),
+        settingsJson: { goalProfile: "seo-conversion", selectedGoals: definitions.map((item) => ({ externalGoalId: item.externalGoalId, category: item.category })) },
+        version: { increment: 1 },
+      },
+    });
+    if (updated.count !== 1) throw new ProjectRegistryAdminError("PROVIDER_CONNECTION_STALE");
     await this.prisma.notification.upsert({
       where: { dedupKey: `metrica-connected:${input.siteId}` },
       update: { severity: "SUCCESS", title: "Метрика подключена", message: "Цели заявки и раскрытия телефона подтверждены.", occurredAt: new Date() },

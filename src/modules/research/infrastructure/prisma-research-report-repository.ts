@@ -1,8 +1,8 @@
-import { randomUUID } from "node:crypto";
 import { Prisma, type PrismaClient } from "../../../generated/prisma/client.ts";
 import { setDatabaseAuthorizationContext } from "../../../platform/database/authorization-context.ts";
 import { getPrismaClient } from "../../../platform/database/prisma/client.ts";
 import type { DatabaseTransaction } from "../../../platform/database/transaction.ts";
+import { newId } from "../../../platform/identifiers/new-id.ts";
 import type { ResearchExportRecord, ResearchReportRepository, ResearchRunReport } from "../application/ports/research-report-repository.ts";
 import type { ResearchRef } from "../domain/research.ts";
 import { ResearchError } from "../domain/research.ts";
@@ -62,7 +62,7 @@ export class PrismaResearchReportRepository implements ResearchReportRepository 
 
   async reserveExport(input: ResearchRef & { runId: string; idempotencyKey: string; actorId: string }): Promise<ResearchExportRecord> {
     return this.withContext(async (transaction) => {
-      const id = randomUUID();
+      const id = newId();
       const rows = await transaction.$queryRaw<Array<ResearchExportRecord & { researchId: string; runId: string | null; format: string }>>(Prisma.sql`
         INSERT INTO "research"."Export" ("id", "organizationId", "projectId", "researchId", "runId", "format", "status", "createdByUserId", "idempotencyKey", "createdAt")
         VALUES (${id}, ${input.organizationId}, ${input.projectId}, ${input.researchId}, ${input.runId}, 'csv', 'PENDING', ${input.actorId}, ${input.idempotencyKey}, CURRENT_TIMESTAMP)

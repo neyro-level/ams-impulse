@@ -1,5 +1,5 @@
-import { randomUUID } from "node:crypto";
 import { Prisma, type PrismaClient } from "../../../generated/prisma/client.ts";
+import { newId } from "../../../platform/identifiers/new-id.ts";
 import { getPrismaClient } from "../../../platform/database/prisma/client.ts";
 import { setDatabaseAuthorizationContext } from "../../../platform/database/authorization-context.ts";
 import type { DatabaseTransaction } from "../../../platform/database/transaction.ts";
@@ -51,7 +51,7 @@ export class PrismaToolsWorkspaceRepository implements ToolsWorkspaceRepository 
     `));
   }
   async createOrganization(input: CreateToolsOrganizationInput) {
-    const id = randomUUID();
+    const id = newId();
     const rows = await this.withContext((transaction) => transaction.$queryRaw<OrganizationRow[]>(Prisma.sql`INSERT INTO "tools"."ToolsOrganization" ("id", "slug", "name") VALUES (${id}, ${input.slug}, ${input.name}) RETURNING "id", "slug", "name", "version", "archivedAt"`));
     return mapOrganization(rows[0]!);
   }
@@ -60,7 +60,7 @@ export class PrismaToolsWorkspaceRepository implements ToolsWorkspaceRepository 
     return rows[0] ? mapOrganization(rows[0]) : null;
   }
   async createProject(input: CreateToolsProjectInput) {
-    const id = randomUUID();
+    const id = newId();
     const rows = await this.withContext((transaction) => transaction.$queryRaw<ProjectRow[]>(Prisma.sql`INSERT INTO "tools"."ToolsProject" ("id", "organizationId", "slug", "name") VALUES (${id}, ${input.organizationId}, ${input.slug}, ${input.name}) RETURNING "id", "organizationId", "slug", "name", "version", "archivedAt"`));
     return mapProject(rows[0]!);
   }
@@ -72,7 +72,7 @@ export class PrismaToolsWorkspaceRepository implements ToolsWorkspaceRepository 
     return this.withContext(async (transaction) => (await transaction.$executeRaw(Prisma.sql`UPDATE "tools"."ToolsProject" SET "archivedAt"=CURRENT_TIMESTAMP, "version"="version"+1, "updatedAt"=CURRENT_TIMESTAMP WHERE "id"=${input.projectId} AND "organizationId"=${input.organizationId} AND "version"=${input.version} AND "archivedAt" IS NULL`)) === 1);
   }
   async grantProject(input: GrantToolsProjectInput & { actorId: string; correlationId: string }) {
-    const membershipId = randomUUID(); const accessId = randomUUID();
+    const membershipId = newId(); const accessId = newId();
     try {
       const effectiveAccessId = await this.withContext(async (transaction) => {
         await transaction.$executeRaw(Prisma.sql`INSERT INTO "tools"."ToolsMembership" ("id", "organizationId", "userId") VALUES (${membershipId}, ${input.organizationId}, ${input.userId}) ON CONFLICT ("organizationId", "userId") DO NOTHING`);
@@ -81,7 +81,7 @@ export class PrismaToolsWorkspaceRepository implements ToolsWorkspaceRepository 
         const accesses = await transaction.$queryRaw<Array<{ id: string }>>(Prisma.sql`INSERT INTO "tools"."ToolsProjectAccess" ("id", "membershipId", "organizationId", "projectId", "role") VALUES (${accessId}, ${membership.id}, ${input.organizationId}, ${input.projectId}, ${input.role}::"tools"."ProductRole") ON CONFLICT ("membershipId", "projectId") DO UPDATE SET "role"=EXCLUDED."role", "version"="ToolsProjectAccess"."version"+1, "updatedAt"=CURRENT_TIMESTAMP RETURNING "id"`);
         const effectiveAccess = accesses[0]; if (!effectiveAccess) throw new ToolsWorkspaceError("TOOLS_REFERENCE_INVALID");
         await transaction.session.deleteMany({ where: { userId: input.userId } });
-        await transaction.$executeRaw(Prisma.sql`INSERT INTO "public"."AuditEvent" ("id", "organizationId", "actorType", "actorId", "action", "entityType", "entityId", "beforeMarker", "afterMarker", "source", "correlationId", "createdAt") VALUES (${randomUUID()}, NULL, 'USER', ${input.actorId}, 'tools-project-access.upsert', 'ToolsProjectAccess', ${effectiveAccess.id}, NULL, ${JSON.stringify({ toolsOrganizationId: input.organizationId, toolsProjectId: input.projectId, userId: input.userId, role: input.role })}::jsonb, 'tools-workspace', ${input.correlationId}, CURRENT_TIMESTAMP)`);
+        await transaction.$executeRaw(Prisma.sql`INSERT INTO "public"."AuditEvent" ("id", "organizationId", "actorType", "actorId", "action", "entityType", "entityId", "beforeMarker", "afterMarker", "source", "correlationId", "createdAt") VALUES (${newId()}, NULL, 'USER', ${input.actorId}, 'tools-project-access.upsert', 'ToolsProjectAccess', ${effectiveAccess.id}, NULL, ${JSON.stringify({ toolsOrganizationId: input.organizationId, toolsProjectId: input.projectId, userId: input.userId, role: input.role })}::jsonb, 'tools-workspace', ${input.correlationId}, CURRENT_TIMESTAMP)`);
         return effectiveAccess.id;
       });
       return { accessId: effectiveAccessId, userId: input.userId };

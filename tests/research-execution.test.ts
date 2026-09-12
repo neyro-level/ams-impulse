@@ -31,6 +31,16 @@ describe("ResearchExecutionService", () => {
     expect(repository.runStatus).toBe("SUCCEEDED");
   });
 
+  it("distributes a minor-unit remainder without losing or creating money", async () => {
+    const repository = new ExecutionRepository();
+    repository.run = { ...repository.run!, approvedCostKopecks: 201 };
+
+    await new ResearchExecutionService(repository, provider).execute("run-1");
+
+    expect(repository.costs).toEqual([101, 100]);
+    expect(repository.costs.reduce((sum, value) => sum + value, 0)).toBe(201);
+  });
+
   it("stops after an ambiguous paid failure and does not call the next query", async () => {
     const repository = new ExecutionRepository(); let calls = 0;
     const failingProvider: ResearchProvider = { ...provider, collectYandexSerp: async () => { calls += 1; throw new ResearchProviderError("PROVIDER_TIMEOUT_AMBIGUOUS", "AMBIGUOUS_AFTER_DISPATCH"); } };

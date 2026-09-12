@@ -6,10 +6,46 @@
 
 - Applied migration never changes.
 - Production uses `prisma migrate deploy`; `db push` is forbidden.
+- `pnpm verify:migrations` rejects edited/deleted/unregistered migrations, duplicate timestamp identifiers, a production-capable `db push` script and build paths that omit explicit Prisma generation.
 - Queryable ownership and authorization fields stay relational.
 - Cross-product generic foreign keys are prohibited.
 - Runtime, worker, migrator and backup DB identities are separate.
 - Current single-schema SEO model migrates incrementally without data loss.
+
+### Schema ownership registry
+
+One database object has exactly one migration and runtime owner:
+
+| Schema / objects | Owner | Change path |
+| --- | --- | --- |
+| `public` AMS product, authorization and operations tables | Prisma / AMS | `prisma/schema.prisma` plus Prisma migrations |
+| `public.User`, `Session`, `Account`, `Verification`, `Jwks`, `Oauth*` identity fields | Better Auth and its official plugins | generated library contract reviewed first, then an immutable Prisma migration |
+| `research.*` | Research module / AMS SQL | immutable handwritten migrations plus typed Research repositories |
+| `tools.*` | Tools Workspace module / AMS SQL | immutable handwritten migrations plus typed Tools repositories |
+| `pgboss.*` | pg-boss | `scripts/pgboss-migrate.mjs`; application migrations do not edit its objects |
+| `platform.*` functions and RLS helpers | Platform / AMS SQL | immutable handwritten migrations; only platform infrastructure calls them |
+| reserved `seo`, `leads`, `contracts`, `invoices`, `presentations`, `site_clone`, `ops` | future owning module | no runtime tables until a module contract assigns ownership |
+
+Prisma introspection, Better Auth startup and pg-boss startup must not create or
+alter objects owned by another row. Ownership transfer requires an ADR and one
+explicit migration; dual ownership is prohibited.
+
+### SQL-owned product boundary
+
+Research and Tools use the SQL-owned model (Option A). Prisma `multiSchema` is
+not enabled for these domains: it would duplicate an already small, explicit SQL
+surface and would couple Prisma generation to modules whose repositories use
+parameterized `pg` queries. For a solo owner with AI assistance, the simpler
+maintenance contract is:
+
+- migrations define tables, composite constraints, indexes, RLS and grants;
+- module repositories expose typed inputs/results and are the only product-code SQL boundary;
+- application and UI code import module entrypoints, never raw table names;
+- PostgreSQL integration checks verify schema shape, tenant constraints and RLS;
+- a move to Prisma ownership is allowed only as an explicit, all-at-once ownership transfer.
+
+This decision applies only to `research` and `tools`. It does not permit ad-hoc
+SQL for Prisma-owned `public` models.
 
 ## Platform Identity
 
@@ -134,6 +170,10 @@ AWAITING_CONFIRMATION -> QUEUED -> RUNNING -> SUCCEEDED | FAILED
 - maximum 20 queries per ResearchRun in pilot;
 - daily approved ceiling 500 RUB;
 - monthly approved ceiling 3000 RUB;
+- persisted AMS money is a non-negative safe integer in minor units (`*Kopecks` for RUB); binary floating-point values and decimal rubles are not money storage;
+- Research v1 is RUB-only, so currency is fixed by the module contract; any multi-currency record must persist an ISO 4217 currency code beside the integer amount;
+- an external provider quote may retain its provider precision with an explicit currency, but it must be converted once at a named boundary before entering AMS budget arithmetic;
+- allocation uses integer quotient plus deterministic remainder distribution, and allocated parts must sum exactly to the approved amount;
 - paid execution requires current permission and unexpired exact confirmation;
 - per-query configured estimate and actual collected cost are stored;
 - actual provider invoice is not claimed unless provider exposes verifiable billing evidence.
@@ -144,11 +184,22 @@ Budget amount semantics are explicit: unexpired `AWAITING_CONFIRMATION` reserves
 
 - Every tenant record carries product-local organization/project ownership.
 - Composite foreign keys reject cross-organization parent relations.
+- Research execution and export relations carry `organizationId`, `projectId`, and `researchId`; valid IDs from different Research aggregates cannot be combined.
 - Resource lookup includes authorized product/project scope.
 - RLS is fail-closed when transaction context is absent.
 - Platform Admin does not receive a fake tenant record.
 - IDs from browser/API/MCP do not establish ownership.
 - Foreign resource returns not-found semantics without existence disclosure.
+
+## Optimistic Concurrency
+
+Important owner-edited state uses an integer `version` supplied by the caller and
+matched in the write predicate. A successful mutation increments it; zero updated
+rows maps to the common stale-state conflict. This applies to access grants,
+organizations, Projects, Sites, Research, editable settings and provider
+connections. Provider execution state machines additionally compare the expected
+current status when claiming or completing an operation. Blind read-then-write and
+unversioned replacement of settings are prohibited.
 
 ## Operations
 
@@ -158,12 +209,31 @@ Outbox delivery scope is the validated, versioned product payload. The legacy nu
 
 Research queue topic: `research.run.v1`, concurrency `1`, finite retry and dead-letter behavior.
 
+Operational indexes follow repository predicates, not anticipated features. The
+current evidence set covers tenant/project lists ordered by update time, Research
+run history, budget windows, estimate expiry, per-run query execution, evidence
+report ordering, outbox claim/reclaim, job status and notification audience/time.
+New indexes require a concrete query path and should be validated with PostgreSQL
+query plans when production-like volume is available.
+
 ## DateTime Policy
 
 - proven UTC instants use `timestamptz(3)`;
 - civil/business period keys use explicit `timestamp(3)` semantics;
 - every new DateTime field declares its category;
 - blind timezone conversion is prohibited.
+- `research` and `tools` columns ending in `At` are application-owned UTC instants and are checked through `information_schema` by `scripts/verify-datetime-contract.mjs`;
+- Better Auth and OAuth timestamps in `public` remain library-managed and are excluded from bulk conversion; a library-contract review is required before changing them.
+
+## Identifier Policy
+
+Historical identifiers are not rewritten. New AMS-owned domain records use UUIDv7
+from `src/platform/identifiers/new-id.ts`, giving opaque identifiers with a
+time-sortable prefix and strong random entropy. Correlation IDs, idempotency keys
+and Better Auth/library-owned identifiers are separate protocols and may retain
+their own generators. Repository infrastructure for migrated AMS domains must not
+call `randomUUID()` or `gen_random_uuid()` directly; the architecture guard
+enforces that boundary.
 
 ## Backup And Retention
 
