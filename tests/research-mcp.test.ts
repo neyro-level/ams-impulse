@@ -52,7 +52,18 @@ describe("Research MCP server", () => {
     });
     const result = await client.callTool({ name: "research_get_run", arguments: { organizationId: "foreign", projectId: "foreign", researchId: "foreign", runId: "foreign" } });
     expect(result.isError).toBe(true);
-    expect(result.content).toEqual([{ type: "text", text: '{"error":"RESEARCH_NOT_FOUND_OR_FORBIDDEN"}' }]);
+    expect(result.content).toEqual([{ type: "text", text: expect.stringContaining('"code":"RESEARCH_NOT_FOUND_OR_FORBIDDEN"') }]);
+    await client.close(); await server.close();
+  });
+
+  it("normalizes a domain stale error for MCP transport", async () => {
+    const stale = Object.assign(new ResearchError("RESEARCH_STALE"), { latestVersion: 4 });
+    const { client, server } = await connect({ research: { create: async () => { throw stale; } }, reports: {} });
+    const result = await client.callTool({ name: "research_create_draft", arguments: { organizationId: "org-1", projectId: "project-1", title: "Черновик", brief: "", queries: ["запрос"] } });
+    expect(result.isError).toBe(true);
+    expect(result.content).toEqual([{ type: "text", text: expect.stringContaining('"ok":false') }]);
+    expect(result.content).toEqual([{ type: "text", text: expect.stringContaining('"code":"STALE_STATE"') }]);
+    expect(result.content).toEqual([{ type: "text", text: expect.stringContaining('"latestVersion":4') }]);
     await client.close(); await server.close();
   });
 });

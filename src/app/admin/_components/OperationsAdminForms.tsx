@@ -32,7 +32,7 @@ export function OperationsAdminForms() {
   const submit = form.handleSubmit(async (values) => {
     const result = await requestProjectSyncAction(values);
     if (!result.ok) {
-      applyFieldErrors(result.fieldErrors, form.setError);
+      applyFieldErrors(result.error.fieldErrors, form.setError);
       setFeedback(feedbackFrom(result));
       return;
     }

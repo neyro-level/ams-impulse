@@ -1,8 +1,11 @@
 export { ResearchService } from "./application/research-service.ts";
+export { createResearchCommands } from "./application/research-commands.ts";
 export { ResearchExecutionService } from "./application/research-execution-service.ts";
 export { ResearchReportService } from "./application/research-report-service.ts";
 export { ResearchError } from "./domain/research.ts";
 export {
+  archiveResearchInputSchema,
+  cancelResearchRunInputSchema,
   confirmResearchRunInputSchema,
   createResearchInputSchema,
   estimateResearchRunInputSchema,

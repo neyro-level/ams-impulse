@@ -2,7 +2,9 @@ import { PrismaPg } from "@prisma/adapter-pg";
 import { Pool } from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { Prisma, PrismaClient } from "../src/generated/prisma/client.ts";
+import { ResearchService } from "../src/modules/research/application/research-service.ts";
 import { PrismaResearchRepository } from "../src/modules/research/infrastructure/prisma-research-repository.ts";
+import { AuthorizationService } from "../src/platform/authorization/authorization-service.ts";
 import { createPgPoolConfigFromEnvironment } from "../src/platform/database/prisma/pool-config.ts";
 
 const integrationEnabled = Boolean(
@@ -80,34 +82,37 @@ integrationDescription("Research audit tenant scope", () => {
 
   it("stores Tools scope in audit while keeping OutboxEvent platform-owned", async () => {
     const repository = new PrismaResearchRepository(userId, prisma);
-    const research = await repository.create({
+    const now = new Date();
+    const principal = {
+      kind: "platform-admin" as const,
+      userId,
+      correlationId,
+    };
+    const service = new ResearchService(
+      repository,
+      new AuthorizationService({ async listProjectGrants() { return []; } }),
+      { estimateRunCostKopecks: () => 100 },
+      { dailyLimitKopecks: 50_000, monthlyLimitKopecks: 300_000 },
+      () => now,
+    );
+    const research = await service.create(principal, {
       organizationId,
       projectId,
       title: "Tenant-aware audit",
       brief: "",
       queries: ["tenant scope proof"],
-      createdByUserId: userId,
-      correlationId,
     });
-    const now = new Date();
-    const estimate = await repository.reserveRunEstimate({
-      ref: { organizationId, projectId, researchId: research.id },
-      idempotencyKey: `${suffix}-estimate`,
-      queryCount: 1,
-      estimatedCostKopecks: 100,
-      now,
-      dailyLimitKopecks: 50_000,
-      monthlyLimitKopecks: 300_000,
+    const estimate = await service.estimateRun(principal, {
+      organizationId,
+      projectId,
+      researchId: research.id,
     });
-    const confirmed = await repository.confirmRun({
-      ref: { organizationId, projectId, researchId: research.id },
+    const confirmed = await service.confirmAndQueue(principal, {
+      organizationId,
+      projectId,
+      researchId: research.id,
       runId: estimate.runId,
       expectedEstimatedCostKopecks: 100,
-      actorId: userId,
-      correlationId,
-      now,
-      dailyLimitKopecks: 50_000,
-      monthlyLimitKopecks: 300_000,
     });
 
     expect(confirmed).not.toBeNull();
@@ -118,6 +123,7 @@ integrationDescription("Research audit tenant scope", () => {
     });
     expect(audits).toEqual([
       { productCode: "tools", organizationId, projectId, action: "research.create" },
+      { productCode: "tools", organizationId, projectId, action: "research.run.estimate" },
       { productCode: "tools", organizationId, projectId, action: "research.run.confirm" },
     ]);
 

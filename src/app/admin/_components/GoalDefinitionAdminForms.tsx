@@ -101,7 +101,7 @@ function GoalDefinitionEditCard({ item }: { item: GoalDefinitionListItem }) {
       siteIds: parseList(values.siteIdsText),
     } satisfies UpdateGoalDefinitionInput);
     if (!result.ok) {
-      applyFieldErrors(result.fieldErrors, form.setError);
+      applyFieldErrors(result.error.fieldErrors, form.setError);
       setFeedback(feedbackFrom(result));
       return;
     }
@@ -166,7 +166,7 @@ export function GoalDefinitionsAdminForms({ items, options }: { items: GoalDefin
       siteIds: parseList(values.siteIdsText),
     } satisfies CreateGoalDefinitionInput);
     if (!result.ok) {
-      applyGoalFieldErrors(result.fieldErrors, form.setError);
+      applyGoalFieldErrors(result.error.fieldErrors, form.setError);
       setFeedback(feedbackFrom(result));
       return;
     }

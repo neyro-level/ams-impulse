@@ -1,3 +1,5 @@
+import type { Prisma } from "../../../../generated/prisma/client.ts";
+import type { DatabaseTransaction } from "../../../../platform/database/transaction.ts";
 import type {
   CreateResearchInput,
   ResearchRecord,
@@ -9,11 +11,11 @@ import type {
 
 export interface ResearchRepository {
   listByProject(organizationId: string, projectId: string): Promise<ResearchRecord[]>;
-  findById(ref: ResearchRef): Promise<ResearchRecord | null>;
+  findById(ref: ResearchRef, transaction?: DatabaseTransaction): Promise<ResearchRecord | null>;
   listRuns(ref: ResearchRef): Promise<ResearchRunSummary[]>;
-  create(input: CreateResearchInput & { createdByUserId: string; correlationId: string }): Promise<ResearchRecord>;
-  update(input: UpdateResearchInput & { actorId: string; correlationId: string }): Promise<ResearchRecord | null>;
-  archive(ref: ResearchRef & { version: number; actorId: string; correlationId: string }): Promise<boolean>;
+  create(input: CreateResearchInput & { createdByUserId: string; correlationId: string }, transaction: DatabaseTransaction): Promise<ResearchRecord>;
+  update(input: UpdateResearchInput & { actorId: string; correlationId: string }, transaction: DatabaseTransaction): Promise<ResearchRecord | null>;
+  archive(ref: ResearchRef & { version: number; actorId: string; correlationId: string }, transaction: DatabaseTransaction): Promise<boolean>;
   reserveRunEstimate(input: {
     ref: ResearchRef;
     idempotencyKey: string;
@@ -22,7 +24,7 @@ export interface ResearchRepository {
     now: Date;
     dailyLimitKopecks: number;
     monthlyLimitKopecks: number;
-  }): Promise<Pick<ResearchRunEstimate, "runId" | "dailyCommittedKopecks" | "monthlyCommittedKopecks">>;
+  }, transaction: DatabaseTransaction): Promise<Pick<ResearchRunEstimate, "runId" | "dailyCommittedKopecks" | "monthlyCommittedKopecks">>;
   confirmRun(input: {
     ref: ResearchRef;
     runId: string;
@@ -32,5 +34,15 @@ export interface ResearchRepository {
     now: Date;
     dailyLimitKopecks: number;
     monthlyLimitKopecks: number;
-  }): Promise<{ runId: string; outboxEventId: string } | null>;
+  }, transaction: DatabaseTransaction): Promise<{ runId: string; outboxEventId: string } | null>;
+  cancelRun(input: ResearchRef & { runId: string; actorId: string; correlationId: string }, transaction: DatabaseTransaction): Promise<boolean>;
+  appendAudit(input: {
+    organizationId: string;
+    projectId: string;
+    actorId: string;
+    action: string;
+    entityId: string;
+    correlationId: string;
+    marker: Prisma.InputJsonValue;
+  }, transaction: DatabaseTransaction): Promise<void>;
 }

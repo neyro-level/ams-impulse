@@ -40,6 +40,12 @@ describe("platform HTTP contracts", () => {
     ).toThrow();
   });
 
+  it("carries the latest known version for a stale-state conflict", () => {
+    expect(createPublicErrorEnvelope({ code: "STALE_STATE", message: "Данные изменились.", correlationId, latestVersion: 9 })).toMatchObject({
+      error: { code: "STALE_STATE", correlationId, latestVersion: 9 },
+    });
+  });
+
   it("validates live and ready release-aware health DTOs", () => {
     expect(
       liveHealthSchema.parse({

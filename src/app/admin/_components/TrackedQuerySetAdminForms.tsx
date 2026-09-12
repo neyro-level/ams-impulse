@@ -82,7 +82,7 @@ function TrackedQuerySetEditCard({ item }: { item: TrackedQuerySetListItem }) {
       queries: parseList(values.queriesText),
     } satisfies UpdateTrackedQuerySetInput);
     if (!result.ok) {
-      applyTrackedQueryFieldErrors(result.fieldErrors, form.setError);
+      applyTrackedQueryFieldErrors(result.error.fieldErrors, form.setError);
       setFeedback(feedbackFrom(result));
       return;
     }
@@ -130,7 +130,7 @@ export function TrackedQuerySetsAdminForms({ items, options }: { items: TrackedQ
       queries: parseList(values.queriesText),
     } satisfies CreateTrackedQuerySetInput);
     if (!result.ok) {
-      applyTrackedQueryFieldErrors(result.fieldErrors, form.setError);
+      applyTrackedQueryFieldErrors(result.error.fieldErrors, form.setError);
       setFeedback(feedbackFrom(result));
       return;
     }

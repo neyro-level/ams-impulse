@@ -97,7 +97,7 @@ function ProviderConnectionEditCard({ item }: { item: ProviderConnectionListItem
         settingsJson: parseSettingsJson(values.settingsJsonText),
       } satisfies UpdateProviderConnectionInput);
       if (!result.ok) {
-        applyProviderFieldErrors(result.fieldErrors, form.setError);
+        applyProviderFieldErrors(result.error.fieldErrors, form.setError);
         setFeedback(feedbackFrom(result));
         return;
       }
@@ -175,7 +175,7 @@ export function ProviderConnectionsAdminForms({ items, options }: { items: Provi
         settingsJson: parseSettingsJson(values.settingsJsonText),
       } satisfies CreateProviderConnectionInput);
       if (!result.ok) {
-        applyProviderFieldErrors(result.fieldErrors, form.setError);
+        applyProviderFieldErrors(result.error.fieldErrors, form.setError);
         setFeedback(feedbackFrom(result));
         return;
       }

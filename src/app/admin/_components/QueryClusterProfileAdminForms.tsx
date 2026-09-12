@@ -72,7 +72,7 @@ function QueryClusterProfileEditCard({ item }: { item: QueryClusterProfileListIt
         groups: parseGroupsJson(values.groupsJsonText),
       } satisfies UpdateQueryClusterProfileInput);
       if (!result.ok) {
-        applyClusterFieldErrors(result.fieldErrors, form.setError);
+        applyClusterFieldErrors(result.error.fieldErrors, form.setError);
         setFeedback(feedbackFrom(result));
         return;
       }
@@ -117,7 +117,7 @@ export function QueryClusterProfilesAdminForms({ items }: { items: QueryClusterP
         groups: parseGroupsJson(values.groupsJsonText),
       } satisfies CreateQueryClusterProfileInput);
       if (!result.ok) {
-        applyClusterFieldErrors(result.fieldErrors, form.setError);
+        applyClusterFieldErrors(result.error.fieldErrors, form.setError);
         setFeedback(feedbackFrom(result));
         return;
       }

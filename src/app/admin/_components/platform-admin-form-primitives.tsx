@@ -23,11 +23,11 @@ export function applyFieldErrors<TValues extends FieldValues>(
   }
 }
 
-export function feedbackFrom(result: { ok: true } | { ok: false; code: string; message: string }): Feedback {
+export function feedbackFrom(result: { ok: true } | { ok: false; error: { code: string; message: string } }): Feedback {
   if (result.ok) return { kind: "success", message: "Данные сохранены" };
   return {
-    kind: result.code.endsWith("_STALE") ? "stale" : "error",
-    message: result.message,
+    kind: result.error.code === "STALE_STATE" ? "stale" : "error",
+    message: result.error.message,
   };
 }
 

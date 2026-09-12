@@ -51,6 +51,17 @@ describe("defineAction", () => {
     expect(dependencies.revalidate).toHaveBeenCalledWith("/admin", "layout");
   });
 
+  it("derives post-commit invalidation from the successful input and result", async () => {
+    const { defineAction, dependencies } = boundary();
+    const action = defineAction<{ projectId: string }, { researchId: string }>({
+      execute: async () => ({ researchId: "research-1" }),
+      revalidate: ({ input, result }) => [{ path: `/tools/${input.projectId}/${result.researchId}` }],
+    });
+
+    await action({ projectId: "project-1" });
+    expect(dependencies.revalidate).toHaveBeenCalledWith("/tools/project-1/research-1", undefined);
+  });
+
   it.each([
     ["disabled user", "CABINET_USER_INACTIVE"],
     ["direct call without a session", "AUTHENTICATION_REQUIRED"],
@@ -68,7 +79,7 @@ describe("defineAction", () => {
     });
 
     const result = await action(undefined);
-    expect(result).toMatchObject({ ok: false, code, fieldErrors: {} });
+    expect(result).toMatchObject({ ok: false, error: { code, fieldErrors: {} } });
     expect(result).not.toHaveProperty("stack");
     expect(dependencies.revalidate).not.toHaveBeenCalled();
   });
@@ -88,8 +99,7 @@ describe("defineAction", () => {
 
     await expect(action(undefined)).resolves.toMatchObject({
       ok: false,
-      code: "PROJECT_ACCESS_DENIED",
-      correlationId,
+      error: { code: "PROJECT_ACCESS_DENIED", correlationId },
     });
   });
 
@@ -110,13 +120,24 @@ describe("defineAction", () => {
 
     await expect(invalid({ name: "x" })).resolves.toMatchObject({
       ok: false,
-      code: "INPUT_INVALID",
-      fieldErrors: { name: expect.any(Array) },
+      error: { code: "INPUT_INVALID", fieldErrors: { name: expect.any(Array) } },
     });
     await expect(unexpected(undefined)).resolves.toMatchObject({
       ok: false,
-      code: "ACTION_FAILED",
-      message: "Не удалось выполнить действие.",
+      error: { code: "ACTION_FAILED", message: "Не удалось выполнить действие." },
+    });
+  });
+
+  it("normalizes domain optimistic-concurrency errors", async () => {
+    const { defineAction } = boundary();
+    const action = defineAction<undefined, never>({
+      execute: async () => { throw Object.assign(new Error("PROJECT_STALE"), { code: "PROJECT_STALE", latestVersion: 7 }); },
+      mapError: (error) => ({ code: (error as { code: string }).code, message: "Данные изменились." }),
+    });
+
+    await expect(action(undefined)).resolves.toMatchObject({
+      ok: false,
+      error: { code: "STALE_STATE", message: "Данные изменились.", correlationId, latestVersion: 7 },
     });
   });
 });

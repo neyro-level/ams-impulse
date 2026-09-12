@@ -59,4 +59,56 @@ describe("defineCommand", () => {
     );
     expect(execute).toHaveBeenCalledOnce();
   });
+
+  it("logs correlated success and failure without command input or identity", async () => {
+    const events: Array<Record<string, string | number>> = [];
+    let clock = 10;
+    const observability = {
+      now: () => (clock += 5),
+      log: (event: Record<string, string | number>) => events.push(event),
+      runInTransaction: async <TResult>(
+        _context: unknown,
+        execute: (transaction: DatabaseTransaction) => Promise<TResult>,
+      ) => execute({} as DatabaseTransaction),
+    };
+    const failedCommand = defineCommand({
+      name: "test.observed",
+      input: z.object({ secretInput: z.string() }),
+      authorize: () => { throw Object.assign(new Error("denied"), { code: "ACCESS_DENIED" }); },
+      execute: async () => ({ ok: true }),
+    }, observability);
+    const successfulCommand = defineCommand({
+      name: "test.success",
+      input: z.object({ value: z.string() }),
+      authorize: () => undefined,
+      execute: async () => ({ ok: true }),
+    }, observability);
+
+    await expect(failedCommand({
+      kind: "tenant-user",
+      userId: "must-not-log",
+      organizationId: "organization-1",
+      membershipId: "membership-1",
+      role: "VIEWER",
+      correlationId: "correlation-1",
+    }, { secretInput: "must-not-log" })).rejects.toThrow("denied");
+    await expect(successfulCommand({ kind: "platform-admin", userId: "must-not-log", correlationId: "correlation-2" }, { value: "must-not-log" })).resolves.toEqual({ ok: true });
+    expect(events).toEqual([{
+      event: "command_finished",
+      name: "test.observed",
+      durationMs: 5,
+      outcome: "failure",
+      code: "ACCESS_DENIED",
+      correlationId: "correlation-1",
+      principalKind: "tenant-user",
+    }, {
+      event: "command_finished",
+      name: "test.success",
+      durationMs: 5,
+      outcome: "success",
+      correlationId: "correlation-2",
+      principalKind: "platform-admin",
+    }]);
+    expect(JSON.stringify(events)).not.toContain("must-not-log");
+  });
 });

@@ -93,8 +93,8 @@ export function ProjectCreateForm({ options }: { options: ProjectFormOptions }) 
     setFeedback(null);
     const result = await createProjectAction(values);
     if (!result.ok) {
-      applyFieldErrors(result.fieldErrors, setError);
-      setFeedback({ kind: "error", message: result.message });
+      applyFieldErrors(result.error.fieldErrors, setError);
+      setFeedback({ kind: "error", message: result.error.message });
       return;
     }
     reset(defaults);
@@ -185,8 +185,8 @@ export function ProjectRowActions({ project, options }: { project: ProjectListIt
     setStatusFeedback(null);
     const result = await changeProjectStatusAction(values);
     if (!result.ok) {
-      applyFieldErrors(result.fieldErrors, statusForm.setError);
-      setStatusFeedback({ kind: result.code === "PROJECT_STALE" ? "stale" : "error", message: result.message });
+      applyFieldErrors(result.error.fieldErrors, statusForm.setError);
+      setStatusFeedback({ kind: result.error.code === "STALE_STATE" ? "stale" : "error", message: result.error.message });
       return;
     }
     setStatusFeedback({ kind: "success", message: "Статус сохранён" });
@@ -197,8 +197,8 @@ export function ProjectRowActions({ project, options }: { project: ProjectListIt
     setSettingsFeedback(null);
     const result = await updateProjectSettingsAction(values);
     if (!result.ok) {
-      applyFieldErrors(result.fieldErrors, settingsForm.setError);
-      setSettingsFeedback({ kind: result.code === "PROJECT_STALE" ? "stale" : "error", message: result.message });
+      applyFieldErrors(result.error.fieldErrors, settingsForm.setError);
+      setSettingsFeedback({ kind: result.error.code === "STALE_STATE" ? "stale" : "error", message: result.error.message });
       return;
     }
     setSettingsFeedback({ kind: "success", message: "Данные сохранены" });

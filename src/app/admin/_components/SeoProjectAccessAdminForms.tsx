@@ -60,7 +60,7 @@ function AccessEditCard({ item }: { item: SeoProjectAccessListItem }) {
   const submit = form.handleSubmit(async (values) => {
     const result = await updateSeoProjectAccessAction(values);
     if (!result.ok) {
-      applyFieldErrors(result.fieldErrors, form.setError);
+      applyFieldErrors(result.error.fieldErrors, form.setError);
       setFeedback(feedbackFrom(result));
       return;
     }
@@ -70,7 +70,7 @@ function AccessEditCard({ item }: { item: SeoProjectAccessListItem }) {
   const remove = removeForm.handleSubmit(async (values) => {
     const result = await removeSeoProjectAccessAction(values);
     if (!result.ok) {
-      applyFieldErrors(result.fieldErrors, removeForm.setError);
+      applyFieldErrors(result.error.fieldErrors, removeForm.setError);
       setRemoveFeedback(feedbackFrom(result));
       return;
     }
@@ -122,7 +122,7 @@ export function SeoProjectAccessAdminForms({ items, options }: { items: SeoProje
   const submit = form.handleSubmit(async (values) => {
     const result = await createSeoProjectAccessAction(values);
     if (!result.ok) {
-      applyFieldErrors(result.fieldErrors, form.setError);
+      applyFieldErrors(result.error.fieldErrors, form.setError);
       setFeedback(feedbackFrom(result));
       return;
     }

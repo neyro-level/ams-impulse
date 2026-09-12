@@ -1,7 +1,14 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { ResearchService, type ResearchRecord, type ResearchRepository } from "../src/modules/research/index.ts";
 import { AuthorizationService } from "../src/platform/authorization/authorization-service.ts";
 import { createPlatformAnalystPrincipal, createTenantUserPrincipal } from "./helpers/principal.ts";
+
+vi.mock("../src/platform/database/transaction.ts", () => ({
+  runInDatabaseTransaction: async (
+    _context: unknown,
+    execute: (transaction: { $executeRaw: () => Promise<number> }) => Promise<unknown>,
+  ) => execute({ $executeRaw: async () => 0 }),
+}));
 
 class MemoryResearchRepository implements ResearchRepository {
   records: ResearchRecord[] = [];
@@ -10,6 +17,7 @@ class MemoryResearchRepository implements ResearchRepository {
   runIds = new Map<string, string>();
   lastConfirmation: Parameters<ResearchRepository["confirmRun"]>[0] | null = null;
   private reservationTail: Promise<void> = Promise.resolve();
+  cancelledRunId: string | null = null;
 
   async listByProject(organizationId: string, projectId: string) { return this.records.filter((record) => record.organizationId === organizationId && record.projectId === projectId && record.status !== "ARCHIVED"); }
   async findById(ref: { organizationId: string; projectId: string; researchId: string }) { return this.records.find((record) => record.id === ref.researchId && record.organizationId === ref.organizationId && record.projectId === ref.projectId) ?? null; }
@@ -45,6 +53,8 @@ class MemoryResearchRepository implements ResearchRepository {
     }
   }
   async confirmRun(input: Parameters<ResearchRepository["confirmRun"]>[0]) { this.lastConfirmation = input; return input.expectedEstimatedCostKopecks >= 0 ? { runId: input.runId, outboxEventId: "outbox-1" } : null; }
+  async cancelRun(input: Parameters<ResearchRepository["cancelRun"]>[0]) { this.cancelledRunId = input.runId; return true; }
+  async appendAudit() {}
 }
 
 const authorization = new AuthorizationService({
@@ -124,5 +134,13 @@ describe("ResearchService", () => {
     expect(results.filter((result) => result.status === "fulfilled")).toHaveLength(1);
     expect(results.filter((result) => result.status === "rejected")).toHaveLength(1);
     expect(repository.dailyKopecks).toBe(100);
+  });
+
+  it("cancels an unstarted run through a command transaction", async () => {
+    const repository = new MemoryResearchRepository();
+    const service = new ResearchService(repository, authorization, pricing, budget);
+    const analyst = createPlatformAnalystPrincipal("analyst");
+    await service.cancelRun(analyst, { organizationId: "atlas", projectId: "secondary", researchId: "research-1", runId: "run-1" });
+    expect(repository.cancelledRunId).toBe("run-1");
   });
 });

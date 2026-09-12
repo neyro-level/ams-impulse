@@ -1,36 +1,19 @@
 import { NextResponse } from "next/server";
-import { z } from "zod";
-import { correlationIdSchema } from "./correlation.ts";
+import { createSafeErrorEnvelope, safeErrorEnvelopeSchema, type SafeErrorEnvelope } from "../errors/safe-error-envelope.ts";
 
-export const publicErrorEnvelopeSchema = z.object({
-  ok: z.literal(false),
-  error: z.object({
-    code: z.string().regex(/^[A-Z][A-Z0-9_]{2,63}$/),
-    message: z.string().min(1).max(500),
-    fieldErrors: z.record(z.string(), z.array(z.string())).default({}),
-    correlationId: correlationIdSchema,
-  }),
-});
-
-export type PublicErrorEnvelope = z.infer<typeof publicErrorEnvelopeSchema>;
+export const publicErrorEnvelopeSchema = safeErrorEnvelopeSchema;
+export type PublicErrorEnvelope = SafeErrorEnvelope;
 
 export interface PublicErrorInput {
   code: string;
   message: string;
   correlationId: string;
   fieldErrors?: Record<string, string[]>;
+  latestVersion?: number;
 }
 
 export function createPublicErrorEnvelope(input: PublicErrorInput): PublicErrorEnvelope {
-  return publicErrorEnvelopeSchema.parse({
-    ok: false,
-    error: {
-      code: input.code,
-      message: input.message,
-      fieldErrors: input.fieldErrors ?? {},
-      correlationId: input.correlationId,
-    },
-  });
+  return createSafeErrorEnvelope(input);
 }
 
 export function createPublicErrorResponse(input: PublicErrorInput, status: number) {

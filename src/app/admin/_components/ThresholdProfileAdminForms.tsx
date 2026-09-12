@@ -71,7 +71,7 @@ function ThresholdProfileEditCard({ item }: { item: ThresholdProfileListItem }) 
   const submit = form.handleSubmit(async (values) => {
     const result = await updateThresholdProfileAction(values satisfies UpdateThresholdProfileInput);
     if (!result.ok) {
-      applyFieldErrors(result.fieldErrors, form.setError);
+      applyFieldErrors(result.error.fieldErrors, form.setError);
       setFeedback(feedbackFrom(result));
       return;
     }
@@ -121,7 +121,7 @@ export function ThresholdProfilesAdminForms({ items }: { items: ThresholdProfile
   const submit = form.handleSubmit(async (values) => {
     const result = await createThresholdProfileAction(values);
     if (!result.ok) {
-      applyFieldErrors(result.fieldErrors, form.setError);
+      applyFieldErrors(result.error.fieldErrors, form.setError);
       setFeedback(feedbackFrom(result));
       return;
     }

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import type { SafeErrorEnvelope } from "../../platform/errors/safe-error-envelope.ts";
 
 export type PlatformAdminSortField = "name" | "status" | "createdAt" | "updatedAt";
 export type PlatformAdminSortDirection = "asc" | "desc";
@@ -27,13 +28,7 @@ export interface PlatformAdminDashboardSummary {
   pendingJobs: number;
 }
 
-export interface PlatformAdminActionFailure {
-  ok: false;
-  code: string;
-  message: string;
-  correlationId: string;
-  fieldErrors: Record<string, string[]>;
-}
+export type PlatformAdminActionFailure = SafeErrorEnvelope;
 
 const querySchema = z.object({
   page: z.coerce.number().int().min(1).default(1),

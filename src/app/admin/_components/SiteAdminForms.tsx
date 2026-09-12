@@ -59,7 +59,7 @@ function SiteEditCard({ item }: { item: SiteListItem }) {
   const submit = form.handleSubmit(async (values) => {
     const result = await updateSiteAction(values satisfies UpdateSiteInput);
     if (!result.ok) {
-      applyFieldErrors(result.fieldErrors, form.setError);
+      applyFieldErrors(result.error.fieldErrors, form.setError);
       setFeedback(feedbackFrom(result));
       return;
     }
@@ -112,7 +112,7 @@ export function SitesAdminForms({ items, options }: { items: SiteListItem[]; opt
   const submit = form.handleSubmit(async (values) => {
     const result = await createSiteAction(values);
     if (!result.ok) {
-      applyFieldErrors(result.fieldErrors, form.setError);
+      applyFieldErrors(result.error.fieldErrors, form.setError);
       setFeedback(feedbackFrom(result));
       return;
     }

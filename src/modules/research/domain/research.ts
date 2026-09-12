@@ -37,6 +37,14 @@ export const confirmResearchRunInputSchema = researchRefSchema.extend({
   expectedEstimatedCostKopecks: z.number().int().min(0),
 });
 
+export const archiveResearchInputSchema = researchRefSchema.extend({
+  version: z.number().int().positive(),
+});
+
+export const cancelResearchRunInputSchema = researchRefSchema.extend({
+  runId: idSchema,
+});
+
 export type CreateResearchInput = z.infer<typeof createResearchInputSchema>;
 export type UpdateResearchInput = z.infer<typeof updateResearchInputSchema>;
 export type ResearchRef = z.infer<typeof researchRefSchema>;

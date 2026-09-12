@@ -8,19 +8,15 @@ import {
   CabinetPrincipalError,
   requireCurrentCabinetPrincipal,
 } from "../auth/principal-session.ts";
+import { normalizeStaleState } from "../errors/stale-state.ts";
+import { createSafeErrorEnvelope, type SafeErrorEnvelope } from "../errors/safe-error-envelope.ts";
 
 export interface ActionResult<TResult> {
   ok: true;
   data: TResult;
 }
 
-export interface ActionFailure {
-  ok: false;
-  code: string;
-  message: string;
-  correlationId: string;
-  fieldErrors: Record<string, string[]>;
-}
+export type ActionFailure = SafeErrorEnvelope;
 
 export type DefinedAction<TResult> = ActionResult<TResult> | ActionFailure;
 
@@ -28,6 +24,7 @@ export interface ActionErrorMapping {
   code: string;
   message: string;
   fieldErrors?: Record<string, string[]>;
+  latestVersion?: number;
 }
 
 interface ActionExecution<TInput> {
@@ -44,7 +41,7 @@ export interface ActionDefinition<TInput, TResult> {
   execute: (execution: ActionExecution<TInput>) => Promise<TResult>;
   mapError?: (error: unknown) => ActionErrorMapping | null;
   inputError?: Pick<ActionErrorMapping, "code" | "message">;
-  revalidate?: readonly ActionRevalidation[];
+  revalidate?: readonly ActionRevalidation[] | ((execution: ActionExecution<TInput> & { result: TResult }) => readonly ActionRevalidation[]);
 }
 
 export interface ActionBoundaryDependencies {
@@ -92,7 +89,10 @@ export function createActionBoundary(dependencies: ActionBoundaryDependencies) {
         principal = await dependencies.requireCabinetPrincipal();
         correlationId = principal.correlationId;
         const data = await definition.execute({ input, principal });
-        for (const target of definition.revalidate ?? []) {
+        const revalidation = typeof definition.revalidate === "function"
+          ? definition.revalidate({ input, principal, result: data })
+          : definition.revalidate ?? [];
+        for (const target of revalidation) {
           dependencies.revalidate(target.path, target.type);
         }
         return { ok: true, data };
@@ -106,13 +106,8 @@ export function createActionBoundary(dependencies: ActionBoundaryDependencies) {
                   code: "ACTION_FAILED",
                   message: "Не удалось выполнить действие.",
                 };
-        return {
-          ok: false,
-          code: mapped.code,
-          message: mapped.message,
-          correlationId,
-          fieldErrors: mapped.fieldErrors ?? {},
-        };
+        const safeMapping = normalizeStaleState(mapped, error);
+        return createSafeErrorEnvelope({ ...safeMapping, correlationId }, error);
       }
     };
   };

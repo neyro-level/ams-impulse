@@ -34,6 +34,10 @@ Web, MCP и worker собираются из одного repository и immutabl
 
 Владеет identity adapters, product catalog, authorization contract, commands/actions, database scope, audit, idempotency, outbox, queue transport, HTTP/MCP transport and observability.
 
+Optimistic-concurrency errors remain domain-specific inside modules, but every transport normalizes them to `STALE_STATE` with a safe message, `correlationId` and optional `latestVersion`.
+Actions, HTTP/API and MCP share one failure envelope: `{ ok: false, error: { code, message, fieldErrors, correlationId, latestVersion? } }`. Transport responses never serialize raw exceptions, SQL/provider messages or stack traces.
+Every platform command emits one PII-free `command_finished` event with command name, duration, outcome, safe code on failure, correlation ID and principal kind.
+
 ### SEO Monitor
 
 Владеет SEO organizations/projects/sites, provider configuration/evidence, ranking analytics and reports. Текущие `project-registry`, `data-ingestion`, `ranking-analytics` and `reporting` остаются совместимыми facades во время миграции.

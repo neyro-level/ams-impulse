@@ -21,6 +21,9 @@ Research не создаёт собственные организации и п
 
 ## Реализованный MVP
 
+Все Research mutations (`create`, `update`, `archive`, `estimateRun`, `confirmAndQueue`, `cancelRun`) выполняются через platform `defineCommand`. Command владеет validation, authorization и database transaction; infrastructure repository получает готовую transaction и не открывает вложенную business transaction для mutation.
+Research UI mutations проходят через `defineAction`; revalidation выполняется только после успешного commit, а `redirect`/`notFound` вызываются снаружи action boundary.
+
 - create/list/update/archive исследования;
 - 1-20 запросов;
 - локальная оценка стоимости и отдельное подтверждение;
