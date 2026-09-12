@@ -4,6 +4,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import type { SearchParams } from "nuqs/server";
 import { Button } from "../../../components/ui/button.tsx";
+import { FilterBar } from "../../../components/filters/FilterBar.tsx";
 import { Input } from "../../../components/ui/input.tsx";
 import { NativeSelect, NativeSelectOption } from "../../../components/ui/native-select.tsx";
 import {
@@ -76,7 +77,7 @@ export default async function ProjectsPage({
           <StatePanel state="not-connected" title="Создание проекта недоступно" description="Сначала добавьте организацию, правила оценки и группы поисковых запросов." />
         )}
 
-        <form className="grid gap-4 rounded-[var(--radius-panel)] border border-[var(--border)] bg-[var(--card)] p-4 sm:grid-cols-[minmax(0,1fr)_220px_auto]" method="get">
+        <FilterBar className="gap-4 sm:grid-cols-[minmax(0,1fr)_220px_auto]" method="get">
           <label className="space-y-1.5">
             <span className="block text-sm font-medium text-app-foreground">Поиск</span>
             <Input
@@ -102,7 +103,7 @@ export default async function ProjectsPage({
             <Button type="submit">Применить</Button>
             {filtersActive ? <Link className="inline-flex min-h-11 items-center px-2 text-sm font-semibold text-app-muted-foreground hover:text-app-foreground" href="/admin/projects">Сбросить</Link> : null}
           </div>
-        </form>
+        </FilterBar>
 
         <ProjectTable
           options={options}

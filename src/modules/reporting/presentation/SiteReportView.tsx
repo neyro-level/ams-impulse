@@ -6,6 +6,7 @@ import { PageHeader } from "../../../components/dashboard/PageHeader.tsx";
 import { SectionCard } from "../../../components/dashboard/SectionCard.tsx";
 import { StatusBanner } from "../../../components/dashboard/StatusBanner.tsx";
 import { StatePanel } from "../../../components/states/StatePanel.tsx";
+import { FreshnessIndicator } from "../../../components/states/FreshnessIndicator.tsx";
 import { DataTable } from "../../../components/tables/DataTable.tsx";
 import { TrackedQueryTable } from "../../../components/tables/TrackedQueryTable.tsx";
 import { formatDuration, formatInteger, formatPercent, formatPosition } from "../../../shared/format/metrics.ts";
@@ -106,7 +107,7 @@ export function SiteReportView({ site, snapshot, mode, backHref, periodControl, 
       <PageHeader title={site.name} description={`Единый отчёт за ${periodLabel}. Обновлён ${new Date(snapshot.generatedAt).toLocaleString("ru-RU")}.`} backHref={backHref} />
       <div className="flex flex-wrap items-center justify-between gap-3">
         {periodControl}
-        <p className="text-xs text-app-muted-foreground">{mode === "live" ? "Актуальные данные" : "Демонстрационные данные"}</p>
+        <div className="flex items-center gap-2"><FreshnessIndicator freshness={snapshot.freshness} /><p className="text-xs text-app-muted-foreground">{mode === "live" ? "Рабочие данные" : "Демонстрационные данные"}</p></div>
       </div>
       <DirectorReportTabs snapshot={snapshot} analytics={directorAnalytics} timezone={site.timezone} />
 

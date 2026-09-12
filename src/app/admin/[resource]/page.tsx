@@ -5,6 +5,7 @@ import { notFound, redirect } from "next/navigation";
 import { KpiCard } from "../../../components/dashboard/KpiCard.tsx";
 import { PageHeader } from "../../../components/dashboard/PageHeader.tsx";
 import { Button } from "../../../components/ui/button.tsx";
+import { FilterBar } from "../../../components/filters/FilterBar.tsx";
 import { Input } from "../../../components/ui/input.tsx";
 import { NativeSelect, NativeSelectOption } from "../../../components/ui/native-select.tsx";
 import {
@@ -91,7 +92,7 @@ const goalDirectionLabels: Record<string, string> = {
 
 function Filters({ query, resource }: { query: PlatformAdminPageQuery; resource: string }) {
   return (
-    <form className="grid gap-3 rounded-[var(--radius-panel)] border border-[var(--border)] bg-[var(--card)] p-4 sm:grid-cols-[minmax(0,1fr)_180px_160px_auto]" method="get">
+    <FilterBar className="sm:grid-cols-[minmax(0,1fr)_180px_160px_auto]" method="get">
       <label className="space-y-1.5">
         <span className="block text-sm font-medium text-app-foreground">Поиск</span>
         <Input defaultValue={query.search} name="q" placeholder="Название или адрес" />
@@ -120,7 +121,7 @@ function Filters({ query, resource }: { query: PlatformAdminPageQuery; resource:
           </Link>
         ) : null}
       </div>
-    </form>
+    </FilterBar>
   );
 }
 

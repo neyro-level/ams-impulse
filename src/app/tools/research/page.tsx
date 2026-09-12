@@ -6,6 +6,7 @@ import { Plus } from "lucide-react";
 import { PageHeader } from "../../../components/dashboard/PageHeader.tsx";
 import { SectionCard } from "../../../components/dashboard/SectionCard.tsx";
 import { MobileFilterSheet } from "../../../components/filters/MobileFilterSheet.tsx";
+import { FilterBar } from "../../../components/filters/FilterBar.tsx";
 import { StatePanel } from "../../../components/states/StatePanel.tsx";
 import { StatusBadge, type StatusTone } from "../../../components/states/StatusBadge.tsx";
 import { Button } from "../../../components/ui/button.tsx";
@@ -66,7 +67,7 @@ export default async function ResearchPage({ searchParams }: { searchParams: Sea
     return item ? [[key, item]] : [];
   }));
   const detailHref = (id: string) => `/tools/research/${id}/?organizationId=${encodeURIComponent(selected.organizationId)}&projectId=${encodeURIComponent(selected.id)}`;
-  const filterForm = <form className="grid gap-3 md:grid-cols-2 xl:grid-cols-[minmax(220px,1fr)_180px_160px_180px_auto_auto]">
+  const filterForm = <FilterBar surface="plain" className="md:grid-cols-2 xl:grid-cols-[minmax(220px,1fr)_180px_160px_180px_auto_auto]">
     <input type="hidden" name="organizationId" value={selected.organizationId} /><input type="hidden" name="projectId" value={selected.id} />
     <Input name="search" defaultValue={first(raw.search) ?? ""} placeholder="Название исследования" aria-label="Поиск исследований" />
     <NativeSelect name="status" defaultValue={parsedStatus.success ? parsedStatus.data : ""} aria-label="Статус исследования"><NativeSelectOption value="">Все статусы</NativeSelectOption><NativeSelectOption value="DRAFT">Черновик</NativeSelectOption><NativeSelectOption value="READY">Готово</NativeSelectOption><NativeSelectOption value="RUNNING">Выполняется</NativeSelectOption><NativeSelectOption value="SUCCEEDED">Завершено</NativeSelectOption><NativeSelectOption value="FAILED">Ошибка</NativeSelectOption></NativeSelect>
@@ -74,7 +75,7 @@ export default async function ResearchPage({ searchParams }: { searchParams: Sea
     <NativeSelect name="sort" defaultValue={sort} aria-label="Сортировка"><NativeSelectOption value="updated">Сначала обновлённые</NativeSelectOption><NativeSelectOption value="title">По названию</NativeSelectOption><NativeSelectOption value="status">По статусу</NativeSelectOption><NativeSelectOption value="cost">По стоимости запуска</NativeSelectOption></NativeSelect>
     <Button type="submit">Применить</Button>
     <Link href={`/tools/research/?organizationId=${encodeURIComponent(selected.organizationId)}&projectId=${encodeURIComponent(selected.id)}`} className="inline-flex min-h-11 items-center justify-center rounded-[var(--radius)] border border-[var(--input)] px-4 text-sm font-semibold text-app-foreground">Сбросить</Link>
-  </form>;
+  </FilterBar>;
 
   return <div className="space-y-6">
     <PageHeader title="Исследования" description="Рабочий список поисков и конкурентных исследований выбранного проекта." />

@@ -36,12 +36,19 @@ for (const file of reusableComponents) {
   }
 }
 
-for (const relativeDirectory of ["src/app/admin", "src/app/analyst", "src/app/dashboard", "src/app/c", "src/app/demo"]) {
+for (const relativeDirectory of ["src/app/admin", "src/app/analyst", "src/app/dashboard", "src/app/c", "src/app/demo", "src/app/notifications", "src/app/tools"]) {
   for (const file of (await filesUnder(relativeDirectory)).filter((item) => /\.tsx$/.test(item))) {
     const source = await readFile(path.join(root, file), "utf8");
+    if (/--ch-|var\(--ch-/.test(source)) violations.push(`${file}: public brand token is forbidden in private UI`);
+    if (/#[0-9a-f]{3,8}\b|rgba?\(/i.test(source)) violations.push(`${file}: private UI color must use a semantic token`);
     if (/(?:text|bg|border|ring|fill|stroke)-(?:white|black|slate|gray|zinc|neutral|stone|red|rose|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink)(?:\b|\/|\[)/.test(source)) violations.push(`${file}: private UI palette color must use a semantic token`);
     if (/rounded-(?:sm|md|lg|xl|2xl|3xl)|rounded-\[[0-9]+px\]/.test(source)) violations.push(`${file}: private UI radius must use a canonical radius token`);
   }
+}
+
+for (const file of reusableComponents.filter((item) => !item.replaceAll("\\", "/").includes("/components/marketing/"))) {
+  const source = await readFile(path.join(root, file), "utf8");
+  if (/--ch-|var\(--ch-/.test(source)) violations.push(`${file}: public brand token is forbidden outside marketing components`);
 }
 
 const legacySelect = path.join(root, "src/components/ui/select.tsx");

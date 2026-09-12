@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { PageHeader } from "../../components/dashboard/PageHeader.tsx";
 import { SectionCard } from "../../components/dashboard/SectionCard.tsx";
 import { MobileFilterSheet } from "../../components/filters/MobileFilterSheet.tsx";
+import { FilterBar } from "../../components/filters/FilterBar.tsx";
 import { Button } from "../../components/ui/button.tsx";
 import { Input } from "../../components/ui/input.tsx";
 import { NativeSelect, NativeSelectOption } from "../../components/ui/native-select.tsx";
@@ -81,14 +82,14 @@ export default async function AllProjectsPage({ searchParams }: { searchParams: 
     const item = first(value);
     return item ? [[key, item]] : [];
   }));
-  const filterForm = <form className="grid gap-3 md:grid-cols-2 xl:grid-cols-[minmax(220px,1fr)_180px_180px_180px_auto_auto]">
+  const filterForm = <FilterBar surface="plain" className="md:grid-cols-2 xl:grid-cols-[minmax(220px,1fr)_180px_180px_180px_auto_auto]">
     <Input name="search" defaultValue={first(raw.search) ?? ""} placeholder="Название или адрес проекта" aria-label="Поиск проектов" />
     <NativeSelect name="status" defaultValue={status ?? "all"} aria-label="Статус проекта"><NativeSelectOption value="all">Все статусы</NativeSelectOption><NativeSelectOption value="ACTIVE">Активные</NativeSelectOption><NativeSelectOption value="PLANNED">Плановые</NativeSelectOption><NativeSelectOption value="DISABLED">Отключённые</NativeSelectOption></NativeSelect>
     <NativeSelect name="freshness" defaultValue={freshness ?? "all"} aria-label="Актуальность отчёта"><NativeSelectOption value="all">Любая актуальность</NativeSelectOption><NativeSelectOption value="fresh">Актуально</NativeSelectOption><NativeSelectOption value="partial">Частично</NativeSelectOption><NativeSelectOption value="stale">Устарело</NativeSelectOption><NativeSelectOption value="unavailable">Нет отчёта</NativeSelectOption></NativeSelect>
     <NativeSelect name="sort" defaultValue={sort} aria-label="Сортировка"><NativeSelectOption value="issues">Сначала проблемы</NativeSelectOption><NativeSelectOption value="name">По названию</NativeSelectOption><NativeSelectOption value="freshness">По актуальности</NativeSelectOption></NativeSelect>
     <Button type="submit">Применить</Button>
     <Link href="/analyst/" className="inline-flex min-h-11 items-center justify-center rounded-[var(--radius)] border border-[var(--input)] px-4 text-sm font-semibold text-app-foreground">Сбросить</Link>
-  </form>;
+  </FilterBar>;
 
   return (
     <div className="space-y-6">

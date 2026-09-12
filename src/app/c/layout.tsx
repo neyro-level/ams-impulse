@@ -1,13 +1,14 @@
-import type { Metadata, Viewport } from "next";
+import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import { PrivateApplicationLayout } from "../../components/shell/PrivateApplicationLayout.tsx";
+import { PRIVATE_APP_VIEWPORT } from "../../shared/design-system/private-tokens.ts";
 
 export const metadata: Metadata = {
   title: "Клиентский кабинет",
   robots: { index: false, follow: false, nocache: true },
 };
 
-export const viewport: Viewport = { colorScheme: "light", themeColor: "#edf2f6" };
+export const viewport = PRIVATE_APP_VIEWPORT;
 
 export default function ClientLayout({ children }: { children: ReactNode }) {
   return <PrivateApplicationLayout>{children}</PrivateApplicationLayout>;

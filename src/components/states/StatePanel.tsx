@@ -22,6 +22,7 @@ export const EmptyState = (props: Omit<React.ComponentProps<typeof StatePanel>, 
 export const FilteredEmptyState = (props: Omit<React.ComponentProps<typeof StatePanel>, "state">) => <StatePanel state="filtered-empty" {...props} />;
 export const ErrorState = (props: Omit<React.ComponentProps<typeof StatePanel>, "state">) => <StatePanel state="error" {...props} />;
 export const PermissionDeniedState = (props: Omit<React.ComponentProps<typeof StatePanel>, "state">) => <StatePanel state="permission-denied" {...props} />;
+export const PermissionState = PermissionDeniedState;
 
 export function StaleDataBanner({ children }: { children: ReactNode }) {
   return <div className="rounded-[var(--radius-panel)] border border-[var(--warning)]/25 bg-[var(--warning-soft)] px-4 py-3 text-sm text-app-warning" role="status">{children}</div>;
