@@ -32,6 +32,7 @@ export default defineConfig({
       "tests/research-rls.integration.test.ts",
       "tests/research-concurrency.integration.test.ts",
       "tests/research-audit-safety.integration.test.ts",
+      "tests/operational-admin.integration.test.ts",
     ],
   },
 });

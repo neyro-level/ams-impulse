@@ -28,7 +28,7 @@ export class ResearchExecutionService {
     }
   }
 
-  async execute(runId: string) {
+  async execute(runId: string, correlationId?: string) {
     const run = await this.repository.claimRun(runId);
     if (!run) return { status: "ignored" as const };
     const queryCount = Math.max(1, run.queries.length);
@@ -38,9 +38,10 @@ export class ResearchExecutionService {
       for (const [index, query] of run.queries.entries()) {
         if (!await this.repository.markQueryStarted(query.queryRunId)) continue;
         try {
-          const search = await this.providerCall(() => this.provider.collectYandexSerp({ query: query.text }));
-          const suggestions = await this.providerCall(() => this.provider.collectYandexSuggestions({ query: query.text }));
-          const wordstat = await this.providerCall(() => this.provider.collectWordstat({ query: query.text }));
+          const request = { query: query.text, correlationId };
+          const search = await this.providerCall(() => this.provider.collectYandexSerp(request));
+          const suggestions = await this.providerCall(() => this.provider.collectYandexSuggestions(request));
+          const wordstat = await this.providerCall(() => this.provider.collectWordstat(request));
           const suggestionEvidence = suggestions.map((title) => ({ type: "related" as const, url: null, domain: null, title, snippet: null }));
           const costKopecks = baseCost + (index < costRemainder ? 1 : 0);
           await this.repository.completeQuery({ queryRunId: query.queryRunId, search: [...search, ...suggestionEvidence], wordstat, costKopecks });

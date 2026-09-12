@@ -17,11 +17,11 @@ export type RequestProjectSyncInput = z.infer<typeof requestProjectSyncInputSche
 
 export interface OperationListItem {
   id: string;
-  kind: "sync-run" | "outbox-event";
+  kind: "failed-job" | "dead-letter" | "integration-failure" | "stale-source" | "worker" | "backup-proof" | "live-proof";
   primary: string;
   secondary: string;
   status: string;
-  updatedAt: string;
+  updatedAt: string | null;
 }
 
 export interface OperationListResult {
@@ -29,6 +29,7 @@ export interface OperationListResult {
   total: number;
   page: number;
   pageSize: number;
+  incidentCount: number;
 }
 
 export class PlatformOperationsAdminError extends Error {

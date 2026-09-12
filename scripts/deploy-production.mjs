@@ -68,6 +68,7 @@ MIGRATOR_ENV_FILE=/etc/ams-platform/ams-seo-monitor-migrator.env
 BACKUP_ENV_FILE=/etc/ams-platform/ams-seo-monitor-backup.env
 LIVE_PROOF_ENV_FILE=/etc/ams-platform/ams-seo-monitor-live-proof.env
 PROVIDER_BACKUP_PROOF_FILE=/etc/ams-platform/ams-managed-postgres-backup.proof
+OPERATIONAL_PROOF_ROOT=/var/lib/ams-platform/ams-seo-monitor/proofs
 BACKUP_STRATEGY=logical
 export COMPOSE_PROJECT_NAME=ams-seo-monitor
 COMPOSE_FILE="$RELEASE/docker-compose.production.yml"
@@ -105,8 +106,31 @@ EOF
   mv -f "$ROOT/shared/release.env.next" "$ROOT/shared/release.env"
 }
 
+write_operational_proof() {
+  local kind="$1"
+  install -d -o root -g root -m 0755 "$OPERATIONAL_PROOF_ROOT"
+  python3 - "$OPERATIONAL_PROOF_ROOT/$kind.json.next" "$kind" "$SHA" <<'PY'
+import datetime
+import json
+from pathlib import Path
+import sys
+
+path, kind, release_sha = sys.argv[1:]
+payload = {
+    "kind": kind,
+    "status": "passed",
+    "occurredAt": datetime.datetime.now(datetime.timezone.utc).isoformat().replace("+00:00", "Z"),
+    "releaseSha": release_sha,
+}
+Path(path).write_text(json.dumps(payload, separators=(",", ":")) + "\n", encoding="utf-8")
+PY
+  chown root:root "$OPERATIONAL_PROOF_ROOT/$kind.json.next"
+  chmod 0644 "$OPERATIONAL_PROOF_ROOT/$kind.json.next"
+  mv -f "$OPERATIONAL_PROOF_ROOT/$kind.json.next" "$OPERATIONAL_PROOF_ROOT/$kind.json"
+}
+
 enable_runtime_timers() {
-  systemctl enable --now seo-monitor-worker.timer seo-monitor-topvisor-checks.timer seo-monitor-competitors.timer seo-monitor-outbox.timer
+  systemctl enable --now seo-monitor-worker.timer seo-monitor-topvisor-checks.timer seo-monitor-competitors.timer seo-monitor-outbox.timer seo-monitor-alerts.timer
   if [ "$BACKUP_STRATEGY" = "logical" ]; then
     systemctl enable --now seo-monitor-db-backup.timer
   else
@@ -116,7 +140,7 @@ enable_runtime_timers() {
 
 rollback_previous() {
   systemctl stop seo-monitor-worker.service seo-monitor-outbox.service seo-monitor-web.service >/dev/null 2>&1 || true
-  systemctl disable --now seo-monitor-worker.timer seo-monitor-topvisor-checks.timer seo-monitor-competitors.timer seo-monitor-outbox.timer seo-monitor-db-backup.timer >/dev/null 2>&1 || true
+  systemctl disable --now seo-monitor-worker.timer seo-monitor-topvisor-checks.timer seo-monitor-competitors.timer seo-monitor-outbox.timer seo-monitor-db-backup.timer seo-monitor-alerts.timer >/dev/null 2>&1 || true
   if [ -n "$PREVIOUS" ]; then
     rm -f "$ROOT/current.rollback"
     ln -s "$PREVIOUS" "$ROOT/current.rollback"
@@ -134,7 +158,7 @@ rollback_previous() {
     elif [ -f "$NGINX_BACKUP" ]; then
       cp "$NGINX_BACKUP" "$NGINX_LIVE"
     fi
-    for unit in seo-monitor-web.service seo-monitor-worker.service seo-monitor-worker.timer seo-monitor-topvisor-checks.service seo-monitor-topvisor-checks.timer seo-monitor-competitors.service seo-monitor-competitors.timer seo-monitor-outbox.service seo-monitor-outbox.timer seo-monitor-db-backup.service seo-monitor-db-backup.timer; do
+    for unit in seo-monitor-web.service seo-monitor-worker.service seo-monitor-worker.timer seo-monitor-topvisor-checks.service seo-monitor-topvisor-checks.timer seo-monitor-competitors.service seo-monitor-competitors.timer seo-monitor-outbox.service seo-monitor-outbox.timer seo-monitor-db-backup.service seo-monitor-db-backup.timer seo-monitor-alerts.service seo-monitor-alerts.timer; do
       if [ -f "$PREVIOUS/ops/systemd/$unit" ]; then
         install -m 0644 "$PREVIOUS/ops/systemd/$unit" "/etc/systemd/system/$unit"
       fi
@@ -321,6 +345,8 @@ run_with_env_file "$WEB_ENV_FILE" docker compose -f "$COMPOSE_FILE" config >/dev
 install -m 0755 "$RELEASE/ops/postgres/backup.sh" /usr/local/bin/seo-monitor-db-backup.sh
 install -m 0755 "$RELEASE/ops/postgres/restore-smoke.sh" /usr/local/bin/seo-monitor-db-restore-smoke.sh
 install -m 0755 "$RELEASE/ops/release/live-proof.sh" /usr/local/bin/seo-monitor-live-proof.sh
+install -m 0755 "$RELEASE/ops/monitoring/check-owner-alerts.sh" /usr/local/bin/ams-impulse-owner-alerts.sh
+install -d -o root -g root -m 0700 /var/lib/ams-platform/ams-seo-monitor/alerts
 BACKUP_ROOT_PATH="$(python3 - "$BACKUP_ENV_FILE" <<'PY'
 from pathlib import Path
 import sys
@@ -351,13 +377,14 @@ else
     node "$RELEASE/scripts/verify-managed-backup.mjs"
   [ -s "$PROVIDER_BACKUP_PROOF_FILE" ] || { echo "provider_backup_proof_missing=true" >&2; exit 1; }
 fi
+write_operational_proof backup
 
 run_with_env_file "$MIGRATOR_ENV_FILE" docker compose -f "$COMPOSE_FILE" run --rm -e PGBOSS_RUNTIME_ROLE="$WORKER_DATABASE_ROLE" migrate
 run_psql_with_database_env "$MIGRATOR_ENV_FILE" "$RELEASE/ops/postgres/roles.sql"
 
 cp "$NGINX_LIVE" "$NGINX_BACKUP"
 install -m 0644 "$RELEASE/ops/nginx/ams-seo-monitor.conf" "$NGINX_LIVE"
-for unit in seo-monitor-web.service seo-monitor-worker.service seo-monitor-worker.timer seo-monitor-topvisor-checks.service seo-monitor-topvisor-checks.timer seo-monitor-competitors.service seo-monitor-competitors.timer seo-monitor-outbox.service seo-monitor-outbox.timer seo-monitor-db-backup.service seo-monitor-db-backup.timer; do
+for unit in seo-monitor-web.service seo-monitor-worker.service seo-monitor-worker.timer seo-monitor-topvisor-checks.service seo-monitor-topvisor-checks.timer seo-monitor-competitors.service seo-monitor-competitors.timer seo-monitor-outbox.service seo-monitor-outbox.timer seo-monitor-db-backup.service seo-monitor-db-backup.timer seo-monitor-alerts.service seo-monitor-alerts.timer; do
   install -m 0644 "$RELEASE/ops/systemd/$unit" "/etc/systemd/system/$unit"
 done
 
@@ -376,6 +403,7 @@ enable_runtime_timers
 
 run_with_env_file "$LIVE_PROOF_ENV_FILE" /usr/local/bin/seo-monitor-live-proof.sh \
   "$SHA" "$IMAGE_DIGEST" "$MIGRATOR_IMAGE_DIGEST" "$ARTIFACT_SHA256"
+write_operational_proof live
 rm -f "$ARTIFACT" "$CHECKSUM"
 printf '%s\n' "$PREVIOUS" > "$ROOT/shared/previous-release.txt"
 printf '%s\n' "$SHA" > "$ROOT/shared/deployed-sha.txt"

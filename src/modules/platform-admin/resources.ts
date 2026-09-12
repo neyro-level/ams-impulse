@@ -70,8 +70,8 @@ export const PLATFORM_ADMIN_RESOURCES: readonly PlatformAdminResourceDefinition[
   },
   {
     key: "operations",
-    label: "Операции",
-    description: "Обновление данных и состояние запущенных задач.",
+    label: "Инциденты",
+    description: "Сбои задач и интеграций, stale-источники, worker, backup и live proof.",
     href: "/admin/operations/",
   },
 ];

@@ -93,7 +93,7 @@ export class XmlRiverClient implements ResearchProvider {
     const timeout = AbortSignal.timeout(REQUEST_TIMEOUT_MS);
     const signal = request.signal ? AbortSignal.any([request.signal, timeout]) : timeout;
     let response: Response;
-    try { response = await this.fetcher(url, { method: options?.body ? "POST" : "GET", body: options?.body, signal, headers: { Accept: format === "xml" ? "application/xml,text/xml" : "application/json", ...(options?.body ? { "Content-Type": "application/json" } : {}) } }); }
+    try { response = await this.fetcher(url, { method: options?.body ? "POST" : "GET", body: options?.body, signal, headers: { Accept: format === "xml" ? "application/xml,text/xml" : "application/json", ...(options?.body ? { "Content-Type": "application/json" } : {}), ...(request.correlationId ? { "X-Correlation-ID": request.correlationId } : {}) } }); }
     catch { throw new ResearchProviderError("PROVIDER_TIMEOUT_AMBIGUOUS", "AMBIGUOUS_AFTER_DISPATCH"); }
     if (!response.ok) {
       const category = response.status === 429

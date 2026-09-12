@@ -8,6 +8,7 @@ import { setTimeout as sleep } from "node:timers/promises";
 import { recordRuntimeHeartbeat, RESEARCH_WORKER_RUNTIME, RUNTIME_HEARTBEAT_WRITE_INTERVAL_MS } from "../platform-operations/index.ts";
 import { RESEARCH_STALE_RUN_AFTER_MS, RESEARCH_WORKER_POLL_DELAY_MS } from "../../platform/workers/timing-policy.ts";
 import { closePrismaClient } from "../../platform/database/prisma/client.ts";
+import { getLogger } from "../../platform/observability/logger.ts";
 
 export { ResearchExecutionService } from "./application/research-execution-service.ts";
 export { PrismaResearchExecutionRepository } from "./infrastructure/prisma-research-execution-repository.ts";
@@ -36,9 +37,17 @@ export async function runNextResearchJobWithDependencies(queue: QueueClient, cre
     await queue.complete(RESEARCH_RUN_QUEUE, job.id, { status: "ignored", code: "INVALID_RESEARCH_JOB" });
     return { handled: 1, status: "ignored" as const };
   }
+  const logger = getLogger({
+    runtime: "worker",
+    module: "research",
+    correlationId: parsed.data.correlationId,
+    runId: parsed.data.runId,
+  });
+  logger.info({ event: "research_job_started" }, "research job started");
   const execution = await createExecution(parsed.data);
-  const result = await execution.execute(parsed.data.runId);
+  const result = await execution.execute(parsed.data.runId, parsed.data.correlationId);
   await queue.complete(RESEARCH_RUN_QUEUE, job.id, result);
+  logger.info({ event: "research_job_finished", status: result.status }, "research job finished");
   return { handled: 1, ...result };
 }
 

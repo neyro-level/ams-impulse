@@ -9,24 +9,15 @@ import {
   type RequestProjectSyncInput,
 } from "../domain/platform-admin.ts";
 import type { PlatformAdminListQuery } from "../../platform-admin/contracts.ts";
+import { readOperationalProof } from "./operational-proof.ts";
+import { getOperationalReadiness } from "./readiness-runtime.ts";
 
 const reliabilityService = new ReliabilityService(new PrismaReliabilityRepository());
 
-const operationStatusLabels: Record<string, string> = {
-  PENDING: "Ожидает запуска",
-  PROCESSING: "Выполняется",
-  RUNNING: "Выполняется",
-  PROCESSED: "Завершено",
-  SUCCESS: "Завершено",
-  FAILED: "Ошибка",
-  DEAD_LETTER: "Остановлено после ошибок",
-};
-
-const triggerLabels: Record<string, string> = {
-  manual: "Запущено вручную",
-  daily: "Плановое обновление",
-  weekly: "Еженедельное обновление",
-  onboarding: "Первичная настройка",
+const sourceLabels: Record<string, string> = {
+  YANDEX_WEBMASTER: "Яндекс.Вебмастер",
+  YANDEX_METRIKA: "Яндекс.Метрика",
+  TOPVISOR: "Topvisor",
 };
 
 const topicLabels: Record<string, string> = {
@@ -51,53 +42,114 @@ export async function listOperations(
 ): Promise<OperationListResult> {
   requirePlatformAdmin(principal);
   const prisma = getPrismaClient();
-  const [syncRuns, outboxEvents] = await prisma.$transaction([
-    prisma.syncRun.findMany({
-      orderBy: { updatedAt: "desc" },
-      take: 200,
-      select: {
-        id: true,
-        trigger: true,
-        projectSlug: true,
-        status: true,
-        sitesProcessed: true,
-        safeError: true,
-        updatedAt: true,
-      },
-    }),
-    prisma.outboxEvent.findMany({
-      orderBy: { updatedAt: "desc" },
-      take: 200,
-      select: {
-        id: true,
-        topic: true,
-        status: true,
-        attempts: true,
-        lastErrorCode: true,
-        updatedAt: true,
-      },
-    }),
+  const [[failedJobs, deadLetters, sourceFailures], readiness, backupProof, liveProof] = await Promise.all([
+    prisma.$transaction([
+      prisma.jobRun.findMany({
+        where: { status: "FAILED" },
+        orderBy: { startedAt: "desc" },
+        take: 100,
+        select: {
+          id: true,
+          jobType: true,
+          attempt: true,
+          safeErrorCode: true,
+          correlationId: true,
+          finishedAt: true,
+          startedAt: true,
+        },
+      }),
+      prisma.outboxEvent.findMany({
+        where: { status: "DEAD_LETTER" },
+        orderBy: { updatedAt: "desc" },
+        take: 100,
+        select: {
+          id: true,
+          topic: true,
+          attempts: true,
+          lastErrorCode: true,
+          correlationId: true,
+          updatedAt: true,
+        },
+      }),
+      prisma.sourceRun.findMany({
+        where: { status: { in: ["FAILED", "ACCESS_DENIED", "QUOTA_LIMITED", "STALE"] } },
+        orderBy: { updatedAt: "desc" },
+        take: 100,
+        select: {
+          id: true,
+          provider: true,
+          status: true,
+          safeErrorCode: true,
+          correlationId: true,
+          updatedAt: true,
+          site: { select: { name: true } },
+        },
+      }),
+    ]),
+    getOperationalReadiness(),
+    readOperationalProof("backup"),
+    readOperationalProof("live"),
   ]);
 
-  const search = query.search.toLocaleLowerCase("ru");
   const rows = [
-    ...syncRuns.map((item) => ({
+    ...failedJobs.map((item) => ({
       id: item.id,
-      kind: "sync-run" as const,
-      primary: `Проект ${item.projectSlug}`,
-      secondary: `${triggerLabels[item.trigger] ?? "Автоматическое обновление"} · обработано сайтов: ${item.sitesProcessed}${item.safeError ? " · требуется внимание" : ""}`,
-      status: operationStatusLabels[item.status] ?? "Состояние уточняется",
+      kind: "failed-job" as const,
+      primary: `Сбой фонового задания: ${item.jobType}`,
+      secondary: `Код: ${item.safeErrorCode ?? "JOB_FAILED"} · попытка ${item.attempt} · correlation ${item.correlationId}`,
+      status: "Требует разбора",
+      updatedAt: (item.finishedAt ?? item.startedAt).toISOString(),
+    })),
+    ...deadLetters.map((item) => ({
+      id: item.id,
+      kind: "dead-letter" as const,
+      primary: `Остановленное задание: ${topicLabels[item.topic] ?? item.topic}`,
+      secondary: `Код: ${item.lastErrorCode ?? "DEAD_LETTER"} · попыток ${item.attempts} · correlation ${item.correlationId}`,
+      status: "Требует действия",
       updatedAt: item.updatedAt.toISOString(),
     })),
-    ...outboxEvents.map((item) => ({
+    ...sourceFailures.map((item) => ({
       id: item.id,
-      kind: "outbox-event" as const,
-      primary: topicLabels[item.topic] ?? "Служебное задание",
-      secondary: `Попыток запуска: ${item.attempts}${item.lastErrorCode ? " · требуется внимание" : ""}`,
-      status: operationStatusLabels[item.status] ?? "Состояние уточняется",
+      kind: item.status === "STALE" ? "stale-source" as const : "integration-failure" as const,
+      primary: `${item.status === "STALE" ? "Устаревший" : "Сбойный"} источник: ${item.site.name}`,
+      secondary: `${sourceLabels[item.provider] ?? item.provider} · код: ${item.safeErrorCode ?? item.status} · correlation ${item.correlationId}`,
+      status: item.status === "STALE" ? "Данные устарели" : "Требует разбора",
       updatedAt: item.updatedAt.toISOString(),
     })),
-  ]
+    ...(readiness.worker.status === "healthy" ? [] : [{
+      id: "worker-heartbeat",
+      kind: "worker" as const,
+      primary: "Worker не подтверждает работу",
+      secondary: readiness.worker.lastHeartbeatAt
+        ? "Последний heartbeat получен, но устарел"
+        : "Heartbeat ещё не зафиксирован",
+      status: "Требует действия",
+      updatedAt: readiness.worker.lastHeartbeatAt,
+    }]),
+    {
+      id: "backup-proof",
+      kind: "backup-proof" as const,
+      primary: "Последнее подтверждение резервной копии",
+      secondary: backupProof
+        ? `Release ${backupProof.releaseSha.slice(0, 12)}`
+        : "Подтверждение не найдено — проверьте backup runbook",
+      status: backupProof ? "Подтверждено" : "Требует действия",
+      updatedAt: backupProof?.occurredAt ?? null,
+    },
+    {
+      id: "live-proof",
+      kind: "live-proof" as const,
+      primary: "Последнее подтверждение production live/readiness",
+      secondary: liveProof
+        ? `Release ${liveProof.releaseSha.slice(0, 12)}`
+        : "Подтверждение не найдено — проверьте release runbook",
+      status: liveProof ? "Подтверждено" : "Требует действия",
+      updatedAt: liveProof?.occurredAt ?? null,
+    },
+  ];
+
+  const search = query.search.toLocaleLowerCase("ru");
+  const filtered = rows
     .filter((item) =>
       !search
         || `${item.primary} ${item.secondary} ${item.status}`
@@ -106,16 +158,17 @@ export async function listOperations(
     )
     .sort((left, right) => {
       const field = query.sort === "name" ? "primary" : query.sort === "status" ? "status" : "updatedAt";
-      const comparison = left[field].localeCompare(right[field], "ru");
+      const comparison = (left[field] ?? "").localeCompare(right[field] ?? "", "ru");
       return query.direction === "asc" ? comparison : -comparison;
     });
 
   const start = (query.page - 1) * query.pageSize;
   return {
-    items: rows.slice(start, start + query.pageSize),
-    total: rows.length,
+    items: filtered.slice(start, start + query.pageSize),
+    total: filtered.length,
     page: query.page,
     pageSize: query.pageSize,
+    incidentCount: rows.filter((item) => item.status !== "Подтверждено").length,
   };
 }
 

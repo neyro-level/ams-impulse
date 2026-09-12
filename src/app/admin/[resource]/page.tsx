@@ -380,10 +380,7 @@ export default async function AdminResourcePageRoute({
   }
 
   if (resource === "operations") {
-    const [summary, result] = await Promise.all([
-      getPlatformAdminDashboardSummary(),
-      listOperations(state.principal, listQuery),
-    ]);
+    const result = await listOperations(state.principal, listQuery);
     const rows: PlatformAdminDisplayRow[] = result.items.map((item) => ({
       id: item.id,
       primary: item.primary,
@@ -395,7 +392,14 @@ export default async function AdminResourcePageRoute({
       <>
         <div className="space-y-6">
           <PageHeader title={definition.label} description={definition.description} />
-          <Summary {...summary} />
+          <section className="rounded-[var(--radius-panel)] border border-[var(--border)] bg-[var(--card)] p-5">
+            <p className="text-sm font-semibold text-app-foreground">
+              Требуют внимания: {result.incidentCount}
+            </p>
+            <p className="mt-1 text-sm text-app-muted-foreground">
+              Открывайте запись по correlation ID в безопасных логах; raw payload и секреты здесь не показываются.
+            </p>
+          </section>
           <AdminResourceNav currentPath={currentPath} />
           <Filters query={query} resource={resource} />
           <PlatformAdminTable pageSize={result.pageSize} query={query} resource={resource} rows={rows} sortOptions={defaultSortOptions} total={result.total} />

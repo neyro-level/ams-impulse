@@ -23,6 +23,7 @@ import {
   recordRuntimeHeartbeat,
 } from "./infrastructure/runtime-heartbeat.ts";
 import { RESEARCH_RUN_QUEUE, RESEARCH_RUN_SCHEMA, type ResearchRunJob } from "../research/index.ts";
+import { getLogger } from "../../platform/observability/logger.ts";
 
 export { ReliabilityService } from "./application/reliability-service.ts";
 export type { ClaimedReliabilityEvent } from "./application/ports/reliability-repository.ts";
@@ -178,10 +179,21 @@ async function processQueuedJob(
     return { claimed: 0, completed: 0, failed: 0 };
   }
 
+  const logger = getLogger({
+    runtime: "worker",
+    module: "platform-operations",
+    correlationId: event.correlationId,
+    outboxEventId: event.outboxEventId,
+    jobRunId: event.jobRunId,
+    topic: event.topic,
+  });
+  logger.info({ event: "outbox_job_started", attempt: event.attempt }, "outbox job started");
+
   try {
     await eventHandler(event);
     await reliability.complete(event);
     await boss.complete(OUTBOX_DELIVERY_QUEUE, job.id, { status: "success" });
+    logger.info({ event: "outbox_job_finished", status: "success" }, "outbox job finished");
     return { claimed: 1, completed: 1, failed: 0 };
   } catch (error) {
     const code =
@@ -204,6 +216,10 @@ async function processQueuedJob(
       nextAvailableInSeconds:
         failure.status === "pending" ? nextAvailableDelaySeconds(event.attempt) : null,
     });
+    logger.warn(
+      { event: "outbox_job_finished", status: failure.status, code, retryable },
+      "outbox job failed",
+    );
     return { claimed: 1, completed: 0, failed: 1 };
   }
 }

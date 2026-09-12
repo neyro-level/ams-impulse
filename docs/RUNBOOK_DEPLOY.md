@@ -26,6 +26,8 @@ Project topology:
 - backup/offsite/restore smoke tooling is available.
 - a managed PostgreSQL restore drill is reproducible through `ops/postgres/managed-restore-proof.sh`; run it every 3–6 months and again before especially destructive data work.
 
+Owner-critical alerting uses the dedicated root-readable file `/etc/ams-platform/ams-seo-monitor-alerts.env` with an HTTPS `ALERT_WEBHOOK_URL`. Do not reuse provider, lead or authentication credentials. When the file exists, `seo-monitor-alerts.timer` checks uptime, readiness-derived queue/worker state, recent service error counts and host disk capacity every five minutes. Only safe issue codes/counts leave the host; the loopback readiness body, logs and webhook URL are never emitted.
+
 ## Build Artifact
 
 ```bash

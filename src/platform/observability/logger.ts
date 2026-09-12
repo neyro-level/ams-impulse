@@ -78,6 +78,60 @@ const REDACTION_PATHS = [
   "pii.phone",
 ] as const;
 
+const URL_KEY = /(?:url|uri|endpoint)$/i;
+const REDACTED = "[REDACTED]";
+
+function isSensitiveKey(key: string): boolean {
+  const normalized = key.replaceAll(/[^a-z0-9]/gi, "").toLowerCase();
+  return /(?:password|passphrase|token|authorization|cookie|cookies|secret|apikey)$/.test(normalized)
+    || [
+      "email",
+      "phone",
+      "username",
+      "rawbody",
+      "safeerrorbody",
+      "providerbody",
+      "responsebody",
+      "query",
+      "queries",
+      "researchquery",
+    ].includes(normalized);
+}
+
+function sanitizeUrl(value: string): string {
+  try {
+    const url = new URL(value);
+    return `${url.origin}${url.pathname}`;
+  } catch {
+    return REDACTED;
+  }
+}
+
+function sanitizeLogValue(value: unknown, key = "", seen = new WeakSet<object>()): unknown {
+  if (isSensitiveKey(key)) return REDACTED;
+  if (typeof value === "string" && URL_KEY.test(key)) return sanitizeUrl(value);
+  if (!value || typeof value !== "object") return value;
+  if (value instanceof Date) return value.toISOString();
+  if (value instanceof Error) {
+    const name = /^[A-Za-z][A-Za-z0-9]{0,63}$/.test(value.name) ? value.name : "Error";
+    const candidateCode = (value as Error & { code?: unknown }).code;
+    const code = typeof candidateCode === "string" && /^[A-Z][A-Z0-9_]{1,63}$/.test(candidateCode)
+      ? candidateCode
+      : undefined;
+    return code ? { name, code } : { name };
+  }
+  if (seen.has(value)) return "[CIRCULAR]";
+  seen.add(value);
+  if (Array.isArray(value)) return value.map((item) => sanitizeLogValue(item, key, seen));
+
+  return Object.fromEntries(
+    Object.entries(value).map(([nestedKey, nestedValue]) => [
+      nestedKey,
+      sanitizeLogValue(nestedValue, nestedKey, seen),
+    ]),
+  );
+}
+
 function createOptions(): LoggerOptions {
   return {
     level: process.env.LOG_LEVEL?.trim() || "info",
@@ -85,8 +139,14 @@ function createOptions(): LoggerOptions {
     messageKey: "message",
     timestamp: pino.stdTimeFunctions.isoTime,
     formatters: {
+      bindings(bindings) {
+        return sanitizeLogValue(bindings) as Record<string, unknown>;
+      },
       level(label) {
         return { level: label };
+      },
+      log(object) {
+        return sanitizeLogValue(object) as Record<string, unknown>;
       },
     },
     redact: {
@@ -103,9 +163,9 @@ export function createLogger(
   destination?: DestinationStream,
 ): Logger {
   const logger = destination ? pino(createOptions(), destination) : rootLogger;
-  return bindings ? logger.child(bindings) : logger;
+  return bindings ? logger.child(sanitizeLogValue(bindings) as Record<string, string | number | boolean | null>) : logger;
 }
 
 export function getLogger(bindings?: Record<string, string | number | boolean | null>): Logger {
-  return bindings ? rootLogger.child(bindings) : rootLogger;
+  return bindings ? rootLogger.child(sanitizeLogValue(bindings) as Record<string, string | number | boolean | null>) : rootLogger;
 }

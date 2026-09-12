@@ -2,6 +2,7 @@ export interface ResearchProviderRequest {
   query: string;
   regionId?: number;
   signal?: AbortSignal;
+  correlationId?: string;
 }
 
 export interface SearchEvidence {

@@ -9,12 +9,14 @@ import { impulseTableFeatures } from "../../../components/tables/tanstack.ts";
 import { StatusBadge, type StatusTone } from "../../../components/states/StatusBadge.tsx";
 import { buildPlatformAdminPageHref, type PlatformAdminPageQuery, type PlatformAdminSortField } from "../../../modules/platform-admin/index.ts";
 
-export interface PlatformAdminDisplayRow { id: string; primary: string; secondary: string; status: string; updatedAt: string }
+export interface PlatformAdminDisplayRow { id: string; primary: string; secondary: string; status: string; updatedAt: string | null }
 
 function statusTone(status: string): StatusTone {
   const value = status.toLowerCase();
   if (value.includes("отключ") || value.includes("disabled")) return "neutral";
   if (value.includes("включ") || value.includes("active")) return "success";
+  if (value.includes("подтверждено")) return "success";
+  if (value.includes("требует") || value.includes("устарел") || value.includes("ошиб")) return "destructive";
   return "info";
 }
 
@@ -29,8 +31,8 @@ export function PlatformAdminTable({ resource, query, rows, total, pageSize, sor
   const columns = useMemo<ColumnDef<typeof impulseTableFeatures, PlatformAdminDisplayRow, unknown>[]>(() => [
     { accessorKey: "primary", header: () => <SortLink field={primarySort?.field ?? "name"} label={primarySort?.label ?? "Запись"} query={query} resource={resource} />, cell: ({ row }) => <div><p className="font-semibold text-app-foreground">{row.original.primary}</p><p className="mt-1 text-xs leading-5 text-app-muted-foreground">{row.original.secondary}</p></div> },
     { accessorKey: "status", header: () => <SortLink field="status" label="Статус" query={query} resource={resource} />, cell: ({ row }) => <StatusBadge label={row.original.status} tone={statusTone(row.original.status)} /> },
-    { accessorKey: "updatedAt", header: () => <SortLink field="updatedAt" label="Обновлено" query={query} resource={resource} />, cell: ({ row }) => <time className="block whitespace-nowrap text-right text-sm tabular-nums text-app-secondary" dateTime={row.original.updatedAt}>{new Intl.DateTimeFormat("ru-RU", { dateStyle: "medium", timeStyle: "short" }).format(new Date(row.original.updatedAt))}</time> },
+    { accessorKey: "updatedAt", header: () => <SortLink field="updatedAt" label="Обновлено" query={query} resource={resource} />, cell: ({ row }) => row.original.updatedAt ? <time className="block whitespace-nowrap text-right text-sm tabular-nums text-app-secondary" dateTime={row.original.updatedAt}>{new Intl.DateTimeFormat("ru-RU", { dateStyle: "medium", timeStyle: "short" }).format(new Date(row.original.updatedAt))}</time> : <span className="block text-right text-sm text-app-muted-foreground">Нет proof</span> },
   ], [primarySort, query, resource]);
   const pageCount = Math.max(1, Math.ceil(total / pageSize));
-  return <AdminDataTable ariaLabel="Список записей" columns={columns} data={rows} filtersActive={Boolean(query.search)} emptyTitle="Записей пока нет" emptyDescription="Создайте первую запись в форме ниже." filteredEmptyDescription="Измените поисковый запрос или сбросьте фильтр." page={query.page} pageCount={pageCount} previousHref={buildPlatformAdminPageHref(resource, query, { page: Math.max(1, query.page - 1) })} nextHref={buildPlatformAdminPageHref(resource, query, { page: Math.min(pageCount, query.page + 1) })} mobileRenderer={(row) => <article className="rounded-[var(--radius-card)] border border-[var(--border)] bg-[var(--card)] p-4"><div className="flex items-start justify-between gap-3"><h2 className="font-semibold text-app-foreground">{row.primary}</h2><StatusBadge label={row.status} tone={statusTone(row.status)} /></div><p className="mt-2 text-xs leading-5 text-app-muted-foreground">{row.secondary}</p><time className="mt-4 block text-xs tabular-nums text-app-muted-foreground" dateTime={row.updatedAt}>{new Intl.DateTimeFormat("ru-RU", { dateStyle: "medium", timeStyle: "short" }).format(new Date(row.updatedAt))}</time></article>} />;
+  return <AdminDataTable ariaLabel="Список записей" columns={columns} data={rows} filtersActive={Boolean(query.search)} emptyTitle="Записей пока нет" emptyDescription="Создайте первую запись в форме ниже." filteredEmptyDescription="Измените поисковый запрос или сбросьте фильтр." page={query.page} pageCount={pageCount} previousHref={buildPlatformAdminPageHref(resource, query, { page: Math.max(1, query.page - 1) })} nextHref={buildPlatformAdminPageHref(resource, query, { page: Math.min(pageCount, query.page + 1) })} mobileRenderer={(row) => <article className="rounded-[var(--radius-card)] border border-[var(--border)] bg-[var(--card)] p-4"><div className="flex items-start justify-between gap-3"><h2 className="font-semibold text-app-foreground">{row.primary}</h2><StatusBadge label={row.status} tone={statusTone(row.status)} /></div><p className="mt-2 text-xs leading-5 text-app-muted-foreground">{row.secondary}</p>{row.updatedAt ? <time className="mt-4 block text-xs tabular-nums text-app-muted-foreground" dateTime={row.updatedAt}>{new Intl.DateTimeFormat("ru-RU", { dateStyle: "medium", timeStyle: "short" }).format(new Date(row.updatedAt))}</time> : <p className="mt-4 text-xs text-app-muted-foreground">Нет proof</p>}</article>} />;
 }

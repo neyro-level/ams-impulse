@@ -4,6 +4,12 @@
 
 Owns reliability primitives: AuditEvent, idempotency, transactional outbox, pg-boss transport, JobRun, leases, RuntimeHeartbeat, retention and readiness.
 
+The Platform Admin incident workspace is an operational work queue, not a generic KPI dashboard. It lists failed `JobRun` attempts, dead-letter outbox events, failed/stale provider runs, stale worker heartbeat and the last safe backup/live proof. Every executable incident includes a correlation ID; payloads and secrets are never rendered.
+
+Deployment writes atomic, non-secret JSON proof markers after backup/restore and after live/readiness smoke. The web container receives only a read-only proof directory. Missing or malformed proof is shown as an action-required state.
+
+A host timer checks live/readiness, web and worker services, recent error count, dead jobs and disk capacity. It sends only stable issue codes and counts to a dedicated HTTPS owner webhook, deduplicates unchanged states and emits recovery. The webhook URL stays in the protected alert env file and is passed to `curl` over stdin, never argv or logs; the readiness body stays on loopback.
+
 ## Not In Scope
 
 Unregistered arbitrary jobs, Redis/broker, secrets/raw PII in payloads, HTTP inside DB transaction and infinite retry.

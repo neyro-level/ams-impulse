@@ -7,6 +7,7 @@ import {
   type PrincipalState,
 } from "../authorization/principal-factories.ts";
 import { auth } from "./auth.ts";
+import { resolveCorrelationId } from "../http/correlation.ts";
 
 export type CabinetPrincipalErrorCode =
   | "AUTHENTICATION_REQUIRED"
@@ -25,6 +26,7 @@ async function getFreshPrincipalState(): Promise<{
 } | null> {
   if (!auth) return null;
   const requestHeaders = await headers();
+  const correlationId = resolveCorrelationId(requestHeaders);
   const session = await auth.api.getSession({
     headers: requestHeaders,
     query: { disableCookieCache: true },
@@ -47,7 +49,7 @@ async function getFreshPrincipalState(): Promise<{
     return null;
   }
 
-  const state = await getPrincipalStateByUserId(session.user.id);
+  const state = await getPrincipalStateByUserId(session.user.id, { correlationId });
   return { state, disabled: persistedSession.user.disabledAt !== null };
 }
 
