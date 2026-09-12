@@ -36,6 +36,8 @@ export default defineConfig({
         BETTER_AUTH_URL: baseURL,
         APP_ENV: "test",
         RESEARCH_QUERY_ESTIMATE_KOPECKS: "100",
+        RESEARCH_DAILY_LIMIT_KOPECKS: "10000",
+        RESEARCH_MONTHLY_LIMIT_KOPECKS: "100000",
         S3_BUCKET: "research-e2e",
         S3_ENDPOINT: "http://127.0.0.1:3199",
         S3_REGION: "e2e",

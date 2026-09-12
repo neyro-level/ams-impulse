@@ -6,9 +6,9 @@ const syntheticAlphaProjectName = "Synthetic Alpha Organization";
 test("preserves the public AMS IMPULSE surface", async ({ page, request }) => {
   await page.goto("/");
 
-  await expect(page).toHaveTitle("Быстрое продвижение сайтов в SEO");
+  await expect(page).toHaveTitle("Продвижение сайтов в Яндексе с контролем позиций");
   await expect(
-    page.getByRole("heading", { level: 1, name: "Быстрое продвижение сайтов в SEO" }),
+    page.getByRole("heading", { level: 1, name: "Продвижение в Яндексе с контролем позиций" }),
   ).toBeVisible();
   await expect(page.getByRole("button", { name: /обсудить продвижение/i })).toBeVisible();
   await expect(page.getByRole("contentinfo")).toBeVisible();

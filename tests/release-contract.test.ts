@@ -19,6 +19,14 @@ describe("production backup identity", () => {
 });
 
 describe("production configuration boundary", () => {
+  it("provides the complete fail-closed Research budget policy to Playwright", () => {
+    const playwrightConfig = readFileSync("playwright.config.ts", "utf8");
+
+    expect(playwrightConfig).toContain('RESEARCH_QUERY_ESTIMATE_KOPECKS: "100"');
+    expect(playwrightConfig).toContain('RESEARCH_DAILY_LIMIT_KOPECKS: "10000"');
+    expect(playwrightConfig).toContain('RESEARCH_MONTHLY_LIMIT_KOPECKS: "100000"');
+  });
+
   it("closes both Prisma and its PostgreSQL pool in E2E helper processes", () => {
     for (const scriptPath of [
       "scripts/seed-e2e-admin.ts",
