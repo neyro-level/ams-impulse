@@ -12,10 +12,6 @@ export interface SearchEvidence {
   snippet: string | null;
 }
 
-export interface ResearchPricingPolicy {
-  estimateRunCostKopecks(queryCount: number): number;
-}
-
 export interface WordstatEvidence {
   phrase: string;
   monthlyCount: number | null;
@@ -29,10 +25,16 @@ export interface ResearchProvider {
   getProviderHealth(): Promise<{ available: boolean; code: string }>;
 }
 
+export type ResearchProviderFailureCategory =
+  | "PRE_REQUEST_RETRYABLE"
+  | "DEFINITELY_NOT_CHARGED"
+  | "AMBIGUOUS_AFTER_DISPATCH"
+  | "NON_RETRYABLE";
+
 export class ResearchProviderError extends Error {
   constructor(
     public readonly code: "PROVIDER_CONFIGURATION_MISSING" | "PROVIDER_TIMEOUT_AMBIGUOUS" | "PROVIDER_RESPONSE_TOO_LARGE" | "PROVIDER_INVALID_RESPONSE" | "PROVIDER_REJECTED",
-    public readonly retryable: boolean,
+    public readonly category: ResearchProviderFailureCategory,
   ) {
     super(code);
     this.name = "ResearchProviderError";

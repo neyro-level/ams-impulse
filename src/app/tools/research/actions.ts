@@ -1,6 +1,5 @@
 "use server";
 
-import { randomUUID } from "node:crypto";
 import { notFound, redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { requireCurrentCabinetPrincipal } from "../../../modules/identity-access/server.ts";
@@ -83,7 +82,7 @@ export async function archiveResearchAction(formData: FormData) {
 export async function estimateResearchAction(formData: FormData) {
   const principal = await requireCurrentCabinetPrincipal();
   const input = await resolveRef(principal, ref(formData));
-  const estimate = await hideForbidden(() => createResearchCabinetService(principal).estimateRun(principal, { ...input, idempotencyKey: randomUUID() }));
+  const estimate = await hideForbidden(() => createResearchCabinetService(principal).estimateRun(principal, input));
   redirect(detailHref(input, { estimateRunId: estimate.runId, estimateCost: String(estimate.estimatedCostKopecks), estimateQueries: String(estimate.queryCount) }));
 }
 
@@ -103,7 +102,7 @@ export async function downloadResearchExportAction(formData: FormData) {
   const principal = await requireCurrentCabinetPrincipal();
   const input = await resolveRef(principal, ref(formData));
   const reports = createResearchReportService(principal);
-  const created = await hideForbidden(() => reports.createExport(principal, { ...input, runId: text(formData, "runId"), idempotencyKey: randomUUID() }));
+  const created = await hideForbidden(() => reports.createExport(principal, { ...input, runId: text(formData, "runId") }));
   const download = await hideForbidden(() => reports.createDownload(principal, { ...input, exportId: created.exportId }));
   if (!download.url.startsWith("https://")) notFound();
   redirect(download.url);

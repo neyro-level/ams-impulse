@@ -29,7 +29,7 @@ export const researchRefSchema = z.object({
 });
 
 export const estimateResearchRunInputSchema = researchRefSchema.extend({
-  idempotencyKey: z.string().trim().min(8).max(128),
+  idempotencyKey: z.string().trim().min(8).max(128).optional(),
 });
 
 export const confirmResearchRunInputSchema = researchRefSchema.extend({
@@ -63,8 +63,8 @@ export interface ResearchRunEstimate {
   estimatedCostKopecks: number;
   dailyCommittedKopecks: number;
   monthlyCommittedKopecks: number;
-  dailyLimitKopecks: 50_000;
-  monthlyLimitKopecks: 300_000;
+  dailyLimitKopecks: number;
+  monthlyLimitKopecks: number;
   confirmationRequired: true;
 }
 
@@ -84,6 +84,7 @@ export type ResearchErrorCode =
   | "RESEARCH_STALE"
   | "RESEARCH_NOT_EDITABLE"
   | "RESEARCH_PRICING_UNAVAILABLE"
+  | "RESEARCH_IDEMPOTENCY_CONFLICT"
   | "RESEARCH_DAILY_LIMIT_EXCEEDED"
   | "RESEARCH_MONTHLY_LIMIT_EXCEEDED";
 

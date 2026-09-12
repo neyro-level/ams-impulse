@@ -18,12 +18,12 @@ function domainOf(value: string): string | null { try { return new URL(/^https?:
 
 async function boundedBody(response: Response): Promise<string> {
   const declared = Number(response.headers.get("content-length") ?? "0");
-  if (declared > MAX_RESPONSE_BYTES) throw new ResearchProviderError("PROVIDER_RESPONSE_TOO_LARGE", false);
+  if (declared > MAX_RESPONSE_BYTES) throw new ResearchProviderError("PROVIDER_RESPONSE_TOO_LARGE", "AMBIGUOUS_AFTER_DISPATCH");
   if (!response.body) return "";
   const reader = response.body.getReader(); const chunks: Uint8Array[] = []; let size = 0;
   while (true) {
     const { done, value } = await reader.read(); if (done) break;
-    size += value.byteLength; if (size > MAX_RESPONSE_BYTES) { await reader.cancel(); throw new ResearchProviderError("PROVIDER_RESPONSE_TOO_LARGE", false); }
+    size += value.byteLength; if (size > MAX_RESPONSE_BYTES) { await reader.cancel(); throw new ResearchProviderError("PROVIDER_RESPONSE_TOO_LARGE", "AMBIGUOUS_AFTER_DISPATCH"); }
     chunks.push(value);
   }
   const body = new Uint8Array(size); let offset = 0;
@@ -32,10 +32,10 @@ async function boundedBody(response: Response): Promise<string> {
 }
 
 export function parseXmlRiverSerp(xml: string): SearchEvidence[] {
-  if (/<!DOCTYPE|<!ENTITY/i.test(xml)) throw new ResearchProviderError("PROVIDER_INVALID_RESPONSE", false);
+  if (/<!DOCTYPE|<!ENTITY/i.test(xml)) throw new ResearchProviderError("PROVIDER_INVALID_RESPONSE", "AMBIGUOUS_AFTER_DISPATCH");
   const parsed = new XMLParser({ ignoreAttributes: false, processEntities: false, trimValues: true }).parse(xml) as JsonObject;
   const response = object(object(parsed.yandexsearch)?.response);
-  if (!response || response.error) throw new ResearchProviderError("PROVIDER_INVALID_RESPONSE", false);
+  if (!response || response.error) throw new ResearchProviderError("PROVIDER_INVALID_RESPONSE", "AMBIGUOUS_AFTER_DISPATCH");
   const grouping = object(object(response.results)?.grouping);
   const organic = array(grouping?.group).flatMap((group): SearchEvidence[] => {
     const document = object(object(group)?.doc); if (!document) return [];
@@ -59,12 +59,12 @@ export function parseXmlRiverSerp(xml: string): SearchEvidence[] {
 }
 
 export function parseXmlRiverSuggestions(payload: unknown): string[] {
-  const root = object(payload); if (!root || root.code || root.error) throw new ResearchProviderError("PROVIDER_INVALID_RESPONSE", false);
+  const root = object(payload); if (!root || root.code || root.error) throw new ResearchProviderError("PROVIDER_INVALID_RESPONSE", "AMBIGUOUS_AFTER_DISPATCH");
   return array(root.phrases).map(text).filter(Boolean).slice(0, 200);
 }
 
 export function parseXmlRiverWordstat(payload: unknown): WordstatEvidence[] {
-  const root = object(payload); if (!root || root.code || root.error) throw new ResearchProviderError("PROVIDER_INVALID_RESPONSE", false);
+  const root = object(payload); if (!root || root.code || root.error) throw new ResearchProviderError("PROVIDER_INVALID_RESPONSE", "AMBIGUOUS_AFTER_DISPATCH");
   const candidates = [root.popular, root.associations, object(root.content)?.includingPhrases, object(root.content)?.phrasesAssociations];
   const output: WordstatEvidence[] = [];
   for (const [index, candidate] of candidates.entries()) {
@@ -80,7 +80,7 @@ export function parseXmlRiverWordstat(payload: unknown): WordstatEvidence[] {
 
 export class XmlRiverClient implements ResearchProvider {
   constructor(private readonly credentials: XmlRiverCredentials, private readonly fetcher: typeof fetch = fetch) {
-    if (!credentials.user.trim() || !credentials.key.trim()) throw new ResearchProviderError("PROVIDER_CONFIGURATION_MISSING", false);
+    if (!credentials.user.trim() || !credentials.key.trim()) throw new ResearchProviderError("PROVIDER_CONFIGURATION_MISSING", "NON_RETRYABLE");
   }
 
   private async request(path: string, request: ResearchProviderRequest, format: "xml" | "json", options?: { setab?: string; additional?: string; body?: string }) {
@@ -94,16 +94,23 @@ export class XmlRiverClient implements ResearchProvider {
     const signal = request.signal ? AbortSignal.any([request.signal, timeout]) : timeout;
     let response: Response;
     try { response = await this.fetcher(url, { method: options?.body ? "POST" : "GET", body: options?.body, signal, headers: { Accept: format === "xml" ? "application/xml,text/xml" : "application/json", ...(options?.body ? { "Content-Type": "application/json" } : {}) } }); }
-    catch { throw new ResearchProviderError("PROVIDER_TIMEOUT_AMBIGUOUS", false); }
-    if (!response.ok) throw new ResearchProviderError("PROVIDER_REJECTED", response.status === 429);
+    catch { throw new ResearchProviderError("PROVIDER_TIMEOUT_AMBIGUOUS", "AMBIGUOUS_AFTER_DISPATCH"); }
+    if (!response.ok) {
+      const category = response.status === 429
+        ? "DEFINITELY_NOT_CHARGED"
+        : response.status === 408 || response.status >= 500
+          ? "AMBIGUOUS_AFTER_DISPATCH"
+          : "NON_RETRYABLE";
+      throw new ResearchProviderError("PROVIDER_REJECTED", category);
+    }
     return boundedBody(response);
   }
 
   async collectYandexSerp(request: ResearchProviderRequest) { return parseXmlRiverSerp(await this.request("/search_yandex/xml", request, "xml", { additional: "y_topads,y_bottomads,rs_y" })); }
   async collectYandexSuggestions(request: ResearchProviderRequest) {
     const body = await this.request("/search_yandex/xml", request, "json", { setab: "tips", body: JSON.stringify({ phrases: [request.query] }) });
-    try { return parseXmlRiverSuggestions(JSON.parse(body)); } catch (error) { if (error instanceof ResearchProviderError) throw error; throw new ResearchProviderError("PROVIDER_INVALID_RESPONSE", false); }
+    try { return parseXmlRiverSuggestions(JSON.parse(body)); } catch (error) { if (error instanceof ResearchProviderError) throw error; throw new ResearchProviderError("PROVIDER_INVALID_RESPONSE", "AMBIGUOUS_AFTER_DISPATCH"); }
   }
-  async collectWordstat(request: ResearchProviderRequest) { const body = await this.request("/wordstat/new/json", request, "json"); try { return parseXmlRiverWordstat(JSON.parse(body)); } catch (error) { if (error instanceof ResearchProviderError) throw error; throw new ResearchProviderError("PROVIDER_INVALID_RESPONSE", false); } }
+  async collectWordstat(request: ResearchProviderRequest) { const body = await this.request("/wordstat/new/json", request, "json"); try { return parseXmlRiverWordstat(JSON.parse(body)); } catch (error) { if (error instanceof ResearchProviderError) throw error; throw new ResearchProviderError("PROVIDER_INVALID_RESPONSE", "AMBIGUOUS_AFTER_DISPATCH"); } }
   async getProviderHealth() { return { available: true, code: "CONFIGURED" }; }
 }

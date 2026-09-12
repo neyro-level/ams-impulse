@@ -7,8 +7,9 @@ const report: ResearchRunReport = { runId: "run-1", status: "SUCCEEDED", estimat
 
 class MemoryReports implements ResearchReportRepository {
   status: "PENDING" | "READY" = "PENDING"; objectKey: string | null = null;
+  idempotencyKeys: string[] = [];
   async getRunReport() { return report; }
-  async reserveExport() { return { exportId: "export-1", status: this.status, objectKey: this.objectKey }; }
+  async reserveExport(input: Parameters<ResearchReportRepository["reserveExport"]>[0]) { this.idempotencyKeys.push(input.idempotencyKey); return { exportId: "export-1", status: this.status, objectKey: this.objectKey }; }
   async markExportReady(_id: string, key: string) { this.status = "READY"; this.objectKey = key; }
   async markExportFailed() { return; }
   async getExport() { return { exportId: "export-1", status: this.status, objectKey: this.objectKey }; }
@@ -25,7 +26,9 @@ describe("ResearchReportService", () => {
     const repository = new MemoryReports();
     const service = new ResearchReportService(repository, authorization, storage);
     const principal = createPlatformAnalystPrincipal("analyst");
-    await expect(service.createExport(principal, { organizationId: "org-1", projectId: "project-1", researchId: "research-1", runId: "run-1", idempotencyKey: "export-001" })).resolves.toEqual({ exportId: "export-1", status: "READY" });
+    await expect(service.createExport(principal, { organizationId: "org-1", projectId: "project-1", researchId: "research-1", runId: "run-1" })).resolves.toEqual({ exportId: "export-1", status: "READY" });
+    await expect(service.createExport(principal, { organizationId: "org-1", projectId: "project-1", researchId: "research-1", runId: "run-1" })).resolves.toEqual({ exportId: "export-1", status: "READY" });
+    expect(repository.idempotencyKeys[0]).toBe(repository.idempotencyKeys[1]);
     expect(storage.body).toContain("https://example.test");
     await expect(service.createDownload(principal, { organizationId: "org-1", projectId: "project-1", researchId: "research-1", exportId: "export-1" })).resolves.toEqual({ url: "https://storage.test/signed", expiresInSeconds: 60 });
   });
@@ -48,7 +51,7 @@ describe("ResearchReportService", () => {
       async createDownloadUrl() { return "https://storage.test/signed"; },
     };
     const service = new ResearchReportService(repository, authorization, isolatedStorage);
-    await service.createExport(createPlatformAnalystPrincipal("analyst"), { organizationId: "org-1", projectId: "project-1", researchId: "research-1", runId: "run-1", idempotencyKey: "export-002" });
+    await service.createExport(createPlatformAnalystPrincipal("analyst"), { organizationId: "org-1", projectId: "project-1", researchId: "research-1", runId: "run-1" });
     expect(isolatedStorage.body).toContain("'=WEBSERVICE");
   });
 });

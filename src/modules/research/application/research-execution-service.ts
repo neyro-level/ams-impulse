@@ -2,6 +2,9 @@ import type { ResearchExecutionRepository } from "./ports/research-execution-rep
 import type { ResearchProvider } from "./ports/research-provider.ts";
 
 function safeProviderCode(error: unknown) {
+  if (error && typeof error === "object" && "category" in error && error.category === "AMBIGUOUS_AFTER_DISPATCH") {
+    return "PROVIDER_RESULT_AMBIGUOUS";
+  }
   return error && typeof error === "object" && "code" in error && typeof error.code === "string"
     ? error.code
     : "RESEARCH_PROVIDER_FAILED";
@@ -18,7 +21,8 @@ export class ResearchExecutionService {
     try {
       return await operation();
     } catch (error) {
-      if (!error || typeof error !== "object" || !("retryable" in error) || error.retryable !== true) throw error;
+      if (!error || typeof error !== "object" || !("category" in error)) throw error;
+      if (error.category !== "PRE_REQUEST_RETRYABLE" && error.category !== "DEFINITELY_NOT_CHARGED") throw error;
       await this.delay(250);
       return operation();
     }

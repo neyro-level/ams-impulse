@@ -25,8 +25,8 @@ export class PrismaResearchExecutionRepository implements ResearchExecutionRepos
         FOR UPDATE SKIP LOCKED
       `);
       for (const run of stale) {
-        await transaction.$executeRaw(Prisma.sql`UPDATE "research"."QueryRun" SET "status"='FAILED', "safeErrorCode"='WORKER_INTERRUPTED_AMBIGUOUS', "finishedAt"=CURRENT_TIMESTAMP WHERE "runId"=${run.id} AND "status"='RUNNING'`);
-        await transaction.$executeRaw(Prisma.sql`UPDATE "research"."Run" SET "status"='FAILED', "safeErrorCode"='WORKER_INTERRUPTED_AMBIGUOUS', "finishedAt"=CURRENT_TIMESTAMP, "updatedAt"=CURRENT_TIMESTAMP WHERE "id"=${run.id}`);
+        await transaction.$executeRaw(Prisma.sql`UPDATE "research"."QueryRun" SET "status"='FAILED', "safeErrorCode"=CASE WHEN "status"='PENDING' THEN 'RESEARCH_RUN_ABORTED' ELSE 'WORKER_INTERRUPTED_AMBIGUOUS' END, "finishedAt"=CURRENT_TIMESTAMP WHERE "runId"=${run.id} AND "status" IN ('PENDING','RUNNING')`);
+        await transaction.$executeRaw(Prisma.sql`UPDATE "research"."Run" SET "status"='FAILED', "actualCostKopecks"=(SELECT COALESCE(SUM("costKopecks"),0) FROM "research"."QueryRun" WHERE "runId"=${run.id}), "safeErrorCode"='WORKER_INTERRUPTED_AMBIGUOUS', "finishedAt"=CURRENT_TIMESTAMP, "updatedAt"=CURRENT_TIMESTAMP WHERE "id"=${run.id}`);
         await transaction.$executeRaw(Prisma.sql`UPDATE "research"."Research" SET "status"='FAILED', "version"="version"+1, "updatedAt"=CURRENT_TIMESTAMP WHERE "id"=${run.researchId} AND "status"='RUNNING'`);
       }
       return stale.length;
@@ -88,7 +88,8 @@ export class PrismaResearchExecutionRepository implements ResearchExecutionRepos
   }
   async failRun(runId: string, safeErrorCode: string) {
     await this.withContext(async (transaction) => {
-      const runs = await transaction.$queryRaw<Array<{ researchId: string }>>(Prisma.sql`UPDATE "research"."Run" SET "status"='FAILED', "safeErrorCode"=${safeErrorCode}, "finishedAt"=CURRENT_TIMESTAMP, "updatedAt"=CURRENT_TIMESTAMP WHERE "id"=${runId} AND "status" IN ('RUNNING','QUEUED') RETURNING "researchId"`);
+      await transaction.$executeRaw(Prisma.sql`UPDATE "research"."QueryRun" SET "status"='FAILED', "safeErrorCode"=CASE WHEN "status"='PENDING' THEN 'RESEARCH_RUN_ABORTED' ELSE ${safeErrorCode} END, "finishedAt"=CURRENT_TIMESTAMP WHERE "runId"=${runId} AND "status" IN ('PENDING','RUNNING')`);
+      const runs = await transaction.$queryRaw<Array<{ researchId: string }>>(Prisma.sql`UPDATE "research"."Run" SET "status"='FAILED', "actualCostKopecks"=(SELECT COALESCE(SUM("costKopecks"),0) FROM "research"."QueryRun" WHERE "runId"=${runId}), "safeErrorCode"=${safeErrorCode}, "finishedAt"=CURRENT_TIMESTAMP, "updatedAt"=CURRENT_TIMESTAMP WHERE "id"=${runId} AND "status" IN ('RUNNING','QUEUED') RETURNING "researchId"`);
       if (runs[0]) await transaction.$executeRaw(Prisma.sql`UPDATE "research"."Research" SET "status"='FAILED', "version"="version"+1, "updatedAt"=CURRENT_TIMESTAMP WHERE "id"=${runs[0].researchId} AND "status"='RUNNING'`);
     });
   }

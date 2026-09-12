@@ -89,11 +89,15 @@ integrationDescription("Research audit tenant scope", () => {
       createdByUserId: userId,
       correlationId,
     });
-    const estimate = await repository.createRunEstimate({
+    const now = new Date();
+    const estimate = await repository.reserveRunEstimate({
       ref: { organizationId, projectId, researchId: research.id },
       idempotencyKey: `${suffix}-estimate`,
       queryCount: 1,
       estimatedCostKopecks: 100,
+      now,
+      dailyLimitKopecks: 50_000,
+      monthlyLimitKopecks: 300_000,
     });
     const confirmed = await repository.confirmRun({
       ref: { organizationId, projectId, researchId: research.id },
@@ -101,7 +105,7 @@ integrationDescription("Research audit tenant scope", () => {
       expectedEstimatedCostKopecks: 100,
       actorId: userId,
       correlationId,
-      now: new Date(),
+      now,
       dailyLimitKopecks: 50_000,
       monthlyLimitKopecks: 300_000,
     });

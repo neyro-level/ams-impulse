@@ -2,6 +2,7 @@ import type { AuthorizationService } from "../../../platform/authorization/autho
 import type { PrincipalContext } from "../../../platform/authorization/principal.ts";
 import { z } from "zod";
 import { ResearchError, researchRefSchema } from "../domain/research.ts";
+import { deriveResearchCsvIdempotencyKey } from "../domain/research-idempotency.ts";
 import type { PrivateExportStorage, ResearchReportRepository, ResearchRunReport } from "./ports/research-report-repository.ts";
 
 function actorId(principal: PrincipalContext) {
@@ -46,12 +47,16 @@ export class ResearchReportService {
   }
 
   async createExport(principal: PrincipalContext, rawInput: unknown) {
-    const input = researchRefSchema.extend({ runId: researchRefSchema.shape.researchId, idempotencyKey: idempotencyKeySchema }).parse(rawInput);
+    const input = researchRefSchema.extend({ runId: researchRefSchema.shape.researchId, idempotencyKey: idempotencyKeySchema.optional() }).parse(rawInput);
     await this.require(principal, "research:export", input);
     const userId = actorId(principal); if (!userId) throw new ResearchError("RESEARCH_NOT_FOUND_OR_FORBIDDEN");
     const report = await this.repository.getRunReport(input);
     if (!report || report.status !== "SUCCEEDED") throw new ResearchError("RESEARCH_NOT_FOUND_OR_FORBIDDEN");
-    const reserved = await this.repository.reserveExport({ ...input, actorId: userId });
+    const reserved = await this.repository.reserveExport({
+      ...input,
+      idempotencyKey: input.idempotencyKey ?? deriveResearchCsvIdempotencyKey(input.runId),
+      actorId: userId,
+    });
     const objectKey = reserved.objectKey ?? `research/${input.organizationId}/${input.projectId}/${input.researchId}/${reserved.exportId}.csv`;
     if (reserved.status !== "READY") {
       try {

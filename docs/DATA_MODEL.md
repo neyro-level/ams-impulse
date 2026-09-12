@@ -126,7 +126,7 @@ AWAITING_CONFIRMATION -> QUEUED -> RUNNING -> SUCCEEDED | FAILED
 - `null != 0`.
 - Run estimate is immutable after confirmation.
 - Retry increments query attempt state and never follows an ambiguous timeout.
-- Same organization/idempotency key cannot create a second run or export.
+- Browser estimate keys are derived from research ID + version + normalized queries; CSV keys are derived from run ID + format schema version. Same organization/key/input returns the existing run or export, while the same key with different material input fails with `RESEARCH_IDEMPOTENCY_CONFLICT`.
 - Re-run creates a new ResearchRun.
 
 ## Budget
@@ -137,6 +137,8 @@ AWAITING_CONFIRMATION -> QUEUED -> RUNNING -> SUCCEEDED | FAILED
 - paid execution requires current permission and unexpired exact confirmation;
 - per-query configured estimate and actual collected cost are stored;
 - actual provider invoice is not claimed unless provider exposes verifiable billing evidence.
+
+Budget amount semantics are explicit: unexpired `AWAITING_CONFIRMATION` reserves estimated cost; `QUEUED/RUNNING` reserve approved cost; terminal `SUCCEEDED/FAILED` contribute actual query spend; `CANCELLED` contributes zero. Before a new budget calculation, expired estimates transition to `CANCELLED` with safe code `RESEARCH_ESTIMATE_EXPIRED` and no longer reserve funds.
 
 ## Tenant And Database Invariants
 

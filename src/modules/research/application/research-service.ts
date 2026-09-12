@@ -10,10 +10,8 @@ import {
   type ResearchRef,
 } from "../domain/research.ts";
 import type { ResearchRepository } from "./ports/research-repository.ts";
-import type { ResearchPricingPolicy } from "./ports/research-provider.ts";
-
-const DAILY_LIMIT_KOPECKS = 50_000 as const;
-const MONTHLY_LIMIT_KOPECKS = 300_000 as const;
+import type { ResearchBudgetPolicy, ResearchPricingPolicy } from "./ports/research-money-policy.ts";
+import { deriveResearchEstimateIdempotencyKey } from "../domain/research-idempotency.ts";
 
 function principalUserId(principal: PrincipalContext): string | null {
   return principal.kind === "api-client" || principal.kind === "job" ? null : principal.userId;
@@ -24,6 +22,7 @@ export class ResearchService {
     private readonly repository: ResearchRepository,
     private readonly authorization: AuthorizationService,
     private readonly pricing: ResearchPricingPolicy,
+    private readonly budget: ResearchBudgetPolicy,
     private readonly now: () => Date = () => new Date(),
   ) {}
 
@@ -92,18 +91,28 @@ export class ResearchService {
     if (!Number.isSafeInteger(estimatedCostKopecks) || estimatedCostKopecks < 0) {
       throw new ResearchError("RESEARCH_PRICING_UNAVAILABLE");
     }
-    const committed = await this.repository.getCommittedSpend(input.organizationId, input.projectId, this.now());
-    if (committed.dailyKopecks + estimatedCostKopecks > DAILY_LIMIT_KOPECKS) throw new ResearchError("RESEARCH_DAILY_LIMIT_EXCEEDED");
-    if (committed.monthlyKopecks + estimatedCostKopecks > MONTHLY_LIMIT_KOPECKS) throw new ResearchError("RESEARCH_MONTHLY_LIMIT_EXCEEDED");
-    const run = await this.repository.createRunEstimate({ ref: input, idempotencyKey: input.idempotencyKey, queryCount: research.queries.length, estimatedCostKopecks });
+    const idempotencyKey = input.idempotencyKey ?? deriveResearchEstimateIdempotencyKey({
+      researchId: research.id,
+      version: research.version,
+      queries: research.queries.map(({ text }) => text),
+    });
+    const run = await this.repository.reserveRunEstimate({
+      ref: input,
+      idempotencyKey,
+      queryCount: research.queries.length,
+      estimatedCostKopecks,
+      now: this.now(),
+      dailyLimitKopecks: this.budget.dailyLimitKopecks,
+      monthlyLimitKopecks: this.budget.monthlyLimitKopecks,
+    });
     return {
       runId: run.runId,
       queryCount: research.queries.length,
       estimatedCostKopecks,
-      dailyCommittedKopecks: committed.dailyKopecks,
-      monthlyCommittedKopecks: committed.monthlyKopecks,
-      dailyLimitKopecks: DAILY_LIMIT_KOPECKS,
-      monthlyLimitKopecks: MONTHLY_LIMIT_KOPECKS,
+      dailyCommittedKopecks: run.dailyCommittedKopecks,
+      monthlyCommittedKopecks: run.monthlyCommittedKopecks,
+      dailyLimitKopecks: this.budget.dailyLimitKopecks,
+      monthlyLimitKopecks: this.budget.monthlyLimitKopecks,
       confirmationRequired: true as const,
     };
   }
@@ -120,8 +129,8 @@ export class ResearchService {
       actorId,
       correlationId: principal.correlationId,
       now: this.now(),
-      dailyLimitKopecks: DAILY_LIMIT_KOPECKS,
-      monthlyLimitKopecks: MONTHLY_LIMIT_KOPECKS,
+      dailyLimitKopecks: this.budget.dailyLimitKopecks,
+      monthlyLimitKopecks: this.budget.monthlyLimitKopecks,
     });
     if (!result) throw new ResearchError("RESEARCH_NOT_FOUND_OR_FORBIDDEN");
     return result;

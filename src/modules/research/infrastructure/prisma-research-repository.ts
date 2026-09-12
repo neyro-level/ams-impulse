@@ -196,35 +196,57 @@ export class PrismaResearchRepository implements ResearchRepository {
     });
   }
 
-  async getCommittedSpend(organizationId: string, projectId: string, now: Date) {
-    return this.withContext(async (transaction) => {
-    const rows = await transaction.$queryRaw<Array<{ dailyKopecks: bigint; monthlyKopecks: bigint }>>(Prisma.sql`
-      SELECT * FROM "platform"."research_committed_spend"(${organizationId}, ${projectId}, ${now}::timestamptz)
-    `);
-    return { dailyKopecks: Number(rows[0]?.dailyKopecks ?? 0), monthlyKopecks: Number(rows[0]?.monthlyKopecks ?? 0) };
-    });
-  }
-
-  async createRunEstimate(input: { ref: ResearchRef; idempotencyKey: string; queryCount: number; estimatedCostKopecks: number }) {
+  async reserveRunEstimate(input: { ref: ResearchRef; idempotencyKey: string; queryCount: number; estimatedCostKopecks: number; now: Date; dailyLimitKopecks: number; monthlyLimitKopecks: number }) {
     const runId = randomUUID();
     return this.withContext(async (transaction) => {
+    await transaction.$executeRaw(
+      Prisma.sql`SELECT pg_advisory_xact_lock(hashtextextended(${`research.budget:${input.ref.organizationId}`}, 0))`,
+    );
+    await transaction.$executeRaw(Prisma.sql`
+      UPDATE "research"."Run"
+      SET "status"='CANCELLED', "safeErrorCode"='RESEARCH_ESTIMATE_EXPIRED',
+        "finishedAt"=${input.now}, "updatedAt"=CURRENT_TIMESTAMP
+      WHERE "organizationId"=${input.ref.organizationId} AND "projectId"=${input.ref.projectId}
+        AND "status"='AWAITING_CONFIRMATION' AND "estimateExpiresAt"<=${input.now}
+    `);
+    const existing = await transaction.$queryRaw<Array<{ id: string; projectId: string; researchId: string; queryCount: number; estimatedCostKopecks: number }>>(Prisma.sql`
+      SELECT "id", "projectId", "researchId", "queryCount", "estimatedCostKopecks" FROM "research"."Run"
+      WHERE "organizationId" = ${input.ref.organizationId} AND "idempotencyKey" = ${input.idempotencyKey}
+      LIMIT 1
+    `);
+    const previous = existing[0];
+    if (previous && (
+      previous.projectId !== input.ref.projectId ||
+      previous.researchId !== input.ref.researchId ||
+      previous.queryCount !== input.queryCount ||
+      previous.estimatedCostKopecks !== input.estimatedCostKopecks
+    )) {
+      throw new ResearchError("RESEARCH_IDEMPOTENCY_CONFLICT");
+    }
+    const spend = await transaction.$queryRaw<Array<{ dailyKopecks: bigint; monthlyKopecks: bigint }>>(Prisma.sql`
+      SELECT * FROM "platform"."research_committed_spend"(
+        ${input.ref.organizationId},
+        ${input.ref.projectId},
+        ${input.now}::timestamptz
+      )
+    `);
+    const dailyCommittedKopecks = Number(spend[0]?.dailyKopecks ?? 0);
+    const monthlyCommittedKopecks = Number(spend[0]?.monthlyKopecks ?? 0);
+    if (previous) return { runId: previous.id, dailyCommittedKopecks, monthlyCommittedKopecks };
+    if (dailyCommittedKopecks + input.estimatedCostKopecks > input.dailyLimitKopecks) {
+      throw new ResearchError("RESEARCH_DAILY_LIMIT_EXCEEDED");
+    }
+    if (monthlyCommittedKopecks + input.estimatedCostKopecks > input.monthlyLimitKopecks) {
+      throw new ResearchError("RESEARCH_MONTHLY_LIMIT_EXCEEDED");
+    }
     const inserted = await transaction.$queryRaw<Array<{ id: string }>>(Prisma.sql`
       INSERT INTO "research"."Run"
         ("id", "organizationId", "projectId", "researchId", "status", "queryCount", "estimatedCostKopecks", "estimateExpiresAt", "idempotencyKey", "createdAt", "updatedAt")
       VALUES
-        (${runId}, ${input.ref.organizationId}, ${input.ref.projectId}, ${input.ref.researchId}, 'AWAITING_CONFIRMATION', ${input.queryCount}, ${input.estimatedCostKopecks}, CURRENT_TIMESTAMP + INTERVAL '15 minutes', ${input.idempotencyKey}, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-      ON CONFLICT ("organizationId", "idempotencyKey") DO NOTHING
+        (${runId}, ${input.ref.organizationId}, ${input.ref.projectId}, ${input.ref.researchId}, 'AWAITING_CONFIRMATION', ${input.queryCount}, ${input.estimatedCostKopecks}, ${input.now} + INTERVAL '15 minutes', ${input.idempotencyKey}, ${input.now}, CURRENT_TIMESTAMP)
       RETURNING "id"
     `);
-    if (inserted[0]) return { runId: inserted[0].id };
-    const existing = await transaction.$queryRaw<Array<{ id: string }>>(Prisma.sql`
-      SELECT "id" FROM "research"."Run"
-      WHERE "organizationId" = ${input.ref.organizationId} AND "idempotencyKey" = ${input.idempotencyKey}
-        AND "projectId" = ${input.ref.projectId} AND "researchId" = ${input.ref.researchId}
-      LIMIT 1
-    `);
-    if (!existing[0]) throw new Error("RESEARCH_IDEMPOTENCY_CONFLICT");
-    return { runId: existing[0].id };
+    return { runId: inserted[0]!.id, dailyCommittedKopecks, monthlyCommittedKopecks };
     });
   }
 
@@ -242,15 +264,29 @@ export class PrismaResearchRepository implements ResearchRepository {
       `);
       const run = runs[0];
       if (!run || run.estimatedCostKopecks !== input.expectedEstimatedCostKopecks) return null;
-      const spend = await transaction.$queryRaw<Array<{ dailyKopecks: bigint; monthlyKopecks: bigint }>>(Prisma.sql`
-        SELECT * FROM "platform"."research_committed_spend"(
+      const spend = await transaction.$queryRaw<Array<{
+        dailyKopecks: bigint;
+        monthlyKopecks: bigint;
+        currentRunInDailyWindow: boolean;
+        currentRunInMonthlyWindow: boolean;
+      }>>(Prisma.sql`
+        SELECT committed.*,
+          current_run."createdAt" >= date_trunc('day', ${input.now}::timestamptz)
+            AS "currentRunInDailyWindow",
+          current_run."createdAt" >= date_trunc('month', ${input.now}::timestamptz)
+            AS "currentRunInMonthlyWindow"
+        FROM "platform"."research_committed_spend"(
           ${input.ref.organizationId},
           ${input.ref.projectId},
           ${input.now}::timestamptz
-        )
+        ) AS committed
+        JOIN "research"."Run" AS current_run ON current_run.id = ${input.runId}
       `);
-      const dailyKopecks = Number(spend[0]?.dailyKopecks ?? 0);
-      const monthlyKopecks = Number(spend[0]?.monthlyKopecks ?? 0);
+      const currentSpend = spend[0];
+      const dailyKopecks = Number(currentSpend?.dailyKopecks ?? 0)
+        - (currentSpend?.currentRunInDailyWindow ? run.estimatedCostKopecks : 0);
+      const monthlyKopecks = Number(currentSpend?.monthlyKopecks ?? 0)
+        - (currentSpend?.currentRunInMonthlyWindow ? run.estimatedCostKopecks : 0);
       if (dailyKopecks + run.estimatedCostKopecks > input.dailyLimitKopecks) {
         throw new ResearchError("RESEARCH_DAILY_LIMIT_EXCEEDED");
       }

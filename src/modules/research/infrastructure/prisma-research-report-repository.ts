@@ -5,6 +5,7 @@ import { getPrismaClient } from "../../../platform/database/prisma/client.ts";
 import type { DatabaseTransaction } from "../../../platform/database/transaction.ts";
 import type { ResearchExportRecord, ResearchReportRepository, ResearchRunReport } from "../application/ports/research-report-repository.ts";
 import type { ResearchRef } from "../domain/research.ts";
+import { ResearchError } from "../domain/research.ts";
 
 export class PrismaResearchReportRepository implements ResearchReportRepository {
   constructor(private readonly databaseUserId: string, private readonly injectedPrisma?: PrismaClient) {}
@@ -62,13 +63,30 @@ export class PrismaResearchReportRepository implements ResearchReportRepository 
   async reserveExport(input: ResearchRef & { runId: string; idempotencyKey: string; actorId: string }): Promise<ResearchExportRecord> {
     return this.withContext(async (transaction) => {
       const id = randomUUID();
-      const rows = await transaction.$queryRaw<ResearchExportRecord[]>(Prisma.sql`
+      const rows = await transaction.$queryRaw<Array<ResearchExportRecord & { researchId: string; runId: string | null; format: string }>>(Prisma.sql`
         INSERT INTO "research"."Export" ("id", "organizationId", "projectId", "researchId", "runId", "format", "status", "createdByUserId", "idempotencyKey", "createdAt")
         VALUES (${id}, ${input.organizationId}, ${input.projectId}, ${input.researchId}, ${input.runId}, 'csv', 'PENDING', ${input.actorId}, ${input.idempotencyKey}, CURRENT_TIMESTAMP)
-        ON CONFLICT ("organizationId", "idempotencyKey") DO UPDATE SET "idempotencyKey"=EXCLUDED."idempotencyKey"
-        RETURNING "id" AS "exportId", "status"::text AS "status", "objectKey"
+        ON CONFLICT ("organizationId", "idempotencyKey") DO NOTHING
+        RETURNING "id" AS "exportId", "status"::text AS "status", "objectKey", "researchId", "runId", "format"
       `);
-      return rows[0]!;
+      if (rows[0]) return rows[0];
+      const existing = await transaction.$queryRaw<Array<ResearchExportRecord & { projectId: string; researchId: string; runId: string | null; format: string }>>(Prisma.sql`
+        SELECT "id" AS "exportId", "status"::text AS "status", "objectKey", "projectId", "researchId", "runId", "format"
+        FROM "research"."Export"
+        WHERE "organizationId"=${input.organizationId} AND "idempotencyKey"=${input.idempotencyKey}
+        LIMIT 1
+      `);
+      const previous = existing[0];
+      if (
+        !previous ||
+        previous.projectId !== input.projectId ||
+        previous.researchId !== input.researchId ||
+        previous.runId !== input.runId ||
+        previous.format !== "csv"
+      ) {
+        throw new ResearchError("RESEARCH_IDEMPOTENCY_CONFLICT");
+      }
+      return previous;
     });
   }
 

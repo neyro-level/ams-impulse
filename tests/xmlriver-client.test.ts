@@ -31,7 +31,15 @@ describe("XmlRiverClient", () => {
   it("never retries an ambiguous paid timeout", async () => {
     let calls = 0;
     const client = new XmlRiverClient({ user: "user", key: "secret" }, async () => { calls += 1; throw new Error("timeout"); });
-    await expect(client.collectYandexSerp({ query: "test" })).rejects.toMatchObject({ code: "PROVIDER_TIMEOUT_AMBIGUOUS", retryable: false });
+    await expect(client.collectYandexSerp({ query: "test" })).rejects.toMatchObject({ code: "PROVIDER_TIMEOUT_AMBIGUOUS", category: "AMBIGUOUS_AFTER_DISPATCH" });
     expect(calls).toBe(1);
+  });
+
+  it("marks an explicit provider rejection as definitely not charged only for HTTP 429", async () => {
+    const rateLimited = new XmlRiverClient({ user: "user", key: "secret" }, async () => new Response("", { status: 429 }));
+    await expect(rateLimited.collectYandexSerp({ query: "test" })).rejects.toMatchObject({ category: "DEFINITELY_NOT_CHARGED" });
+
+    const serverFailure = new XmlRiverClient({ user: "user", key: "secret" }, async () => new Response("", { status: 503 }));
+    await expect(serverFailure.collectYandexSerp({ query: "test" })).rejects.toMatchObject({ category: "AMBIGUOUS_AFTER_DISPATCH" });
   });
 });

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ResearchExecutionService, type ClaimedResearchRun, type ResearchExecutionRepository, type ResearchProvider } from "../src/modules/research/index.ts";
+import { ResearchExecutionService, ResearchProviderError, type ClaimedResearchRun, type ResearchExecutionRepository, type ResearchProvider } from "../src/modules/research/index.ts";
 
 class ExecutionRepository implements ResearchExecutionRepository {
   run: ClaimedResearchRun | null = { runId: "run-1", organizationId: "org-1", projectId: "project-1", researchId: "research-1", approvedCostKopecks: 200, queries: [{ queryRunId: "qr-1", queryId: "q-1", text: "купить квартиру" }, { queryRunId: "qr-2", queryId: "q-2", text: "цены на жильё" }] };
@@ -33,12 +33,12 @@ describe("ResearchExecutionService", () => {
 
   it("stops after an ambiguous paid failure and does not call the next query", async () => {
     const repository = new ExecutionRepository(); let calls = 0;
-    const failingProvider: ResearchProvider = { ...provider, collectYandexSerp: async () => { calls += 1; throw Object.assign(new Error("timeout"), { code: "PROVIDER_TIMEOUT_AMBIGUOUS" }); } };
+    const failingProvider: ResearchProvider = { ...provider, collectYandexSerp: async () => { calls += 1; throw new ResearchProviderError("PROVIDER_TIMEOUT_AMBIGUOUS", "AMBIGUOUS_AFTER_DISPATCH"); } };
     const result = await new ResearchExecutionService(repository, failingProvider).execute("run-1");
-    expect(result).toEqual({ status: "failed", code: "PROVIDER_TIMEOUT_AMBIGUOUS" });
+    expect(result).toEqual({ status: "failed", code: "PROVIDER_RESULT_AMBIGUOUS" });
     expect(calls).toBe(1);
     expect(repository.started).toEqual(["qr-1"]);
-    expect(repository.runStatus).toBe("FAILED:PROVIDER_TIMEOUT_AMBIGUOUS");
+    expect(repository.runStatus).toBe("FAILED:PROVIDER_RESULT_AMBIGUOUS");
   });
 
   it("ignores duplicate queue delivery after the run leaves QUEUED", async () => {
@@ -53,7 +53,7 @@ describe("ResearchExecutionService", () => {
       ...provider,
       collectYandexSerp: async ({ query }) => {
         calls += 1;
-        if (calls === 1) throw Object.assign(new Error("rate limited"), { code: "PROVIDER_REJECTED", retryable: true });
+        if (calls === 1) throw new ResearchProviderError("PROVIDER_REJECTED", "DEFINITELY_NOT_CHARGED");
         return [{ type: "organic", url: "https://example.test", domain: "example.test", title: query, snippet: null }];
       },
     };

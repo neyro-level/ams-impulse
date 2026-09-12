@@ -17,8 +17,9 @@ describe("Research budget serialization", () => {
     expect(migration).toContain('"platform"."can_access_tools_project"');
   });
 
-  it("locks each organization and rechecks limits during confirmation", () => {
-    expect(repository).toContain("pg_advisory_xact_lock");
+  it("locks each organization and rechecks limits during reservation and confirmation", () => {
+    expect(repository.match(/pg_advisory_xact_lock/g)).toHaveLength(2);
+    expect(repository).toContain("reserveRunEstimate");
     expect(repository).toContain("RESEARCH_DAILY_LIMIT_EXCEEDED");
     expect(repository).toContain("RESEARCH_MONTHLY_LIMIT_EXCEEDED");
   });

@@ -28,7 +28,9 @@ Research не создаёт собственные организации и п
 - pg-boss queue и worker concurrency `1`;
 - XMLRiver: Yandex organic, ads, related/suggestions и Wordstat;
 - bounded XML parser без DTD/external entities;
-- finite retry только для явно retryable отказа;
+- provider failures classified as `PRE_REQUEST_RETRYABLE | DEFINITELY_NOT_CHARGED | AMBIGUOUS_AFTER_DISPATCH | NON_RETRYABLE`; finite retry разрешён только при доказанном отсутствии списания, а неоднозначный результат завершает run с `PROVIDER_RESULT_AMBIGUOUS` без retry;
+- pricing and daily/monthly budget limits are mandatory server configuration (`RESEARCH_QUERY_ESTIMATE_KOPECKS`, `RESEARCH_DAILY_LIMIT_KOPECKS`, `RESEARCH_MONTHLY_LIMIT_KOPECKS`); missing or invalid pricing fails closed with `RESEARCH_PRICING_UNAVAILABLE`;
+- estimate reservation acquires the organization budget lock and performs expiry, idempotency lookup, committed-spend read, limit checks and insert in one transaction;
 - ambiguous timeout не повторяет платный вызов;
 - история запусков, Evidence и CompetitorProjection;
 - private S3 CSV и signed URL на 60 секунд;
@@ -40,7 +42,7 @@ Research не создаёт собственные организации и п
 
 - Research: `DRAFT | READY | RUNNING | SUCCEEDED | FAILED | ARCHIVED`.
 - Run: `DRAFT | AWAITING_CONFIRMATION | QUEUED | RUNNING | SUCCEEDED | FAILED | CANCELLED`.
-- QueryRun: `PENDING | RUNNING | SUCCEEDED | FAILED`.
+- QueryRun: `PENDING | RUNNING | SUCCEEDED | FAILED`. Terminal `Run` failure closes every remaining `PENDING`/`RUNNING` query as `FAILED`; unexecuted queries keep `costKopecks = null`, while `Run.actualCostKopecks` sums only recorded query costs.
 
 При неоднозначном результате provider call запуск завершается `FAILED` с безопасным кодом; автоматического повтора нет. Зависший `RUNNING` старше 20 минут восстанавливается только внутри scope текущего job.
 
@@ -53,6 +55,8 @@ Research не создаёт собственные организации и п
 - без Tools grant: deny.
 
 Server Component, server action, MCP и export повторно проверяют полный `organizationId/projectId/researchId`. Чужой ресурс возвращает not-found semantics.
+
+Cabinet повторный клик не создаёт новый estimate/export: server выводит versioned SHA-256 key из канонического Research/Run input. MCP может передать собственный idempotency key; repository принимает повтор только при полном совпадении material input, иначе возвращает `RESEARCH_IDEMPOTENCY_CONFLICT`.
 
 ## MCP
 

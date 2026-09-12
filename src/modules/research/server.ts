@@ -2,7 +2,7 @@ import { PrismaAccessGrantRepository } from "../identity-access/server.ts";
 import { AuthorizationService } from "../../platform/authorization/authorization-service.ts";
 import type { PrincipalContext } from "../../platform/authorization/principal.ts";
 import { getPrismaClient } from "../../platform/database/prisma/client.ts";
-import { ConfiguredResearchPricing } from "./infrastructure/configured-research-pricing.ts";
+import { ConfiguredResearchBudgetPolicy, ConfiguredResearchPricing } from "./infrastructure/configured-research-pricing.ts";
 import { PrismaResearchReportRepository } from "./infrastructure/prisma-research-report-repository.ts";
 import { PrismaResearchRepository } from "./infrastructure/prisma-research-repository.ts";
 import { S3PrivateExportStorage } from "./infrastructure/s3-private-export-storage.ts";
@@ -24,6 +24,7 @@ export function createResearchMcpServices(principal: PrincipalContext) {
       new PrismaResearchRepository(userId, prisma),
       authorization,
       ConfiguredResearchPricing.fromEnvironment(),
+      ConfiguredResearchBudgetPolicy.fromEnvironment(),
     ),
     reports: new ResearchReportService(
       new PrismaResearchReportRepository(userId, prisma),
@@ -40,6 +41,7 @@ export function createResearchCabinetService(principal: PrincipalContext) {
     new PrismaResearchRepository(userId, prisma),
     new AuthorizationService(new PrismaAccessGrantRepository(prisma)),
     ConfiguredResearchPricing.fromEnvironment(),
+    ConfiguredResearchBudgetPolicy.fromEnvironment(),
   );
 }
 
