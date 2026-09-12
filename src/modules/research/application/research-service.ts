@@ -6,6 +6,7 @@ import {
   createResearchInputSchema,
   estimateResearchRunInputSchema,
   ResearchError,
+  researchListQuerySchema,
   researchRefSchema,
   updateResearchInputSchema,
   type ResearchRef,
@@ -35,6 +36,11 @@ export class ResearchService {
   async list(principal: PrincipalContext, organizationId: string, projectId: string) {
     await this.requireAccess(principal, { organizationId, projectId });
     return this.repository.listByProject(organizationId, projectId);
+  }
+
+  async listWorkItems(principal: PrincipalContext, organizationId: string, projectId: string, rawQuery: unknown) {
+    await this.requireAccess(principal, { organizationId, projectId });
+    return this.repository.listWorkItems(organizationId, projectId, researchListQuerySchema.parse(rawQuery));
   }
 
   async get(principal: PrincipalContext, rawRef: unknown) {

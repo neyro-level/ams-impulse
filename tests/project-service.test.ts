@@ -46,6 +46,9 @@ const projects: StoredProjectRecord[] = [
         timezone: "+03:00",
         enabled: true,
         enabledSourceCount: 2,
+        connectionIssueCount: 0,
+        latestReportAt: "2026-09-12T08:00:00.000Z",
+        reportFreshness: "fresh",
       },
       {
         siteId: "site-east",
@@ -58,6 +61,9 @@ const projects: StoredProjectRecord[] = [
         timezone: "+03:00",
         enabled: true,
         enabledSourceCount: 2,
+        connectionIssueCount: 1,
+        latestReportAt: "2026-09-11T08:00:00.000Z",
+        reportFreshness: "stale",
       },
     ],
   },
@@ -125,7 +131,13 @@ describe("ProjectService", () => {
   const projectService = new ProjectService(new FakeProjectRepository(), authorization);
 
   it("shows every project to analyst", async () => {
-    expect(await projectService.listProjectsForUser(analystUser)).toHaveLength(2);
+    const summaries = await projectService.listProjectsForUser(analystUser);
+    expect(summaries).toHaveLength(2);
+    expect(summaries[0]).toMatchObject({
+      freshness: "stale",
+      issueCount: 1,
+      latestReportAt: "2026-09-12T08:00:00.000Z",
+    });
   });
 
   it("allows platform admin through capabilities rather than analyst role equality", async () => {

@@ -9,6 +9,9 @@ export interface StoredSiteRecord {
   timezone: string;
   enabled: boolean;
   enabledSourceCount: number;
+  connectionIssueCount?: number;
+  latestReportAt?: string | null;
+  reportFreshness?: "fresh" | "stale" | "partial" | "unavailable";
 }
 
 export interface StoredProjectRecord {

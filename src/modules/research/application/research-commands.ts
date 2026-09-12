@@ -92,6 +92,7 @@ export function createResearchCommands(dependencies: {
     execute: async ({ principal, input, transaction }) => {
       const research = await dependencies.repository.findById(input, transaction);
       if (!research) throw new ResearchError("RESEARCH_NOT_FOUND_OR_FORBIDDEN");
+      if (!(["DRAFT", "READY", "FAILED"] as const).includes(research.status as "DRAFT" | "READY" | "FAILED")) throw new ResearchError("RESEARCH_NOT_EDITABLE");
       const estimatedCostKopecks = dependencies.pricing.estimateRunCostKopecks(research.queries.length);
       if (!Number.isSafeInteger(estimatedCostKopecks) || estimatedCostKopecks < 0) throw new ResearchError("RESEARCH_PRICING_UNAVAILABLE");
       const idempotencyKey = input.idempotencyKey ?? deriveResearchEstimateIdempotencyKey({ researchId: research.id, version: research.version, queries: research.queries.map(({ text }) => text) });

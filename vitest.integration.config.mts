@@ -21,6 +21,7 @@ export default defineConfig({
       "tests/principal.integration.test.ts",
       "tests/project-reference.integration.test.ts",
       "tests/reliability.integration.test.ts",
+      "tests/research-list.integration.test.ts",
       "tests/prisma-sync-repository.test.ts",
       "tests/worker.sync-project.test.ts",
       "tests/tenant-ownership.integration.test.ts",

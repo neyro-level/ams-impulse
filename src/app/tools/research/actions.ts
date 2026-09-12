@@ -1,5 +1,6 @@
 "use server";
 
+import { randomUUID } from "node:crypto";
 import { notFound, redirect } from "next/navigation";
 import { isApprovedPrivateStorageUrl, ResearchError } from "../../../modules/research/index.ts";
 import { createResearchCabinetService, createResearchReportService } from "../../../modules/research/server.ts";
@@ -18,6 +19,14 @@ function detailHref(input: ResearchRefInput, params: Record<string, string> = {}
   const query = new URLSearchParams({ organizationId: input.organizationId, projectId: input.projectId, ...params });
   return `${detailPath(input)}?${query}`;
 }
+
+const uiStateByError = {
+  RESEARCH_STALE: "STALE_STATE",
+  RESEARCH_NOT_EDITABLE: "RESEARCH_NOT_EDITABLE",
+  RESEARCH_DAILY_LIMIT_EXCEEDED: "DAILY_LIMIT",
+  RESEARCH_MONTHLY_LIMIT_EXCEEDED: "MONTHLY_LIMIT",
+  RESEARCH_PRICING_UNAVAILABLE: "PRICING_UNAVAILABLE",
+} as const;
 
 async function resolveScope(principal: PrincipalContext, requested: RequestedScope) {
   if (principal.kind === "api-client" || principal.kind === "job") throw new ResearchError("RESEARCH_NOT_FOUND_OR_FORBIDDEN");
@@ -40,9 +49,12 @@ function mapResearchError(error: unknown) {
   return { code: error.code, message: messages[error.code] };
 }
 
-function unwrap<TResult>(result: DefinedAction<TResult>): TResult {
+function unwrap<TResult>(result: DefinedAction<TResult>, input?: ResearchRefInput): TResult {
   if (result.ok) return result.data;
   if (result.error.code === "RESEARCH_NOT_FOUND_OR_FORBIDDEN") notFound();
+  if (input && result.error.code in uiStateByError) {
+    redirect(detailHref(input, { state: uiStateByError[result.error.code as keyof typeof uiStateByError] }));
+  }
   throw Object.assign(new Error(result.error.message), { code: result.error.code, correlationId: result.error.correlationId });
 }
 
@@ -68,7 +80,7 @@ const archiveResearchMutation = defineAction<ResearchRefInput & { version: numbe
 });
 
 const estimateResearchMutation = defineAction<ResearchRefInput, Awaited<ReturnType<ReturnType<typeof createResearchCabinetService>["estimateRun"]>>>({
-  execute: async ({ principal, input }) => createResearchCabinetService(principal).estimateRun(principal, { ...input, ...await resolveScope(principal, input) }),
+  execute: async ({ principal, input }) => createResearchCabinetService(principal).estimateRun(principal, { ...input, ...await resolveScope(principal, input), idempotencyKey: randomUUID() }),
   mapError: mapResearchError,
   revalidate: ({ input }) => [{ path: detailPath(input) }],
 });
@@ -96,25 +108,25 @@ export async function createResearchAction(formData: FormData) {
 
 export async function updateResearchAction(formData: FormData) {
   const input = { ...ref(formData), title: text(formData, "title"), brief: text(formData, "brief"), queries: queries(formData), version: Number(text(formData, "version")) };
-  unwrap(await updateResearchMutation(input));
+  unwrap(await updateResearchMutation(input), input);
   redirect(detailHref(input, { saved: "1" }));
 }
 
 export async function archiveResearchAction(formData: FormData) {
   const input = { ...ref(formData), version: Number(text(formData, "version")) };
-  unwrap(await archiveResearchMutation(input));
+  unwrap(await archiveResearchMutation(input), input);
   redirect(`/tools/research/?organizationId=${encodeURIComponent(input.organizationId)}&projectId=${encodeURIComponent(input.projectId)}`);
 }
 
 export async function estimateResearchAction(formData: FormData) {
   const input = ref(formData);
-  const estimate = unwrap(await estimateResearchMutation(input));
-  redirect(detailHref(input, { estimateRunId: estimate.runId, estimateCost: String(estimate.estimatedCostKopecks), estimateQueries: String(estimate.queryCount) }));
+  const estimate = unwrap(await estimateResearchMutation(input), input);
+  redirect(detailHref(input, { runId: estimate.runId }));
 }
 
 export async function confirmResearchAction(formData: FormData) {
   const input = { ...ref(formData), runId: text(formData, "runId"), expectedEstimatedCostKopecks: Number(text(formData, "estimatedCostKopecks")) };
-  unwrap(await confirmResearchMutation(input));
+  unwrap(await confirmResearchMutation(input), input);
   redirect(detailHref(input, { queued: "1" }));
 }
 

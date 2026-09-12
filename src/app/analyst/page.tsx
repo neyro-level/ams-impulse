@@ -2,155 +2,134 @@ export const dynamic = "force-dynamic";
 
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { KpiCard } from "../../components/dashboard/KpiCard.tsx";
 import { PageHeader } from "../../components/dashboard/PageHeader.tsx";
 import { SectionCard } from "../../components/dashboard/SectionCard.tsx";
+import { MobileFilterSheet } from "../../components/filters/MobileFilterSheet.tsx";
+import { Button } from "../../components/ui/button.tsx";
+import { Input } from "../../components/ui/input.tsx";
+import { NativeSelect, NativeSelectOption } from "../../components/ui/native-select.tsx";
+import { Pagination } from "../../components/ui/pagination.tsx";
+import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from "../../components/ui/table.tsx";
 import {
   getCurrentCabinetRedirect,
   getCurrentPrincipalState,
 } from "../../modules/identity-access/server.ts";
 import { buildAnalystOverview } from "../../modules/project-registry/presentation.ts";
+import type { ProjectSummary } from "../../modules/project-registry/index.ts";
 import { hasPermission } from "../../platform/authorization/principal.ts";
 
-export default async function AllProjectsPage() {
+type Search = Promise<Record<string, string | string[] | undefined>>;
+type Freshness = ProjectSummary["freshness"];
+const first = (value: string | string[] | undefined) => Array.isArray(value) ? value[0] : value;
+const freshnessLabels: Record<Freshness, string> = {
+  fresh: "Актуально",
+  partial: "Частично",
+  stale: "Устарело",
+  unavailable: "Нет отчёта",
+};
+const statusLabels = { ACTIVE: "Активен", PLANNED: "План", DISABLED: "Отключён" } as const;
+
+function formatDate(value: string | null) {
+  return value
+    ? new Intl.DateTimeFormat("ru-RU", { day: "2-digit", month: "short", year: "numeric" }).format(new Date(value))
+    : "—";
+}
+
+function pageHref(raw: Record<string, string>, page: number) {
+  const params = new URLSearchParams(raw);
+  params.set("page", String(page));
+  return `/analyst/?${params}`;
+}
+
+function ProjectStatus({ project }: { project: ProjectSummary }) {
+  const tone = project.status === "DISABLED"
+    ? "bg-[var(--status-neutral-soft)] text-app-status-neutral"
+    : project.issueCount > 0
+      ? "bg-[var(--warning-soft)] text-app-warning"
+      : "bg-[var(--success-soft)] text-app-success";
+  return <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${tone}`}>{statusLabels[project.status]}</span>;
+}
+
+export default async function AllProjectsPage({ searchParams }: { searchParams: Search }) {
   const cabinetRedirect = await getCurrentCabinetRedirect();
   if (cabinetRedirect) redirect(cabinetRedirect);
   const state = await getCurrentPrincipalState();
   if (!state) redirect("/?login=1");
-  if (!hasPermission(state.principal, "project:read:any")) {
-    redirect("/dashboard/");
-  }
+  if (!hasPermission(state.principal, "project:read:any")) redirect("/dashboard/");
 
+  const raw = await searchParams;
   const overview = await buildAnalystOverview(state.principal);
+  const search = (first(raw.search) ?? "").trim().toLocaleLowerCase("ru-RU").slice(0, 100);
+  const status = first(raw.status);
+  const freshness = first(raw.freshness);
+  const sort = first(raw.sort) === "name" || first(raw.sort) === "issues" || first(raw.sort) === "freshness" ? first(raw.sort)! : "issues";
+  const requestedPage = Math.max(1, Number(first(raw.page) ?? 1) || 1);
+  const filtered = overview.projectCards
+    .filter((project) => !search || project.name.toLocaleLowerCase("ru-RU").includes(search) || project.projectSlug.includes(search))
+    .filter((project) => !status || status === "all" || project.status === status)
+    .filter((project) => !freshness || freshness === "all" || project.freshness === freshness)
+    .sort((left, right) => {
+      if (sort === "name") return left.name.localeCompare(right.name, "ru-RU");
+      if (sort === "freshness") return left.freshness.localeCompare(right.freshness);
+      return right.issueCount - left.issueCount || left.name.localeCompare(right.name, "ru-RU");
+    });
+  const pageSize = 20;
+  const pageCount = Math.max(1, Math.ceil(filtered.length / pageSize));
+  const page = Math.min(requestedPage, pageCount);
+  const projects = filtered.slice((page - 1) * pageSize, page * pageSize);
+  const current = Object.fromEntries(Object.entries(raw).flatMap(([key, value]) => {
+    const item = first(value);
+    return item ? [[key, item]] : [];
+  }));
+  const filterForm = <form className="grid gap-3 md:grid-cols-2 xl:grid-cols-[minmax(220px,1fr)_180px_180px_180px_auto_auto]">
+    <Input name="search" defaultValue={first(raw.search) ?? ""} placeholder="Название или адрес проекта" aria-label="Поиск проектов" />
+    <NativeSelect name="status" defaultValue={status ?? "all"} aria-label="Статус проекта"><NativeSelectOption value="all">Все статусы</NativeSelectOption><NativeSelectOption value="ACTIVE">Активные</NativeSelectOption><NativeSelectOption value="PLANNED">Плановые</NativeSelectOption><NativeSelectOption value="DISABLED">Отключённые</NativeSelectOption></NativeSelect>
+    <NativeSelect name="freshness" defaultValue={freshness ?? "all"} aria-label="Актуальность отчёта"><NativeSelectOption value="all">Любая актуальность</NativeSelectOption><NativeSelectOption value="fresh">Актуально</NativeSelectOption><NativeSelectOption value="partial">Частично</NativeSelectOption><NativeSelectOption value="stale">Устарело</NativeSelectOption><NativeSelectOption value="unavailable">Нет отчёта</NativeSelectOption></NativeSelect>
+    <NativeSelect name="sort" defaultValue={sort} aria-label="Сортировка"><NativeSelectOption value="issues">Сначала проблемы</NativeSelectOption><NativeSelectOption value="name">По названию</NativeSelectOption><NativeSelectOption value="freshness">По актуальности</NativeSelectOption></NativeSelect>
+    <Button type="submit">Применить</Button>
+    <Link href="/analyst/" className="inline-flex min-h-11 items-center justify-center rounded-[var(--radius)] border border-[var(--input)] px-4 text-sm font-semibold text-app-foreground">Сбросить</Link>
+  </form>;
 
   return (
-    <>
-      <div className="space-y-6">
-        <PageHeader
-          title="Все проекты"
-          description="Проекты АМС, их сайты и готовность данных для отчётов."
-        />
+    <div className="space-y-6">
+      <PageHeader title="Проекты" description="Готовность данных, проблемы и быстрый переход к работе по каждому проекту." />
 
-        <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          <KpiCard label="Проекты" value={String(overview.totalProjects)} tone="primary" />
-          <KpiCard label="Сайты" value={String(overview.totalSites)} />
-          <KpiCard label="Подключённые сайты" value={String(overview.connectedSites)} />
-          <KpiCard label="Источники" value={String(overview.enabledSources)} tone="soft" />
-        </section>
+      <div className="hidden md:block"><SectionCard title="Фильтры" note={`${filtered.length} из ${overview.totalProjects}`}>{filterForm}</SectionCard></div>
+      <MobileFilterSheet title={`Фильтры · ${filtered.length}`}>{filterForm}</MobileFilterSheet>
 
-        <SectionCard title="Проекты" note="Актуальные данные">
-          <div className="grid gap-4 xl:grid-cols-2">
-            {overview.projectCards.map((project) => {
-              const projectReady =
-                project.status !== "DISABLED" &&
-                project.totalSites > 0 &&
-                project.readySites === project.totalSites;
-              const stateLabel =
-                project.status === "DISABLED"
-                  ? "Отключён"
-                  : projectReady
-                    ? "Настроен"
-                    : project.connectedSites > 0
-                      ? "Настройка"
-                      : "План";
-              const stateClasses =
-                project.status === "DISABLED"
-                  ? "border-[var(--status-neutral)]/20 bg-[var(--status-neutral-soft)] text-app-status-neutral"
-                  : projectReady
-                    ? "border-[var(--success)]/20 bg-[var(--success-soft)] text-app-success"
-                    : project.connectedSites > 0
-                      ? "border-[var(--warning)]/20 bg-[var(--warning-soft)] text-app-warning"
-                      : "border-[var(--info)]/20 bg-[var(--info-soft)] text-app-info";
-
-              return (
-                <article
-                  key={project.projectSlug}
-                  className="rounded-[var(--radius-card)] border border-[var(--border)] bg-[var(--card)] p-5"
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <h2 className="text-xl font-semibold text-app-foreground">
-                        {project.name}
-                      </h2>
-                    </div>
-                    <span
-                      className={`rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] ${stateClasses}`}
-                    >
-                      {stateLabel}
-                    </span>
-                  </div>
-
-                  <div className="mt-5 grid gap-3 sm:grid-cols-2">
-                    <div className="rounded-[var(--radius-panel)] bg-[var(--muted)] p-4">
-                      <p className="text-xs uppercase tracking-[0.12em] text-app-muted-foreground">
-                        Сайты
-                      </p>
-                      <p className="mt-2 text-2xl font-semibold text-app-foreground">
-                        {project.totalSites}
-                      </p>
-                    </div>
-                    <div className="rounded-[var(--radius-panel)] bg-[var(--muted)] p-4">
-                      <p className="text-xs uppercase tracking-[0.12em] text-app-muted-foreground">
-                        Подключено
-                      </p>
-                      <p className="mt-2 text-2xl font-semibold text-app-foreground">
-                        {project.connectedSites}
-                      </p>
-                    </div>
-                    <div className="rounded-[var(--radius-panel)] bg-[var(--muted)] p-4">
-                      <p className="text-xs uppercase tracking-[0.12em] text-app-muted-foreground">
-                        Готово
-                      </p>
-                      <p className="mt-2 text-2xl font-semibold text-app-foreground">
-                        {project.readySites}
-                      </p>
-                    </div>
-                    <div className="rounded-[var(--radius-panel)] bg-[var(--muted)] p-4">
-                      <p className="text-xs uppercase tracking-[0.12em] text-app-muted-foreground">
-                        Источники
-                      </p>
-                      <p className="mt-2 text-2xl font-semibold text-app-foreground">
-                        {project.enabledSources}
-                      </p>
-                    </div>
-                  </div>
-
-                  <p className="mt-4 text-sm text-app-secondary">
-                    {projectReady
-                      ? "Все сайты заведены"
-                      : project.connectedSites > 0
-                        ? `Плановых сайтов: ${project.totalSites - project.connectedSites}`
-                        : "Источники ещё не подключены"}
-                  </p>
-
-                  <Link
-                    href={`/c/${project.projectSlug}/`}
-                    className="mt-5 inline-flex rounded-[var(--radius)] bg-[var(--primary)] px-4 py-2 text-sm font-semibold text-app-primary-foreground"
-                  >
-                    Открыть проект
-                  </Link>
-                </article>
-              );
-            })}
+      {projects.length > 0 ? (
+        <>
+          <div className="hidden rounded-[var(--radius-panel)] border border-[var(--border)] bg-[var(--card)] md:block">
+            <Table>
+              <TableCaption className="sr-only">Проекты, доступные аналитику</TableCaption>
+              <TableHeader><TableRow><TableHead>Проект</TableHead><TableHead>Статус</TableHead><TableHead>Актуальность</TableHead><TableHead>Сайты</TableHead><TableHead>Проблемы</TableHead><TableHead className="text-right">Действие</TableHead></TableRow></TableHeader>
+              <TableBody>{projects.map((project) => <TableRow key={project.projectId}>
+                <TableCell><p className="font-semibold text-app-foreground">{project.name}</p><p className="text-xs text-app-muted-foreground">{project.projectSlug}</p></TableCell>
+                <TableCell><ProjectStatus project={project} /></TableCell>
+                <TableCell><p className="font-medium text-app-foreground">{freshnessLabels[project.freshness]}</p><p className="text-xs text-app-muted-foreground">{formatDate(project.latestReportAt)}</p></TableCell>
+                <TableCell>{project.readySites} из {project.totalSites}</TableCell>
+                <TableCell><span className={project.issueCount > 0 ? "font-semibold text-app-warning" : "text-app-secondary"}>{project.issueCount}</span></TableCell>
+                <TableCell className="text-right"><Link href={`/c/${project.projectSlug}/`} className="inline-flex min-h-10 items-center font-semibold text-app-primary">Открыть</Link></TableCell>
+              </TableRow>)}</TableBody>
+            </Table>
           </div>
-        </SectionCard>
 
-        <SectionCard title="Добавление проекта" note="Только для администратора">
-          <div className="grid gap-4 lg:grid-cols-[1fr_auto] lg:items-center">
-            <div>
-              <h2 className="text-lg font-semibold text-app-foreground">
-                Проекты добавляет администратор
-              </h2>
-              <p className="mt-2 text-sm text-app-secondary">
-                Система создаёт проект, сайты и начальные правила аналитики, а также проверяет, чтобы адреса не повторялись.
-              </p>
-            </div>
-            <span className="rounded-[var(--radius)] border border-[var(--border)] bg-[var(--muted)] px-4 py-3 text-sm font-semibold text-app-foreground">
-              Обратитесь к администратору
-            </span>
+          <div className="grid gap-3 md:hidden">
+            {projects.map((project) => <article key={project.projectId} className="rounded-[var(--radius-card)] border border-[var(--border)] bg-[var(--card)] p-4">
+              <div className="flex items-start justify-between gap-3"><div><h2 className="font-semibold text-app-foreground">{project.name}</h2><p className="text-xs text-app-muted-foreground">{project.projectSlug}</p></div><ProjectStatus project={project} /></div>
+              <dl className="mt-4 grid grid-cols-2 gap-3 text-sm"><div><dt className="text-app-muted-foreground">Актуальность</dt><dd className="mt-1 font-medium text-app-foreground">{freshnessLabels[project.freshness]}</dd></div><div><dt className="text-app-muted-foreground">Сайты готовы</dt><dd className="mt-1 font-medium text-app-foreground">{project.readySites} из {project.totalSites}</dd></div><div><dt className="text-app-muted-foreground">Последний отчёт</dt><dd className="mt-1 text-app-foreground">{formatDate(project.latestReportAt)}</dd></div><div><dt className="text-app-muted-foreground">Проблемы</dt><dd className="mt-1 font-medium text-app-foreground">{project.issueCount}</dd></div></dl>
+              <Link href={`/c/${project.projectSlug}/`} className="mt-4 inline-flex min-h-11 w-full items-center justify-center rounded-[var(--radius)] bg-[var(--primary)] px-4 text-sm font-semibold text-app-primary-foreground">Открыть проект</Link>
+            </article>)}
           </div>
-        </SectionCard>
-      </div>
-    </>
+          <Pagination page={page} pageCount={pageCount} previousHref={pageHref(current, Math.max(1, page - 1))} nextHref={pageHref(current, Math.min(pageCount, page + 1))} />
+        </>
+      ) : (
+        <div className="rounded-[var(--radius-panel)] border border-dashed border-[var(--border)] bg-[var(--card)] p-8 text-center">
+          <h2 className="font-semibold text-app-foreground">Проекты не найдены</h2>
+          <p className="mt-2 text-sm text-app-secondary">Измените фильтры или сбросьте поиск.</p>
+          <Link href="/analyst/" className="mt-4 inline-flex min-h-11 items-center font-semibold text-app-primary">Показать все проекты</Link>
+        </div>
+      )}
+    </div>
   );
 }

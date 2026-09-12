@@ -3,6 +3,8 @@ import type { DatabaseTransaction } from "../../../../platform/database/transact
 import type {
   CreateResearchInput,
   ResearchRecord,
+  ResearchListQuery,
+  ResearchListResult,
   ResearchRef,
   ResearchRunEstimate,
   ResearchRunSummary,
@@ -11,6 +13,7 @@ import type {
 
 export interface ResearchRepository {
   listByProject(organizationId: string, projectId: string): Promise<ResearchRecord[]>;
+  listWorkItems(organizationId: string, projectId: string, query: ResearchListQuery): Promise<ResearchListResult>;
   findById(ref: ResearchRef, transaction?: DatabaseTransaction): Promise<ResearchRecord | null>;
   listRuns(ref: ResearchRef): Promise<ResearchRunSummary[]>;
   create(input: CreateResearchInput & { createdByUserId: string; correlationId: string }, transaction: DatabaseTransaction): Promise<ResearchRecord>;

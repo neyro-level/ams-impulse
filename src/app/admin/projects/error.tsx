@@ -1,12 +1,9 @@
 "use client";
 
-import { Button } from "../../../components/ui/button.tsx";
-import { ErrorState } from "../../../components/states/StatePanel.tsx";
+import { PrivateRouteError } from "../../../components/states/PrivateRouteError.tsx";
 
-export default function ProjectsError({ reset }: { error: Error; reset: () => void }) {
+export default function ProjectsError({ error, reset }: { error: Error; reset: () => void }) {
   return (
-    <div className="mx-auto w-full max-w-3xl py-6">
-      <ErrorState title="Не удалось загрузить проекты" description="Повторите запрос. Если ошибка сохранится, сообщите время её появления." action={<Button onClick={reset} type="button">Повторить</Button>} />
-    </div>
+    <PrivateRouteError error={error} reset={reset} title="Не удалось загрузить проекты" />
   );
 }

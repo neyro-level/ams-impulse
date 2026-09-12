@@ -5,8 +5,12 @@ import type { DatabaseTransaction } from "../../../platform/database/transaction
 import { newId } from "../../../platform/identifiers/new-id.ts";
 import type {
   CreateResearchInput,
+  ResearchListItem,
+  ResearchListQuery,
+  ResearchListResult,
   ResearchRecord,
   ResearchRef,
+  ResearchRunStatus,
   ResearchRunSummary,
   UpdateResearchInput,
 } from "../domain/research.ts";
@@ -16,6 +20,17 @@ import { ResearchError } from "../domain/research.ts";
 type Store = PrismaClient | DatabaseTransaction;
 type ResearchRow = Omit<ResearchRecord, "queries" | "updatedAt"> & { updatedAt: Date };
 type QueryRow = { id: string; researchId: string; text: string; position: number };
+type ResearchListRow = Omit<ResearchListItem, "updatedAt" | "lastRun" | "queryCount"> & {
+  queryCount: bigint;
+  updatedAt: Date;
+  lastRunId: string | null;
+  lastRunStatus: ResearchRunStatus | null;
+  lastRunQueryCount: number | null;
+  lastRunEstimatedCostKopecks: number | null;
+  lastRunActualCostKopecks: number | null;
+  lastRunSafeErrorCode: string | null;
+  lastRunCreatedAt: Date | null;
+};
 
 function toRecord(row: ResearchRow, queries: QueryRow[]): ResearchRecord {
   return {
@@ -78,6 +93,88 @@ export class PrismaResearchRepository implements ResearchRepository {
       ORDER BY "researchId", "position"
     `);
     return rows.map((row) => toRecord(row, queries));
+    });
+  }
+
+  async listWorkItems(
+    organizationId: string,
+    projectId: string,
+    query: ResearchListQuery,
+  ): Promise<ResearchListResult> {
+    const periodDays = query.period === "7d" ? 7 : query.period === "30d" ? 30 : query.period === "90d" ? 90 : null;
+    const updatedAfter = periodDays === null ? null : new Date(Date.now() - periodDays * 86_400_000);
+    const orderBy = query.sort === "title"
+      ? Prisma.sql`research."title" ASC, research."id" ASC`
+      : query.sort === "status"
+        ? Prisma.sql`research."status" ASC, research."updatedAt" DESC, research."id" ASC`
+        : query.sort === "cost"
+          ? Prisma.sql`COALESCE(last_run."actualCostKopecks", last_run."estimatedCostKopecks", 0) DESC, research."updatedAt" DESC, research."id" ASC`
+          : Prisma.sql`research."updatedAt" DESC, research."id" ASC`;
+    const status = query.status;
+    const offset = (query.page - 1) * query.pageSize;
+
+    return this.withContext(async (transaction) => {
+      const where = Prisma.sql`
+        research."organizationId" = ${organizationId}
+        AND research."projectId" = ${projectId}
+        AND research."archivedAt" IS NULL
+        AND (${query.search} = '' OR POSITION(LOWER(${query.search}) IN LOWER(research."title")) > 0)
+        AND (${status}::text IS NULL OR research."status"::text = ${status})
+        AND (${updatedAfter}::timestamptz IS NULL OR research."updatedAt" >= ${updatedAfter})
+      `;
+      const [rows, totals] = await Promise.all([
+        transaction.$queryRaw<ResearchListRow[]>(Prisma.sql`
+          SELECT
+            research."id", research."organizationId", research."projectId", research."title", research."status"::text,
+            research."updatedAt", COUNT(query_row."id")::bigint AS "queryCount",
+            last_run."id" AS "lastRunId", last_run."status"::text AS "lastRunStatus",
+            last_run."queryCount" AS "lastRunQueryCount",
+            last_run."estimatedCostKopecks" AS "lastRunEstimatedCostKopecks",
+            last_run."actualCostKopecks" AS "lastRunActualCostKopecks",
+            last_run."safeErrorCode" AS "lastRunSafeErrorCode",
+            last_run."createdAt" AS "lastRunCreatedAt"
+          FROM "research"."Research" research
+          LEFT JOIN "research"."Query" query_row ON query_row."researchId" = research."id"
+          LEFT JOIN LATERAL (
+            SELECT run."id", run."status", run."queryCount", run."estimatedCostKopecks", run."actualCostKopecks", run."safeErrorCode", run."createdAt"
+            FROM "research"."Run" run
+            WHERE run."researchId" = research."id" AND run."organizationId" = research."organizationId" AND run."projectId" = research."projectId"
+            ORDER BY run."createdAt" DESC, run."id" DESC LIMIT 1
+          ) last_run ON TRUE
+          WHERE ${where}
+          GROUP BY research."id", last_run."id", last_run."status", last_run."queryCount", last_run."estimatedCostKopecks", last_run."actualCostKopecks", last_run."safeErrorCode", last_run."createdAt"
+          ORDER BY ${orderBy}
+          OFFSET ${offset} LIMIT ${query.pageSize}
+        `),
+        transaction.$queryRaw<Array<{ total: bigint }>>(Prisma.sql`
+          SELECT COUNT(*)::bigint AS "total" FROM "research"."Research" research WHERE ${where}
+        `),
+      ]);
+      return {
+        items: rows.map((row) => ({
+          id: row.id,
+          organizationId: row.organizationId,
+          projectId: row.projectId,
+          title: row.title,
+          status: row.status,
+          queryCount: Number(row.queryCount),
+          updatedAt: row.updatedAt.toISOString(),
+          lastRun: row.lastRunId && row.lastRunStatus && row.lastRunCreatedAt && row.lastRunQueryCount !== null && row.lastRunEstimatedCostKopecks !== null
+            ? {
+                runId: row.lastRunId,
+                status: row.lastRunStatus,
+                queryCount: row.lastRunQueryCount,
+                estimatedCostKopecks: row.lastRunEstimatedCostKopecks,
+                actualCostKopecks: row.lastRunActualCostKopecks,
+                safeErrorCode: row.lastRunSafeErrorCode,
+                createdAt: row.lastRunCreatedAt.toISOString(),
+              }
+            : null,
+        })),
+        total: Number(totals[0]?.total ?? 0),
+        page: query.page,
+        pageSize: query.pageSize,
+      };
     });
   }
 

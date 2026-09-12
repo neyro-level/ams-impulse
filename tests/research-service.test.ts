@@ -21,6 +21,18 @@ class MemoryResearchRepository implements ResearchRepository {
   cancelledRunId: string | null = null;
 
   async listByProject(organizationId: string, projectId: string) { return this.records.filter((record) => record.organizationId === organizationId && record.projectId === projectId && record.status !== "ARCHIVED"); }
+  async listWorkItems(organizationId: string, projectId: string, query: Parameters<ResearchRepository["listWorkItems"]>[2]) {
+    const records = (await this.listByProject(organizationId, projectId)).filter((record) =>
+      (!query.search || record.title.toLowerCase().includes(query.search.toLowerCase())) &&
+      (!query.status || record.status === query.status),
+    );
+    return {
+      items: records.map((record) => ({ ...record, queryCount: record.queries.length, lastRun: null })),
+      total: records.length,
+      page: query.page,
+      pageSize: query.pageSize,
+    };
+  }
   async findById(ref: { organizationId: string; projectId: string; researchId: string }) { return this.records.find((record) => record.id === ref.researchId && record.organizationId === ref.organizationId && record.projectId === ref.projectId) ?? null; }
   async listRuns() { return []; }
   async create(input: Parameters<ResearchRepository["create"]>[0]) {
@@ -83,6 +95,15 @@ describe("ResearchService", () => {
     await expect(service.list(client, "atlas", "secondary")).rejects.toMatchObject({ code: "RESEARCH_NOT_FOUND_OR_FORBIDDEN" });
   });
 
+  it("returns a filterable work list after access is checked", async () => {
+    const repository = new MemoryResearchRepository();
+    const service = new ResearchService(repository, authorization, pricing, budget);
+    const principal = createPlatformAnalystPrincipal("analyst");
+    await service.create(principal, { organizationId: "atlas", projectId: "secondary", title: "Рынок офисов", queries: ["офисы"] });
+    await service.create(principal, { organizationId: "atlas", projectId: "secondary", title: "Новостройки", queries: ["квартиры"] });
+    await expect(service.listWorkItems(principal, "atlas", "secondary", { search: "офис" })).resolves.toMatchObject({ total: 1, items: [{ title: "Рынок офисов", queryCount: 1 }] });
+  });
+
   it("estimates once and requires confirmation without starting provider work", async () => {
     const repository = new MemoryResearchRepository();
     const service = new ResearchService(repository, authorization, pricing, budget, () => new Date("2026-09-11T10:00:00Z"));
@@ -102,6 +123,15 @@ describe("ResearchService", () => {
     await expect(service.estimateRun(principal, { organizationId: "atlas", projectId: "secondary", researchId: research.id })).rejects.toMatchObject({ code: "RESEARCH_DAILY_LIMIT_EXCEEDED" });
     repository.dailyKopecks = 0; repository.monthlyKopecks = 299_950;
     await expect(service.estimateRun(principal, { organizationId: "atlas", projectId: "secondary", researchId: research.id })).rejects.toMatchObject({ code: "RESEARCH_MONTHLY_LIMIT_EXCEEDED" });
+  });
+
+  it("does not estimate paid work while a research is running", async () => {
+    const repository = new MemoryResearchRepository();
+    const service = new ResearchService(repository, authorization, pricing, budget);
+    const principal = createPlatformAnalystPrincipal("analyst");
+    const research = await service.create(principal, { organizationId: "atlas", projectId: "secondary", title: "В работе", queries: ["один"] });
+    repository.records[0]!.status = "RUNNING";
+    await expect(service.estimateRun(principal, { organizationId: "atlas", projectId: "secondary", researchId: research.id, idempotencyKey: "estimate-running" })).rejects.toMatchObject({ code: "RESEARCH_NOT_EDITABLE" });
   });
 
   it("rechecks run permission before queuing paid work", async () => {

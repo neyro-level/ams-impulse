@@ -20,8 +20,16 @@ function mapSiteRecord(site: {
   enabled: boolean;
   projectId: string;
   project: { slug: string; organizationId: string };
-  providerConnections: Array<{ enabled: boolean }>;
+  providerConnections: Array<{
+    enabled: boolean;
+    status: "PENDING" | "CONNECTING" | "CONNECTED" | "ACTION_REQUIRED" | "FAILED";
+  }>;
+  reportSnapshots: Array<{
+    generatedAt: Date;
+    freshness: "FRESH" | "STALE" | "PARTIAL" | "UNAVAILABLE";
+  }>;
 }): StoredSiteRecord {
+  const latestReport = site.reportSnapshots[0];
   return {
     siteId: site.id,
     projectId: site.projectId,
@@ -33,6 +41,9 @@ function mapSiteRecord(site: {
     timezone: site.timezone,
     enabled: site.enabled,
     enabledSourceCount: site.providerConnections.filter((connection) => connection.enabled).length,
+    connectionIssueCount: site.providerConnections.filter((connection) => connection.enabled && connection.status !== "CONNECTED").length,
+    latestReportAt: latestReport?.generatedAt.toISOString() ?? null,
+    reportFreshness: latestReport?.freshness.toLowerCase() as StoredSiteRecord["reportFreshness"] ?? "unavailable",
   };
 }
 
@@ -51,7 +62,14 @@ function mapProjectRecord(project: {
     enabled: boolean;
     projectId: string;
     project: { slug: string; organizationId: string };
-    providerConnections: Array<{ enabled: boolean }>;
+    providerConnections: Array<{
+      enabled: boolean;
+      status: "PENDING" | "CONNECTING" | "CONNECTED" | "ACTION_REQUIRED" | "FAILED";
+    }>;
+    reportSnapshots: Array<{
+      generatedAt: Date;
+      freshness: "FRESH" | "STALE" | "PARTIAL" | "UNAVAILABLE";
+    }>;
   }>;
 }): StoredProjectRecord {
   return {
@@ -106,7 +124,13 @@ export class PrismaProjectRepository implements ProjectRepository {
             providerConnections: {
               select: {
                 enabled: true,
+                status: true,
               },
+            },
+            reportSnapshots: {
+              orderBy: { generatedAt: "desc" },
+              take: 1,
+              select: { generatedAt: true, freshness: true },
             },
           },
         },
@@ -152,7 +176,13 @@ export class PrismaProjectRepository implements ProjectRepository {
             providerConnections: {
               select: {
                 enabled: true,
+                status: true,
               },
+            },
+            reportSnapshots: {
+              orderBy: { generatedAt: "desc" },
+              take: 1,
+              select: { generatedAt: true, freshness: true },
             },
           },
         },
@@ -194,7 +224,13 @@ export class PrismaProjectRepository implements ProjectRepository {
         providerConnections: {
           select: {
             enabled: true,
+            status: true,
           },
+        },
+        reportSnapshots: {
+          orderBy: { generatedAt: "desc" },
+          take: 1,
+          select: { generatedAt: true, freshness: true },
         },
       },
     }));

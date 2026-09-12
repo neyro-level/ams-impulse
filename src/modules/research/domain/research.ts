@@ -6,6 +6,14 @@ const querySchema = z.string().trim().min(2).max(500);
 
 export const researchStatusSchema = z.enum(["DRAFT", "READY", "RUNNING", "SUCCEEDED", "FAILED", "ARCHIVED"]);
 export const researchRunStatusSchema = z.enum(["DRAFT", "AWAITING_CONFIRMATION", "QUEUED", "RUNNING", "SUCCEEDED", "FAILED", "CANCELLED"]);
+export const researchListQuerySchema = z.object({
+  page: z.number().int().min(1).default(1),
+  pageSize: z.number().int().min(1).max(50).default(20),
+  search: z.string().trim().max(100).default(""),
+  status: researchStatusSchema.nullable().default(null),
+  period: z.enum(["all", "7d", "30d", "90d"]).default("all"),
+  sort: z.enum(["updated", "title", "status", "cost"]).default("updated"),
+});
 
 export const createResearchInputSchema = z.object({
   organizationId: idSchema,
@@ -52,6 +60,7 @@ export type EstimateResearchRunInput = z.infer<typeof estimateResearchRunInputSc
 export type ConfirmResearchRunInput = z.infer<typeof confirmResearchRunInputSchema>;
 export type ResearchStatus = z.infer<typeof researchStatusSchema>;
 export type ResearchRunStatus = z.infer<typeof researchRunStatusSchema>;
+export type ResearchListQuery = z.infer<typeof researchListQuerySchema>;
 
 export interface ResearchRecord {
   id: string;
@@ -85,6 +94,24 @@ export interface ResearchRunSummary {
   safeErrorCode: string | null;
   createdAt: string;
   finishedAt: string | null;
+}
+
+export interface ResearchListItem {
+  id: string;
+  organizationId: string;
+  projectId: string;
+  title: string;
+  status: ResearchStatus;
+  queryCount: number;
+  updatedAt: string;
+  lastRun: Pick<ResearchRunSummary, "runId" | "status" | "queryCount" | "estimatedCostKopecks" | "actualCostKopecks" | "safeErrorCode" | "createdAt"> | null;
+}
+
+export interface ResearchListResult {
+  items: ResearchListItem[];
+  total: number;
+  page: number;
+  pageSize: number;
 }
 
 export type ResearchErrorCode =

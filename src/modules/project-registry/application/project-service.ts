@@ -17,6 +17,9 @@ export interface ProjectSiteSummary {
   timezone: string;
   enabled: boolean;
   enabledSourceCount: number;
+  connectionIssueCount: number;
+  latestReportAt: string | null;
+  reportFreshness: "fresh" | "stale" | "partial" | "unavailable";
 }
 
 export interface ProjectTree {
@@ -38,6 +41,9 @@ export interface ProjectSummary {
   connectedSites: number;
   readySites: number;
   enabledSources: number;
+  issueCount: number;
+  latestReportAt: string | null;
+  freshness: "fresh" | "stale" | "partial" | "unavailable";
 }
 
 function toProjectTree(project: StoredProjectRecord): ProjectTree {
@@ -58,11 +64,26 @@ function toProjectTree(project: StoredProjectRecord): ProjectTree {
       timezone: site.timezone,
       enabled: site.enabled,
       enabledSourceCount: site.enabledSourceCount,
+      connectionIssueCount: site.connectionIssueCount ?? 0,
+      latestReportAt: site.latestReportAt ?? null,
+      reportFreshness: site.reportFreshness ?? "unavailable",
     })),
   };
 }
 
 function toProjectSummary(project: ProjectTree): ProjectSummary {
+  const enabledSites = project.sites.filter((site) => site.enabled);
+  const latestReportAt = enabledSites
+    .map((site) => site.latestReportAt)
+    .filter((value): value is string => Boolean(value))
+    .sort((left, right) => right.localeCompare(left))[0] ?? null;
+  const freshness = enabledSites.length === 0 || enabledSites.some((site) => site.reportFreshness === "unavailable")
+    ? "unavailable"
+    : enabledSites.some((site) => site.reportFreshness === "stale")
+      ? "stale"
+      : enabledSites.some((site) => site.reportFreshness === "partial")
+        ? "partial"
+        : "fresh";
   return {
     projectId: project.projectId,
     organizationId: project.organizationId,
@@ -73,6 +94,13 @@ function toProjectSummary(project: ProjectTree): ProjectSummary {
     connectedSites: project.sites.filter((site) => site.enabled).length,
     readySites: project.sites.filter((site) => site.enabled && site.enabledSourceCount >= 2).length,
     enabledSources: project.sites.reduce((count, site) => count + site.enabledSourceCount, 0),
+    issueCount: enabledSites.filter((site) =>
+      site.enabledSourceCount < 2 ||
+      site.connectionIssueCount > 0 ||
+      site.reportFreshness !== "fresh",
+    ).length + (project.status === "DISABLED" ? 1 : 0),
+    latestReportAt,
+    freshness,
   };
 }
 

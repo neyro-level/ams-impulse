@@ -10,6 +10,7 @@ export {
   estimateResearchRunInputSchema,
   researchRefSchema,
   researchRunStatusSchema,
+  researchListQuerySchema,
   researchStatusSchema,
   updateResearchInputSchema,
 } from "./domain/research.ts";
@@ -18,6 +19,9 @@ export type {
   CreateResearchInput,
   EstimateResearchRunInput,
   ResearchRecord,
+  ResearchListItem,
+  ResearchListQuery,
+  ResearchListResult,
   ResearchRef,
   ResearchRunEstimate,
   ResearchRunSummary,
