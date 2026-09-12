@@ -6,7 +6,7 @@
 
 AMS IMPULSE — модульная CRM-платформа АМС: публичный сайт SEO-услуги, клиентские продукты **SEO Монитор** и **АМС Лиды**, внутренний продукт **Инструменты** и единый приватный кабинет. Чужие runtime, БД, auth и credentials не используются.
 
-Repository slug in SourceCraft: `integrator-p/ams-seo-monitor`.
+Repository slug in SourceCraft: `integrator-p/ams-impulse`.
 
 Canonical branch: `origin/main`.
 

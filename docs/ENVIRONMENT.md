@@ -29,6 +29,7 @@ Application accepts either `DATABASE_URL` or a complete component set:
 - `DATABASE_PASSWORD`
 - `DATABASE_NAME`
 - `DATABASE_SSLMODE`
+- `DATABASE_RUNTIME` — `web`, `worker` or `migrator`; selects bounded pool and transaction timeouts.
 
 `APP_ENV` must identify `development`, `test` or `production`. Partial DB config fails closed. Diagnostics may print env, host, port, database and identity, but never full URL or password.
 
@@ -52,17 +53,21 @@ Changing `NEXT_PUBLIC_*` requires rebuild/redeploy. Changing runtime secret requ
 
 - `YANDEX_WEBMASTER_API_BASE_URL`
 - `YANDEX_WEBMASTER_OAUTH_TOKEN`
+- `YANDEX_WEBMASTER_SITE_URL`
 - `YANDEX_WEBMASTER_TOKEN_STATUS`
 - `YANDEX_METRICA_API_BASE_URL`
 - `YANDEX_METRICA_OAUTH_TOKEN`
+- `YANDEX_METRICA_SITE_URL`
 - `YANDEX_METRICA_TOKEN_STATUS`
 - `TOPVISOR_USER_ID`
 - `TOPVISOR_API_KEY`
 - `TOPVISOR_API_BASE_URL`
 - `OUTBOX_WORKER_ID`
 - `OUTBOX_POLL_DELAY_MS`
+- `RESEARCH_WORKER_ID`
 - `LOG_LEVEL`
 - `PGBOSS_SCHEMA`
+- `PGBOSS_RUNTIME_ROLE` — local/CI pg-boss migration target role, not a production application secret.
 - `XMLRIVER_USER`
 - `XMLRIVER_KEY`
 - `RESEARCH_QUERY_ESTIMATE_KOPECKS`
@@ -77,6 +82,12 @@ Changing `NEXT_PUBLIC_*` requires rebuild/redeploy. Changing runtime secret requ
 Provider token presence does not enable provider calls by itself. Calls require enabled ProviderConnection in PostgreSQL and valid server-side env after restart. Browser must never receive provider token variables.
 
 XMLRiver credentials are worker-only. S3 credentials are web-only for authorized Research exports. Full provider URLs, credentials and signed download URLs must never be logged.
+
+## MFA And MCP Controls
+
+Platform Admin TOTP secrets and hashed recovery material live in Better Auth/PostgreSQL. Enrollment, bootstrap and recovery codes enter operator commands through stdin; they are not environment variables.
+
+MCP scope, client-metadata cache TTL, subject rate window and request limit are code-owned constants (`MCP_SCOPE`, `MCP_CLIENT_METADATA_CACHE_TTL`, `MCP_RATE_WINDOW_MS`, `MCP_SUBJECT_REQUEST_LIMIT`). Changing them requires reviewed code and security proof; production env cannot silently weaken these controls.
 
 ## Local/Test Variables
 
@@ -115,6 +126,18 @@ Test database name must end with `_test`; test identity must be dedicated and di
 - `MIN_PROJECT_COUNT`
 - `MIN_SITE_COUNT`
 - `MIN_REPORT_COUNT`
+- `BACKUP_STRATEGY`
+- `TIMEWEB_CLOUD_TOKEN`
+- `TIMEWEB_DATABASE_ID`
+- `PROVIDER_BACKUP_PROOF_FILE`
+- `PROVIDER_BACKUP_MAX_AGE_SECONDS`
+- `DESTRUCTIVE_MIGRATION`
+- `TIMEWEB_RESTORE_POINT_ID`
+- `TIMEWEB_BACKUP_ID`
+- `TIMEWEB_SOURCE_DATABASE_ID`
+- `TIMEWEB_RESTORE_TARGET_ID`
+
+Post-deploy proof owns `LIVE_PROOF_EMAIL`, `LIVE_PROOF_PASSWORD`, `LIVE_PROOF_LOOPBACK_ORIGIN`, `LIVE_PROOF_PUBLIC_ORIGIN`, `LIVE_PROOF_PRIVATE_PATH` and `LIVE_PROOF_CRITICAL_PATH`. Owner alerting owns only `ALERT_WEBHOOK_URL`.
 
 Backup variables never enter web/worker containers. Restore smoke targets only an ephemeral database.
 

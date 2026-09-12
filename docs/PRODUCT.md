@@ -46,7 +46,7 @@ Tools Organization
 
 Модули:
 
-1. **Исследования** - реализован и выпущен в production; платный запуск требует отдельного подтверждения рассчитанной стоимости.
+1. **Исследования** - реализован в canonical `main`; платный запуск требует отдельного подтверждения рассчитанной стоимости. Production availability определяется deployed exact SHA.
 2. **Договоры**.
 3. **Счета**.
 4. **Презентации**.
@@ -159,11 +159,11 @@ Public signup отключён. Наличие формы заявки не оз
 
 ## Mobile And Installable
 
-Кабинет проектируется mobile-ready. PWA добавляет установку на Windows/Android и home-screen mode на iOS, но не кэширует sessions, PII, reports, exports или paid commands.
+Кабинет проектируется mobile-ready. PWA поддерживает installable shell, но не кэширует sessions, PII, reports, exports или paid commands. Реальный Android/iOS device proof остаётся операционной задачей.
 
 Native App Store/Google Play applications вне первого цикла.
 
-PWA-код выпущен в production: manifest, install command и статический allowlist service worker. Проверка установки на реальных Windows, Android и iOS устройствах остаётся операционной задачей.
+PWA-код реализован в canonical `main`: manifest, install command и static-only allowlist service worker. Windows Chromium proof выполнен; Android/iOS device proof и production availability подтверждаются отдельно.
 
 ## Non-goals Первого Цикла
 

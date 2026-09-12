@@ -1,5 +1,5 @@
 {
-  "name": "ams-seo-monitor",
+  "name": "ams-impulse",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -53,7 +53,8 @@
     "platform-admin:verify-recovery": "tsx scripts/auth-admin.ts verify-platform-admin-recovery",
     "user:add-to-organization": "tsx scripts/auth-admin.ts add-to-organization",
     "user:remove-from-organization": "tsx scripts/auth-admin.ts remove-from-organization",
-    "verify:config": "pnpm verify:public-data && pnpm verify:ui && node scripts/verify-config.mjs",
+    "verify:config": "pnpm verify:public-data && pnpm verify:ui && node scripts/verify-config.mjs && node scripts/verify-environment-registry.mjs",
+    "verify:environment": "node scripts/verify-environment-registry.mjs",
     "verify:ui": "node scripts/verify-ui-conformance.mjs",
     "verify:public-data": "node scripts/verify-public-data.mjs",
     "verify:web-environment": "node --env-file-if-exists=.env.local node_modules/tsx/dist/cli.mjs scripts/verify-web-environment.ts",

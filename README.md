@@ -2,11 +2,13 @@
 
 AMS IMPULSE - модульная CRM-платформа АМС: публичный SEO-сайт, клиентский **SEO Монитор**, внутренние **Инструменты** и общий приватный кабинет.
 
+Каноническая identity продукта, package и SourceCraft repository — `ams-impulse` / `integrator-p/ams-impulse`. Исторический production-slug `ams-seo-monitor` сохраняется только для совместимости существующих путей, image tags, Compose/systemd и health DTO; это техническое имя runtime, а не второе название продукта.
+
 Первый источник истины для работы с repository: [`AGENTS.md`](AGENTS.md).
 
 ## Текущий Статус
 
-- `main` и production: модульное ядро, SEO Монитор, строгие назначения, RLS, Инструменты, Исследования, XMLRiver worker, OAuth/MCP, кабинет и PWA.
+- `main`: модульное ядро, SEO Монитор, строгие назначения, RLS, Инструменты, Исследования, XMLRiver worker, OAuth/MCP, кабинет и PWA. Production feature set определяется только deployed SHA и live proof, а не содержимым `main`.
 - OAuth-подключение AMS IMPULSE к Codex проверено на основном Windows-компьютере; проверка ещё на двух компьютерах остаётся операционной задачей.
 - АМС Лиды, Договоры, Счета, Презентации и Клон сайтов пока не реализованы.
 - Production работает на Timeweb Managed PostgreSQL 18 в частной сети без публичного database IP; прежняя локальная БД сохранена read-only до `2026-09-25`.
@@ -47,9 +49,9 @@ User -> Product membership -> Explicit project grant -> Permission -> Resource
 - SEO: `/dashboard/`, `/analyst/`, `/c/*`, `/admin/*`, `/notifications/`.
 - Исследования: `/tools/research/`, `/tools/research/[researchId]/`.
 - MCP: `/mcp`, OAuth 2.1 + PKCE, scope `mcp:research`.
-- PWA: `/manifest.webmanifest`, установка на Windows/Android и добавление на экран iOS.
+- PWA: `/manifest.webmanifest`, проверенная установка в Windows Chromium; Android/iOS device proof остаётся в `MASTER_PLAN`.
 
-Service worker кэширует только `/_next/static/*`, `/fonts/*` и PWA-иконки. Приватные страницы, API, MCP, OAuth, отчёты и команды не кэшируются.
+Service worker кэширует только `/_next/static/*` и точные PWA/favicon paths без query/auth/cookie. Приватные страницы, API, MCP, OAuth, отчёты и команды не кэшируются.
 
 ## Канон
 
@@ -61,6 +63,8 @@ Service worker кэширует только `/_next/static/*`, `/fonts/*` и PW
 - [`docs/MASTER_PLAN.md`](docs/MASTER_PLAN.md)
 - [`docs/PRIVATE_APPLICATION_SCREEN_BRIEFS.md`](docs/PRIVATE_APPLICATION_SCREEN_BRIEFS.md)
 - [`docs/modules/MODULE_RESEARCH.md`](docs/modules/MODULE_RESEARCH.md)
+- [`docs/modules/MODULE_PRODUCT_CATALOG.md`](docs/modules/MODULE_PRODUCT_CATALOG.md)
+- [`docs/modules/MODULE_TOOLS_WORKSPACE.md`](docs/modules/MODULE_TOOLS_WORKSPACE.md)
 - [`docs/RUNBOOK_DEPLOY.md`](docs/RUNBOOK_DEPLOY.md)
 
 `docs/archive/` хранит только историю и не является источником истины.

@@ -9,10 +9,15 @@ Deploy reviewed canonical `main` as immutable OCI image through Docker Compose a
 Project topology:
 
 - web binds `127.0.0.1:3000`;
+- `worker` continuously drains the outbox;
+- `research-worker` continuously consumes bounded `research.run.v1` jobs with no automatic paid retry;
+- `migrate` and `maintenance` are manual one-shot Compose services and never restart as daemons;
 - host Nginx terminates external traffic;
 - current application uses Timeweb Managed PostgreSQL 18 through private TLS networking without a public database endpoint;
 - protected env files are separated for web, worker, migrator and backup;
 - database provider provisioning or another database cutover is a separate owner-approved RISKY operation and is never an ordinary code deploy side effect.
+
+Product/repository identity is `ams-impulse`. Existing production paths, image tags, Compose project and service asset names keep the historical technical slug `ams-seo-monitor`; changing it requires a separate owner-approved production migration with rollback proof.
 
 ## Preconditions
 
@@ -72,7 +77,7 @@ After preparation:
 3. write root-owned `shared/release.env` with exact SHA/tag/digest;
 4. reload systemd;
 5. validate and reload Nginx;
-6. restart Compose stack through `seo-monitor-web.service`;
+6. restart the persistent `web`, `worker` and `research-worker` Compose stack through `seo-monitor-web.service`;
 7. run scheduled sync once;
 8. enable sync, Topvisor, competitors, outbox-retention and backup timers;
 9. verify web and worker containers use the exact image digest;

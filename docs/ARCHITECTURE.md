@@ -6,7 +6,7 @@ Profile: `TENANCY = multi-tenant`, `ASYNC = outbox-plus-queue`, `DATA = pii`, `D
 
 ## Status Convention
 
-- `CURRENT` - работает в canonical `main` и production.
+- `CURRENT` - реализовано в canonical `main`; наличие в production подтверждается только release record и live proof точного SHA.
 - `PLANNED` - утверждено, но ещё не реализовано или не выпущено.
 
 SEO Монитор, модульное ядро, Инструменты и Исследования относятся к `CURRENT`. АМС Лиды и остальные внутренние инструменты относятся к `PLANNED`.
@@ -27,6 +27,8 @@ Outbox -> pg-boss -> bounded product worker -> provider/storage -> PostgreSQL
 ```
 
 Web, MCP и worker собираются из одного repository и immutable OCI image. Research worker является отдельным process/service, но не отдельным микросервисом.
+
+Каноническая product/repository identity — `ams-impulse`. Исторический runtime-slug `ams-seo-monitor` намеренно сохранён для существующих server paths, OCI tags, Compose project, systemd/Nginx assets и health DTO. Его переименование является отдельной production migration, а не частью обычной нормализации документов.
 
 ## Product Boundaries
 
@@ -160,7 +162,7 @@ UI / MCP
 
 Paid call runs only after a persisted estimate, matching confirmed amount, idempotency reservation and active permission. Ambiguous provider outcome becomes `FAILED` with a safe code and is not retried automatically.
 
-Production runs `research-worker` as a separate long-lived Compose service with
+Canonical release topology runs `research-worker` as a separate long-lived Compose service with
 the dedicated worker managed-database identity and server-only provider environment. The process keeps
 one pg-boss runtime, consumes one job at a time and closes queue/database resources
 on `SIGTERM`/`SIGINT`. Its database role has DML only; schema and queue migrations
@@ -204,7 +206,7 @@ PWA uses `app/manifest.ts`, 192/512 PNG icons and a service worker with an expli
 
 ## Runtime And Delivery
 
-Current production: host Nginx -> web/outbox/research worker containers -> Timeweb Managed PostgreSQL 18 over private network/TLS. The database has no public IP. Existing AMS server public IP remains because it serves HTTPS domains and SSH. Each persistent worker keeps one process, one Prisma pool and one pg-boss runtime across polling cycles; shutdown drains through the shared abort signal and closes queue resources once.
+Canonical release topology: host Nginx -> web/outbox/research worker containers -> Timeweb Managed PostgreSQL 18 over private network/TLS. The database has no public IP. Existing AMS server public IP remains because it serves HTTPS domains and SSH. Each persistent worker keeps one process, one Prisma pool and one pg-boss runtime across polling cycles; shutdown drains through the shared abort signal and closes queue resources once. The exact topology currently deployed is never inferred from `main`; release and live-proof records must identify its SHA and image digest.
 
 Health is runtime-specific: web uses `/api/health/live`; persistent workers prove
 a fresh database heartbeat for their exact runtime/worker identity. Migrator and
@@ -235,13 +237,11 @@ small runtime entrypoint. Source TypeScript, Prisma schema/tooling, tsconfig,
 framework build configuration, Compose and build scripts are absent. The separate
 migrator contains only its database schema/configuration and migration entrypoint.
 
-Web, worker, migrator and backup use separate provider-managed identities. The previous self-managed database is read-only through `2026-09-25`; deletion requires a separate owner decision. Research worker входит в текущую production topology и выполняет только project-scoped jobs.
+Web, worker, migrator and backup use separate provider-managed identities. The previous self-managed database is read-only through `2026-09-25`; deletion requires a separate owner decision. Research worker входит в каноническую release topology и выполняет только project-scoped jobs после выпуска соответствующего exact SHA.
 
 ## Verification
 
-SourceCraft keeps the automatic pull-request workflow intentionally cheap: `pr-check`
-runs `verify:quick` only and does not claim merge readiness. Merge evidence is started
-manually against the reviewed exact head SHA:
+SourceCraft does not start verification merely because a PR was created. Merge evidence is started manually against the reviewed exact head SHA:
 
 - `standard-check` runs `verify:quick` plus an explicit allowlisted set of relevant unit tests;
 - `risky-check` runs `verify:quick`, explicit relevant unit and PostgreSQL integration tests,
