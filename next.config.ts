@@ -4,7 +4,7 @@ const applicationCsp = [
   "default-src 'self'",
   `script-src 'self' 'unsafe-inline'${process.env.NODE_ENV === "development" ? " 'unsafe-eval'" : ""}`,
   "style-src 'self' 'unsafe-inline'",
-  "connect-src 'self' https://ams24.ru",
+  "connect-src 'self'",
   "img-src 'self' data: blob:",
   "font-src 'self'",
   "worker-src 'self' blob:",
@@ -15,6 +15,21 @@ const applicationCsp = [
   "frame-ancestors 'none'",
 ].join("; ");
 
+const publicLandingCsp = applicationCsp.replace(
+  "connect-src 'self'",
+  "connect-src 'self' https://ams24.ru",
+);
+
+const serviceWorkerCsp = "default-src 'self'; script-src 'self'";
+
+const securityHeaders = [
+  { key: "Strict-Transport-Security", value: "max-age=31536000; includeSubDomains" },
+  { key: "X-Content-Type-Options", value: "nosniff" },
+  { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+  { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
+  { key: "Cross-Origin-Opener-Policy", value: "same-origin-allow-popups" },
+];
+
 const nextConfig: NextConfig = {
   agentRules: false,
   output: "standalone",
@@ -22,14 +37,17 @@ const nextConfig: NextConfig = {
   async headers() {
     return [
       {
-        source: "/:path*",
+        source: "/((?!sw\\.js$|$).*)",
         headers: [
           { key: "Content-Security-Policy", value: applicationCsp },
-          { key: "Strict-Transport-Security", value: "max-age=31536000; includeSubDomains" },
-          { key: "X-Content-Type-Options", value: "nosniff" },
-          { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
-          { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
-          { key: "Cross-Origin-Opener-Policy", value: "same-origin-allow-popups" },
+          ...securityHeaders,
+        ],
+      },
+      {
+        source: "/",
+        headers: [
+          { key: "Content-Security-Policy", value: publicLandingCsp },
+          ...securityHeaders,
         ],
       },
       {
@@ -37,7 +55,8 @@ const nextConfig: NextConfig = {
         headers: [
           { key: "Content-Type", value: "application/javascript; charset=utf-8" },
           { key: "Cache-Control", value: "no-cache, no-store, must-revalidate" },
-          { key: "Content-Security-Policy", value: "default-src 'self'; script-src 'self'" },
+          { key: "Content-Security-Policy", value: serviceWorkerCsp },
+          ...securityHeaders,
         ],
       },
       {

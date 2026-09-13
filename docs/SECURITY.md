@@ -172,14 +172,18 @@ headers with its direct peer address; Better Auth reads only `X-Real-IP` and tru
 configured loopback proxy hop. Client-supplied forwarded chains never select a rate-limit or
 session IP identity.
 
-Public and private application routes enforce a Next 16-compatible CSP: same-origin defaults,
-connections, fonts and forms; only local/data/blob images and local/blob workers; no
-objects, foreign base URI or framing. The current non-nonce baseline retains
-`unsafe-inline` only for framework scripts/styles. Removing it requires a measured
-report-only phase and the official request-proxy nonce flow because nonce rendering is
-fully dynamic and incompatible with static/PPR output.
+Next is the single owner of the response CSP; Nginx does not append a second policy.
+Public and private application routes enforce a Next 16-compatible CSP: same-origin
+defaults, fonts and forms; only local/data/blob images and local/blob workers; no
+objects, foreign base URI or framing. Only the public landing route may connect to the
+external AMS Leads endpoint; private routes remain `connect-src 'self'`. The current
+non-nonce baseline retains `unsafe-inline` only for framework scripts/styles under the
+`Framework CSP inline bootstrap` exception in `docs/PLATFORM_CONFORMANCE.md`. It must
+be removed after a report-only measurement shows no required inline violations and the
+official request-proxy nonce flow is accepted together with fully dynamic rendering
+instead of static/PPR output.
 
-Next.js and Nginx both provide HSTS, MIME sniffing protection, strict-origin referrer policy, bounded browser permissions and opener isolation. The public lead endpoint is the only external browser connection allowed by application CSP.
+Next.js and Nginx both provide HSTS, MIME sniffing protection, strict-origin referrer policy and bounded browser permissions; Next additionally owns opener isolation and the route-aware CSP. The public lead endpoint is the only external browser connection allowed by application CSP.
 
 ## PII, Secrets And Logging
 
