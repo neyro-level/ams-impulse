@@ -15,7 +15,7 @@ export { ResearchExecutionService } from "./application/research-execution-servi
 export { PrismaResearchExecutionRepository } from "./infrastructure/prisma-research-execution-repository.ts";
 export { XmlRiverClient, parseXmlRiverSerp, parseXmlRiverSuggestions, parseXmlRiverWordstat } from "./infrastructure/xmlriver-client.ts";
 
-type QueueClient = Pick<PgBoss, "fetch" | "complete" | "fail" | "send">;
+type QueueClient = Pick<PgBoss, "fetch" | "complete" | "send">;
 type ExecutionFactory = (job: ResearchRunJob) => Promise<ResearchExecutionService>;
 
 export async function recoverStaleResearchRunsWithDependencies(
@@ -48,8 +48,11 @@ export async function runNextResearchJobWithDependencies(queue: QueueClient, cre
   const execution = await createExecution(parsed.data);
   const result = await execution.execute(parsed.data.runId, parsed.data.correlationId);
   if (result.status === "deferred") {
+    // Lock contention is a normal disposition, not a failed paid execution.
+    // The research queue has retryLimit=0, so enqueue exactly one future job
+    // before completing the current delivery.
     await queue.send(RESEARCH_RUN_QUEUE, parsed.data, { startAfter: 1 });
-    await queue.fail(RESEARCH_RUN_QUEUE, job.id, { status: "deferred", code: "RUN_LOCK_BUSY" });
+    await queue.complete(RESEARCH_RUN_QUEUE, job.id, { status: "deferred", code: "RUN_LOCK_BUSY" });
     logger.info({ event: "research_job_deferred", status: result.status }, "research job deferred");
     return { handled: 1, ...result };
   }
