@@ -2,30 +2,6 @@
 
 Документ содержит только незавершённую работу. Реализованные изменения сохраняются в Git и SourceCraft.
 
-## Audit Remediation 2026-09-13
-
-Работа выполняется последовательно отдельными эпиками и Pull Request. Каждый
-следующий зависимый эпик начинается от обновлённого `origin/main` после merge
-предыдущего; production выпускается один раз после завершения всей программы.
-
-1. **Research queue disposition (`RISKY`)** — убрать ложный failure при
-   `lock-busy`, сохранить ровно одну будущую попытку и закрепить regression proof.
-2. **Research money and UTC (`RISKY`)** — сохранять распределённую стоимость при
-   внутреннем сбое, унифицировать UTC-границы бюджета, закрепить session timezone
-   и честную семантику расчётной стоимости XMLRiver.
-3. **CSP perimeter (`STANDARD`)** — один CSP для service worker, минимальный
-   `connect-src`, документированное временное `unsafe-inline` исключение.
-4. **UI foundation v5 (`RISKY`)** — Tailwind `@theme`, semantic utilities,
-   typography/layout primitives, чистая граница `globals.css`, dark/motion contract.
-5. **UI composition and proof (`STANDARD`)** — semantic sections публичного
-   лендинга, синхронизация Design System v5, расширенный drift guard и browser/a11y
-   proof всех изменённых page families.
-
-Аудиторское утверждение о мультипликативном росте Research jobs уточнено по
-фактическому `RESEARCH_JOB_RETRY_LIMIT = 0`: retry исходного job не создаётся.
-Реальный дефект эпика 1 — обычная lock-конкуренция ошибочно записывается как
-failure вместо нормального `complete + one deferred send`.
-
 ## Внешние Проверки
 
 - выполнить первый подтверждённый платный тестовый запуск Research через MCP после серверной оценки и явного подтверждения стоимости;

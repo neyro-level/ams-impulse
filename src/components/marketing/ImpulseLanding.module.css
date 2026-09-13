@@ -11,6 +11,14 @@
 .atmosphere { background: var(--ch-atmosphere); }
 .visual { box-shadow: var(--ch-visual-shadow); }
 .visual::before { position: absolute; inset: 0; z-index: 1; background: var(--ch-visual-overlay); content: ""; pointer-events: none; }
+.visualSurface { background: color-mix(in srgb, var(--ch-bg-deeper) 55%, transparent); }
+.heroLabelPanel { background: color-mix(in srgb, var(--ch-bg-deepest) 75%, transparent); }
+.heroChartPanel { background: color-mix(in srgb, var(--ch-bg-dark) 88%, transparent); }
+.barOne { height: 62px; opacity: 0.45; }
+.barTwo { height: 48px; opacity: 0.57; }
+.barThree { height: 72px; opacity: 0.69; }
+.barFour { height: 55px; opacity: 0.81; }
+.barFive { height: 66px; opacity: 0.93; }
 
 @media (max-width: 1023px) {
   .atmosphere { background: var(--ch-atmosphere-mobile); }

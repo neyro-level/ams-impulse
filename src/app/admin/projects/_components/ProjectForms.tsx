@@ -119,13 +119,13 @@ export function ProjectCreateForm({ options }: { options: ProjectFormOptions }) 
         </label>
         <label className="space-y-1.5">
           <span className="block text-sm font-medium text-foreground">Название</span>
-          <Input {...register("name")} />
-          {errors.name ? <span className="text-xs text-destructive">{errors.name.message}</span> : null}
+          <Input id="project-create-name" aria-describedby={errors.name ? "project-create-name-error" : undefined} aria-invalid={Boolean(errors.name)} {...register("name")} />
+          {errors.name ? <span id="project-create-name-error" className="text-xs text-destructive">{errors.name.message}</span> : null}
         </label>
         <label className="space-y-1.5">
           <span className="block text-sm font-medium text-foreground">Адрес в кабинете</span>
-          <Input placeholder="project-name" {...register("slug")} />
-          {errors.slug ? <span className="text-xs text-destructive">{errors.slug.message}</span> : null}
+          <Input id="project-create-slug" aria-describedby={errors.slug ? "project-create-slug-error" : undefined} aria-invalid={Boolean(errors.slug)} placeholder="project-name" {...register("slug")} />
+          {errors.slug ? <span id="project-create-slug-error" className="text-xs text-destructive">{errors.slug.message}</span> : null}
         </label>
         <label className="space-y-1.5">
           <span className="block text-sm font-medium text-foreground">Статус</span>

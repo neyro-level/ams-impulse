@@ -24,9 +24,23 @@ dark hero → light evidence → soft service detail → light proof → dark CT
 
 Steel-blue accent is used sparingly for primary CTA, focus and one data/structure marker.
 
+## Technical Core
+
+- Runtime owner: Next.js `16.3.3`, React `19.2.8`, TypeScript `6.0.3` and Tailwind CSS `4.3.3`; server composition by default.
+- Media: decorative CSS/SVG remains `aria-hidden`; meaningful media requires descriptive alt text and project ownership.
+- Fonts: Manrope is packaged through `@fontsource` to avoid a runtime font host; PT Root UI stays private. This is the deliberate project alternative to `next/font`.
+- Leads/forms transport: the public lead dialog posts only to the allowlisted AMS Leads path and keeps consent plus anti-spam controls.
+- Data boundary: public components contain no private DTO, persistence or provider access.
+- SEO owner: root `layout.tsx` owns default metadata; a route owns overrides; `sitemap.ts` and `robots.ts` own discovery policy.
+- Analytics: no public analytics runtime is currently installed; adding one requires consent and privacy review.
+- Performance budget: no blocking third-party script, no font network dependency, no decorative client component and no horizontal overflow; build plus public browser golden path is the regression gate.
+- Verification cadence: contract tests and UI guards on quick checks, changed-route browser proof, final daily proof on `main`.
+- Locale/theme: Russian, isolated dark-first `.theme-public`; it is independent of private light-only mode.
+- Mandatory pages: home, global `404`, privacy, consent, cookie and terms. A thank-you route is not applicable because success stays inside the lead dialog.
+
 ## Typography
 
-- Display: `clamp(44px, 6.2vw, 84px)`, strong, tight.
+- Display: fluid, strong and tight through the `text-public-display` role.
 - H1/H2: large editorial headings.
 - Body: `16px`, comfortable line height.
 - Eyebrow: uppercase small marker only when it adds structure.
@@ -37,14 +51,7 @@ No meaningful text is baked into images. Long Russian headings wrap instead of s
 
 ## Layout
 
-Container:
-
-```css
-max-width: 1360px;
-padding-inline: 24px;
-```
-
-Mobile padding: `20px`.
+The site container and responsive gutters are semantic `@theme` roles. Numeric values live only in `src/app/globals.css`.
 
 The shared Tailwind layout roles are `max-w-site`, `px-container` and `sm:px-container-wide`; public section composition may wrap them in the project-owned `Container` and `Section` primitives without importing private visual tokens.
 
@@ -63,7 +70,7 @@ Whole-page horizontal overflow is forbidden.
 - Right: one main action, login to cabinet.
 - Login opens modal, not a separate `/login` route.
 - Mobile label may shorten to `Войти`.
-- Touch target at least `44px`.
+- Touch targets use the canonical public control minimum.
 
 Secondary nav appears only when real sections exist.
 
@@ -106,14 +113,35 @@ Legal text is readable HTML and does not require JavaScript. Footer contains bra
 
 ## Motion
 
-Use short motion `150–220ms`: opacity, border, background and translate up to `2px`. The global reduced-motion contract collapses non-essential animation and transition duration when `prefers-reduced-motion: reduce`. Avoid card scale, parallax and glow.
+Use short restrained motion for opacity, border, background and minimal translation. The global reduced-motion contract collapses non-essential animation and transition duration when `prefers-reduced-motion: reduce`. Avoid card scale, parallax and glow.
+
+## Visual Character And Anti-goals
+
+The representative page is `/`: it carries the cold service-premium language through a dark hero, light evidence and dark footer. Anti-goals are generic SaaS softness, cyberpunk/neon, fake results, stock AI imagery, oversized decoration without meaning and private workspace tokens.
+
+## Containers, Section Rhythm And Shared Patterns
+
+- `ImpulseLanding` is a composition layer; `PublicHeader`, `HeroSection`, `ServiceMechanismSection`, `ReportProofSection` and `SiteFooter` own semantic sections.
+- `Container` owns repeated width/gutters; each section owns only its internal layout.
+- Shared patterns are wordmark, eyebrow, editorial heading, evidence list, proof card, primary CTA and legal footer.
+- Public content data lives beside its section composition, not in the page entry point.
+
+## Design Intake
+
+Normalized on `2026-09-13` from the existing production visual language. Inventory covered the landing, legal pages, login/lead dialogs, public token set, typography, section rhythm and responsive behavior. Values were converted to roles without changing the offer or visual direction.
+
+## Approved Exceptions
+
+| Scope | Exception | Reason | Review trigger |
+|---|---|---|---|
+| Legal document CSS module | Prose hierarchy has document-specific geometry | Generated legal HTML cannot express the project utility contract directly | legal renderer redesign |
+| Hero SVG | SVG presentation attributes reference `ch-*` tokens | The decorative chart is a component-owned vector, not system layout | hero redesign |
 
 ## Acceptance
 
-- `375`: one column, no H1 clipping, visual below text.
-- `768`: wide single column where needed.
-- `1280`: split hero works.
-- `1440`: content sits inside `1360px` container.
+- Mobile: one column, no H1 clipping, visual below text.
+- Tablet: wide single column where needed.
+- Desktop: split hero works and content remains inside the site container.
 - CTA and login targets at least `44px`.
 - WCAG AA contrast.
 - No public/private token mixing.

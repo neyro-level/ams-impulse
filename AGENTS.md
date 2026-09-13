@@ -123,8 +123,8 @@ Cross-module consumers use root entrypoints only. New module requires `docs/modu
 
 UX scope:
 
-- public `/`, legal pages and login/lead modals → `PUBLIC_COMMERCIAL`, `docs/EXTERNAL_SITE_DESIGN_SYSTEM.md`;
-- private `/dashboard`, `/analyst`, `/admin`, `/notifications`, `/c/*`, `/tools/*` → `APPLICATION_WORKSPACE`, `docs/INTERNAL_DASHBOARD_DESIGN_SYSTEM.md`;
+- public `/`, legal pages and login/lead modals → `PUBLIC_COMMERCIAL`, AMS UI Core 5.0 and `docs/EXTERNAL_SITE_DESIGN_SYSTEM.md`;
+- private `/dashboard`, `/analyst`, `/admin`, `/notifications`, `/c/*`, `/tools/*` → `APPLICATION_WORKSPACE`, AMS UI Core 5.0 and `docs/INTERNAL_DASHBOARD_DESIGN_SYSTEM.md`;
 - no CMS-native admin exists.
 
 Private UI uses PT Root UI, semantic tokens and project-owned shadcn/Base UI primitives. Public UI uses isolated `theme-public`, Manrope and `ch-*` tokens. Do not mix token systems.

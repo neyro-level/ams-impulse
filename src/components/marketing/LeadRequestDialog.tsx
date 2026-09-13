@@ -134,23 +134,23 @@ export function LeadRequestDialog() {
           {submitState === "success" ? (
             <div className="py-8 pr-10">
               <span className="grid size-12 place-items-center bg-[var(--ch-accent)] text-[var(--ch-white)]"><Check className="size-6" strokeWidth={1.8} aria-hidden /></span>
-              <p className="mt-6 text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--ch-accent)]">AMS IMPULSE</p>
-              <DialogTitle className="mt-3 text-3xl font-extrabold tracking-[-0.035em] text-[var(--ch-white)]">Заявка отправлена</DialogTitle>
+              <p className="mt-6 text-public-micro font-bold uppercase text-[var(--ch-accent)]">AMS IMPULSE</p>
+              <DialogTitle className="mt-3 text-public-success-title font-extrabold text-[var(--ch-white)]">Заявка отправлена</DialogTitle>
               <p className="mt-3 text-sm leading-6 text-[var(--ch-muted-ondark)]">Свяжемся с вами, уточним задачу и обсудим следующий шаг.</p>
               <Button type="button" variant="secondary" size="lg" className="mt-7 rounded-none bg-[var(--ch-white)] text-[var(--ch-bg-deeper)] hover:bg-[var(--ch-soft-white)]" onClick={closeDialog}>Закрыть</Button>
             </div>
           ) : (
             <>
               <DialogHeader>
-                <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--ch-accent)]">AMS IMPULSE</p>
-                <DialogTitle className="mt-2 text-[32px] font-extrabold leading-tight tracking-[-0.04em] text-[var(--ch-white)] sm:text-[34px]">Обсудить продвижение</DialogTitle>
+                <p className="text-public-micro font-bold uppercase text-[var(--ch-accent)]">AMS IMPULSE</p>
+                <DialogTitle className="mt-2 text-public-dialog-title font-extrabold text-[var(--ch-white)]">Обсудить продвижение</DialogTitle>
                 <p className="mt-2 max-w-md text-sm leading-6 text-[var(--ch-muted-ondark)]">Оставьте имя и телефон. Уточним задачу, оценим применимость услуги и согласуем следующий шаг.</p>
               </DialogHeader>
 
               <form className="mt-8 border-t border-[var(--ch-border-subtle)] pt-8" onSubmit={handleSubmit} noValidate>
                 <div className="space-y-6">
                   <label className="block">
-                    <span className="mb-3 block text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--ch-label-ondark)]">Имя</span>
+                    <span className="mb-3 block text-public-field-label font-bold uppercase text-[var(--ch-label-ondark)]">Имя</span>
                     <span className="group relative flex min-h-14 items-center">
                       <UserRound className="pointer-events-none absolute left-4 z-10 size-[18px] text-[var(--ch-icon-ondark)] group-focus-within:text-[var(--ch-accent)]" strokeWidth={1.6} aria-hidden />
                       <Input type="text" value={name} onChange={(event) => { setName(event.target.value); if (errors.name) setErrors((current) => ({ ...current, name: undefined })); }} className="min-h-14 rounded-none border-[var(--ch-border-control)] bg-[var(--ch-bg-dark)]/72 py-3 pl-12 pr-4 text-base font-medium text-[var(--ch-white)] placeholder:text-[var(--ch-placeholder-ondark)] focus-visible:border-[var(--ch-accent)]" autoComplete="name" autoFocus aria-invalid={Boolean(errors.name)} aria-describedby={errors.name ? "lead-name-error" : undefined} />
@@ -159,7 +159,7 @@ export function LeadRequestDialog() {
                   </label>
 
                   <label className="block">
-                    <span className="mb-3 block text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--ch-label-ondark)]">Телефон</span>
+                    <span className="mb-3 block text-public-field-label font-bold uppercase text-[var(--ch-label-ondark)]">Телефон</span>
                     <span className="group relative flex min-h-14 items-center">
                       <Phone className="pointer-events-none absolute left-4 z-10 size-[18px] text-[var(--ch-icon-ondark)] group-focus-within:text-[var(--ch-accent)]" strokeWidth={1.6} aria-hidden />
                       <Input type="tel" value={phone} onChange={(event) => { setPhone(formatPhone(event.target.value)); if (errors.phone) setErrors((current) => ({ ...current, phone: undefined })); }} className="min-h-14 rounded-none border-[var(--ch-border-control)] bg-[var(--ch-bg-dark)]/72 py-3 pl-12 pr-4 text-base font-medium text-[var(--ch-white)] placeholder:text-[var(--ch-placeholder-ondark)] focus-visible:border-[var(--ch-accent)]" autoComplete="tel" inputMode="tel" placeholder="+7 (999) 999-99-99" aria-invalid={Boolean(errors.phone)} aria-describedby={errors.phone ? "lead-phone-error" : undefined} />

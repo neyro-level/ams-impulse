@@ -13,6 +13,18 @@ test("preserves the public AMS IMPULSE surface", async ({ page, request }) => {
   await expect(page.getByRole("button", { name: /обсудить продвижение/i }).first()).toBeVisible();
   await expect(page.getByRole("contentinfo")).toBeVisible();
 
+  const loginTrigger = page.getByRole("button", { name: /вход в личный кабинет|войти/i });
+  await loginTrigger.focus();
+  await expect(loginTrigger).toBeFocused();
+  expect(await loginTrigger.evaluate((element) => element.matches(":focus-visible"))).toBe(true);
+  await loginTrigger.click();
+  const loginDialog = page.getByRole("dialog", { name: "Вход в кабинет" });
+  await expect(loginDialog).toBeVisible();
+  await expect(page.getByLabel("Логин")).toBeFocused();
+  await page.keyboard.press("Escape");
+  await expect(loginDialog).toBeHidden();
+  await expect(loginTrigger).toBeFocused();
+
   const faviconResponse = await request.get("/ams-favicon.svg");
   expect(faviconResponse.status()).toBe(200);
   expect(faviconResponse.headers()["content-type"]).toContain("image/svg+xml");
@@ -95,6 +107,15 @@ test.describe("Platform Admin", () => {
       await expect(expandWidget).toBeVisible();
       await expandWidget.click();
       await expect(page.locator("aside")).toHaveCSS("width", "232px");
+    } else {
+      const drawerTrigger = page.getByRole("button", { name: "Открыть навигацию" });
+      await drawerTrigger.click();
+      const drawer = page.locator("#mobile-report-nav");
+      await expect(drawer).toBeVisible();
+      expect(await drawer.evaluate((element) => element.contains(document.activeElement))).toBe(true);
+      await page.keyboard.press("Escape");
+      await expect(drawer).toBeHidden();
+      await expect(drawerTrigger).toBeFocused();
     }
 
     await page.goto("/admin/providers/");
@@ -140,6 +161,12 @@ test.describe("Platform Admin", () => {
     await expect(createProjectTrigger).toBeVisible();
     await createProjectTrigger.click();
     await expect(page.getByLabel("Организация")).toBeVisible();
+    await page.getByRole("button", { name: "Создать", exact: true }).click();
+    const invalidName = page.locator("#project-create-name");
+    await expect(invalidName).toHaveAttribute("aria-invalid", "true");
+    const errorId = await invalidName.getAttribute("aria-describedby");
+    expect(errorId).toBeTruthy();
+    await expect(page.locator(`#${errorId}`)).toBeVisible();
     await page.getByLabel("Поиск").fill("alpha");
     await page.getByRole("button", { name: "Применить" }).click();
     await expect(page).toHaveURL(/search=alpha/);

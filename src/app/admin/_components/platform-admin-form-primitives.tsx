@@ -1,6 +1,6 @@
 "use client";
 
-import { type ReactNode } from "react";
+import { cloneElement, isValidElement, useId, type ReactElement, type ReactNode } from "react";
 import type { FieldValues, Path, UseFormSetError } from "react-hook-form";
 import { Button } from "../../../components/ui/button.tsx";
 import { Card, CardContent, CardHeader } from "../../../components/ui/card.tsx";
@@ -81,14 +81,28 @@ export function FormField({
   helper?: string;
   children: ReactNode;
 }) {
+  const fieldId = useId();
+  const descriptionId = helper ? `${fieldId}-description` : undefined;
+  const errorId = error ? `${fieldId}-error` : undefined;
+  const childProps = isValidElement(children)
+    ? (children.props as { id?: string; "aria-describedby"?: string; "aria-invalid"?: boolean })
+    : null;
+  const control = childProps
+    ? cloneElement(children as ReactElement<typeof childProps>, {
+        id: childProps.id ?? fieldId,
+        "aria-describedby": [childProps["aria-describedby"], descriptionId, errorId].filter(Boolean).join(" ") || undefined,
+        "aria-invalid": error ? true : childProps["aria-invalid"],
+      })
+    : children;
+
   return (
     <Field>
       <FieldLabel className="grid gap-2">
         <span>{label}{required ? <span className="ml-1 text-destructive">*</span> : null}</span>
-        {children}
+        {control}
       </FieldLabel>
-      {helper ? <FieldDescription>{helper}</FieldDescription> : null}
-      <FieldError>{error}</FieldError>
+      {helper ? <FieldDescription id={descriptionId}>{helper}</FieldDescription> : null}
+      <FieldError id={errorId}>{error}</FieldError>
     </Field>
   );
 }

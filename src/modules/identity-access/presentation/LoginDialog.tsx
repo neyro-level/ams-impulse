@@ -29,6 +29,7 @@ export function LoginDialog({ initialOpen = false, oauthLoginRequested = false }
   const [requiresTotp, setRequiresTotp] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const loginSucceededRef = useRef(false);
+  const triggerRef = useRef<HTMLButtonElement>(null);
   const [pending, setPending] = useState(false);
 
   function handleOpenChange(nextOpen: boolean) {
@@ -91,6 +92,8 @@ export function LoginDialog({ initialOpen = false, oauthLoginRequested = false }
   return (
     <>
       <MarketingButton
+        id="login-dialog-trigger"
+        ref={triggerRef}
         type="button"
         tone="outline"
         className="group gap-2 px-4"
@@ -106,12 +109,13 @@ export function LoginDialog({ initialOpen = false, oauthLoginRequested = false }
 
       <Dialog open={open} onOpenChange={handleOpenChange}>
         <DialogContent
+          finalFocus={() => triggerRef.current ?? document.getElementById("login-dialog-trigger")}
           className={`theme-public ${landingStyles.landing} rounded-none border-[var(--ch-border-control)] bg-[var(--ch-bg-deeper)] p-7 text-[var(--ch-white)] shadow-[var(--ch-overlay-shadow)] sm:p-10`}
           showCloseButton={!pending}
         >
           <DialogHeader>
-            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--ch-accent)]">AMS IMPULSE</p>
-            <DialogTitle className="mt-2 text-[32px] font-extrabold leading-tight tracking-[-0.04em] text-[var(--ch-white)] sm:text-[34px]">
+            <p className="text-public-micro font-bold uppercase text-[var(--ch-accent)]">AMS IMPULSE</p>
+            <DialogTitle className="mt-2 text-public-dialog-title font-extrabold text-[var(--ch-white)]">
               {requiresTotp ? "Подтвердите вход" : "Вход в кабинет"}
             </DialogTitle>
             {requiresTotp ? <p className="mt-2 text-sm leading-6 text-[var(--ch-muted-ondark)]">Введите шестизначный код из приложения-аутентификатора.</p> : null}
@@ -120,12 +124,12 @@ export function LoginDialog({ initialOpen = false, oauthLoginRequested = false }
           <form className="mt-9 border-t border-[var(--ch-border-subtle)] pt-8" onSubmit={handleSubmit}>
             {requiresTotp ? (
               <label className="block">
-                <span className="mb-3 block text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--ch-label-ondark)]">Код из приложения</span>
+                <span className="mb-3 block text-public-field-label font-bold uppercase text-[var(--ch-label-ondark)]">Код из приложения</span>
                 <Input
                   type="text"
                   value={totpCode}
                   onChange={(event) => setTotpCode(event.target.value.replace(/\D/g, "").slice(0, 6))}
-                  className="min-h-14 rounded-none border-[var(--ch-border-control)] bg-[var(--ch-bg-dark)]/72 px-4 py-3 text-center font-mono text-xl tracking-[0.3em] text-[var(--ch-white)] focus-visible:border-[var(--ch-accent)] focus-visible:ring-[var(--ch-focus-soft)]"
+                  className="min-h-14 rounded-none border-[var(--ch-border-control)] bg-[var(--ch-bg-dark)]/72 px-4 py-3 text-center font-mono text-public-code text-[var(--ch-white)] focus-visible:border-[var(--ch-accent)] focus-visible:ring-[var(--ch-focus-soft)]"
                   autoComplete="one-time-code"
                   inputMode="numeric"
                   maxLength={6}
@@ -136,7 +140,7 @@ export function LoginDialog({ initialOpen = false, oauthLoginRequested = false }
               </label>
             ) : <div className="space-y-6">
               <label className="block">
-                <span className="mb-3 block text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--ch-label-ondark)]">Логин</span>
+                <span className="mb-3 block text-public-field-label font-bold uppercase text-[var(--ch-label-ondark)]">Логин</span>
                 <span className="group relative flex min-h-14 items-center">
                   <UserRound className="pointer-events-none absolute left-4 z-10 size-[18px] text-[var(--ch-icon-ondark)] group-focus-within:text-[var(--ch-accent)]" strokeWidth={1.6} aria-hidden />
                   <Input
@@ -154,7 +158,7 @@ export function LoginDialog({ initialOpen = false, oauthLoginRequested = false }
               </label>
 
               <label className="block">
-                <span className="mb-3 block text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--ch-label-ondark)]">Пароль</span>
+                <span className="mb-3 block text-public-field-label font-bold uppercase text-[var(--ch-label-ondark)]">Пароль</span>
                 <span className="group relative flex min-h-14 items-center">
                   <LockKeyhole className="pointer-events-none absolute left-4 z-10 size-[18px] text-[var(--ch-icon-ondark)] group-focus-within:text-[var(--ch-accent)]" strokeWidth={1.6} aria-hidden />
                   <Input
