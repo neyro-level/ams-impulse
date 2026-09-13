@@ -15,12 +15,15 @@ describe("end-to-end correlation chain", () => {
   it("propagates the async job correlation id into every provider call", async () => {
     const repository = {
       claimRun: vi.fn(async () => ({
-        runId: "run-1",
-        organizationId: "org-1",
-        projectId: "project-1",
-        researchId: "research-1",
-        approvedCostKopecks: 3,
-        queries: [{ queryRunId: "query-run-1", queryId: "query-1", text: "sensitive query" }],
+        status: "claimed" as const,
+        run: {
+          runId: "run-1",
+          organizationId: "org-1",
+          projectId: "project-1",
+          researchId: "research-1",
+          approvedCostKopecks: 3,
+          queries: [{ queryRunId: "query-run-1", queryId: "query-1", text: "sensitive query" }],
+        },
       })),
       failStaleRuns: vi.fn(),
       markQueryStarted: vi.fn(async () => true),

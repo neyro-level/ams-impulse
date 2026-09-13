@@ -1,15 +1,15 @@
 import { describe, expect, it } from "vitest";
-import { ResearchProviderError, type ClaimedResearchRun, type ResearchExecutionRepository, type ResearchLifecycleEvent, type ResearchProvider } from "../src/modules/research/index.ts";
+import { ResearchProviderError, type ClaimedResearchRun, type ResearchExecutionRepository, type ResearchLifecycleEvent, type ResearchProvider, type ResearchRunClaim } from "../src/modules/research/index.ts";
 import { ResearchExecutionService, recoverStaleResearchRunsWithDependencies } from "../src/modules/research/worker.ts";
 
 class ExecutionRepository implements ResearchExecutionRepository {
   run: ClaimedResearchRun | null = { runId: "run-1", organizationId: "org-1", projectId: "project-1", researchId: "research-1", approvedCostKopecks: 200, queries: [{ queryRunId: "qr-1", queryId: "q-1", text: "купить квартиру" }, { queryRunId: "qr-2", queryId: "q-2", text: "цены на жильё" }] };
-  started: string[] = []; completed: string[] = []; costs: number[] = []; failed: Array<[string, string]> = []; runStatus = "QUEUED";
+  started: string[] = []; completed: string[] = []; costs: number[] = []; failed: Array<[string, string, number]> = []; runStatus = "QUEUED";
   async failStaleRuns() { return 0; }
-  async claimRun() { if (this.runStatus !== "QUEUED") return null; this.runStatus = "RUNNING"; return this.run; }
+  async claimRun(): Promise<ResearchRunClaim> { if (this.runStatus !== "QUEUED" || !this.run) return { status: "not-claimable" }; this.runStatus = "RUNNING"; return { status: "claimed", run: this.run }; }
   async markQueryStarted(id: string) { this.started.push(id); return true; }
   async completeQuery(input: { queryRunId: string; costKopecks: number }) { this.completed.push(input.queryRunId); this.costs.push(input.costKopecks); }
-  async failQuery(id: string, code: string) { this.failed.push([id, code]); }
+  async failQuery(id: string, code: string, costKopecks: number) { this.failed.push([id, code, costKopecks]); }
   async completeRun() { this.runStatus = this.failed.length ? "PARTIAL" : "SUCCEEDED"; return this.failed.length ? "partial" as const : "succeeded" as const; }
   async failRun(_id: string, code: string) { this.runStatus = `FAILED:${code}`; }
 }
@@ -51,6 +51,7 @@ describe("ResearchExecutionService", () => {
     expect(result).toEqual({ status: "failed", code: "PROVIDER_RESULT_AMBIGUOUS" });
     expect(calls).toBe(1);
     expect(repository.started).toEqual(["qr-1"]);
+    expect(repository.failed).toEqual([["qr-1", "PROVIDER_RESULT_AMBIGUOUS", 34]]);
     expect(repository.runStatus).toBe("FAILED:PROVIDER_RESULT_AMBIGUOUS");
   });
 
@@ -83,14 +84,14 @@ describe("ResearchExecutionService", () => {
       ...provider,
       collectYandexSerp: async ({ query }) => {
         calls += 1;
-        if (calls === 1) throw Object.assign(new Error("rejected"), { code: "PROVIDER_REJECTED" });
+        if (calls === 1) throw new ResearchProviderError("PROVIDER_REJECTED", "NON_RETRYABLE");
         return [{ type: "organic", url: "https://example.test", domain: "example.test", title: query, snippet: null }];
       },
     };
 
     const events: ResearchLifecycleEvent[] = [];
     await expect(new ResearchExecutionService(repository, partiallyFailingProvider, undefined, { async publish(input) { events.push(input.event); } }).execute("run-1")).resolves.toEqual({ status: "partial" });
-    expect(repository.failed).toEqual([["qr-1", "PROVIDER_REJECTED"]]);
+    expect(repository.failed).toEqual([["qr-1", "PROVIDER_REJECTED", 0]]);
     expect(repository.completed).toEqual(["qr-2"]);
     expect(repository.runStatus).toBe("PARTIAL");
     expect(events).toEqual(["started", "partial", "action_required"]);
@@ -107,6 +108,52 @@ describe("ResearchExecutionService", () => {
     const repository = new ExecutionRepository(); const service = new ResearchExecutionService(repository, provider);
     await service.execute("run-1");
     await expect(service.execute("run-1")).resolves.toEqual({ status: "ignored" });
+  });
+
+  it("fails the run with an internal code when persistence fails", async () => {
+    const repository = new ExecutionRepository();
+    repository.completeQuery = async () => { throw new Error("database detail"); };
+
+    await expect(new ResearchExecutionService(repository, provider).execute("run-1")).resolves.toEqual({ status: "failed", code: "RESEARCH_INTERNAL_FAILURE" });
+    expect(repository.failed).toEqual([]);
+    expect(repository.runStatus).toBe("FAILED:RESEARCH_INTERNAL_FAILURE");
+  });
+
+  it("defers a concurrent delivery when the per-run lock is busy", async () => {
+    const repository = new ExecutionRepository();
+    repository.claimRun = async () => ({ status: "lock-busy" as const });
+
+    await expect(new ResearchExecutionService(repository, provider).execute("run-1")).resolves.toEqual({ status: "deferred" });
+    expect(repository.started).toEqual([]);
+  });
+
+  it("settles the approved query allocation when a provider call fails", async () => {
+    const repository = new ExecutionRepository();
+    const failingProvider: ResearchProvider = {
+      ...provider,
+      collectYandexSerp: async () => { throw new ResearchProviderError("PROVIDER_REJECTED", "NON_RETRYABLE"); },
+    };
+
+    await expect(new ResearchExecutionService(repository, failingProvider).execute("run-1")).resolves.toEqual({ status: "partial" });
+    expect(repository.failed).toEqual([
+      ["qr-1", "PROVIDER_REJECTED", 0],
+      ["qr-2", "PROVIDER_REJECTED", 0],
+    ]);
+  });
+
+  it("honors a bounded Retry-After delay", async () => {
+    const repository = new ExecutionRepository(); let calls = 0; const delays: number[] = [];
+    const retryingProvider: ResearchProvider = {
+      ...provider,
+      collectYandexSerp: async ({ query }) => {
+        calls += 1;
+        if (calls === 1) throw new ResearchProviderError("PROVIDER_REJECTED", "DEFINITELY_NOT_CHARGED", 45_000);
+        return [{ type: "organic", url: "https://example.test", domain: "example.test", title: query, snippet: null }];
+      },
+    };
+
+    await new ResearchExecutionService(repository, retryingProvider, async (milliseconds) => { delays.push(milliseconds); }).execute("run-1");
+    expect(delays).toEqual([30_000]);
   });
 
   it("retries one explicitly retryable rejection", async () => {

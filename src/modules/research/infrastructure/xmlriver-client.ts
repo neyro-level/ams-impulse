@@ -5,6 +5,14 @@ import { ResearchProviderError } from "../application/ports/research-provider.ts
 const MAX_RESPONSE_BYTES = 2_000_000;
 const REQUEST_TIMEOUT_MS = 12_000;
 
+function retryAfterMilliseconds(response: Response): number | undefined {
+  const value = response.headers.get("retry-after")?.trim();
+  if (!value) return undefined;
+  if (/^\d+$/.test(value)) return Number(value) * 1_000;
+  const date = Date.parse(value);
+  return Number.isFinite(date) ? Math.max(0, date - Date.now()) : undefined;
+}
+
 interface XmlRiverCredentials { user: string; key: string }
 type JsonObject = Record<string, unknown>;
 
@@ -101,7 +109,7 @@ export class XmlRiverClient implements ResearchProvider {
         : response.status === 408 || response.status >= 500
           ? "AMBIGUOUS_AFTER_DISPATCH"
           : "NON_RETRYABLE";
-      throw new ResearchProviderError("PROVIDER_REJECTED", category);
+      throw new ResearchProviderError("PROVIDER_REJECTED", category, response.status === 429 ? retryAfterMilliseconds(response) : undefined);
     }
     return boundedBody(response);
   }

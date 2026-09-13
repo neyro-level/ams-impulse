@@ -10,7 +10,7 @@ const repository = readFileSync(
   "utf8",
 );
 const terminalSpendMigration = readFileSync(
-  new URL("../prisma/migrations/20260912181000_include_terminal_research_spend/migration.sql", import.meta.url),
+  new URL("../prisma/migrations/20260913160000_harden_research_runtime_invariants/migration.sql", import.meta.url),
   "utf8",
 );
 
@@ -33,5 +33,11 @@ describe("Research budget serialization", () => {
     expect(terminalSpendMigration).toContain('run."estimateExpiresAt" > reference_time');
     expect(terminalSpendMigration).toContain("run.\"status\" IN ('SUCCEEDED', 'PARTIAL', 'FAILED')");
     expect(terminalSpendMigration).toContain('COALESCE(run."actualCostKopecks", 0)');
+  });
+
+  it("uses explicit UTC budget windows independent of the database session timezone", () => {
+    expect(terminalSpendMigration).toContain("reference_time AT TIME ZONE 'UTC'");
+    expect(terminalSpendMigration).toContain("date_trunc('day'");
+    expect(terminalSpendMigration).toContain("date_trunc('month'");
   });
 });

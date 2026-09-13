@@ -14,7 +14,7 @@ import type {
   ResearchRunSummary,
   UpdateResearchInput,
 } from "../domain/research.ts";
-import type { ResearchRepository } from "../application/ports/research-repository.ts";
+import type { ResearchAuditJsonValue, ResearchRepository } from "../application/ports/research-repository.ts";
 import { ResearchError } from "../domain/research.ts";
 
 type Store = PrismaClient | DatabaseTransaction;
@@ -52,7 +52,7 @@ async function appendAudit(
     action: string;
     entityId: string;
     correlationId: string;
-    marker: Prisma.InputJsonValue;
+    marker: { [key: string]: ResearchAuditJsonValue };
   },
 ) {
   await store.$executeRaw(Prisma.sql`
@@ -416,6 +416,11 @@ export class PrismaResearchRepository implements ResearchRepository {
     if (run.status === "CANCELLED") return "already-cancelled" as const;
     if (!( ["AWAITING_CONFIRMATION", "QUEUED"] as const).includes(run.status as "AWAITING_CONFIRMATION" | "QUEUED")) return "unsafe-state" as const;
     await transaction.$executeRaw(Prisma.sql`
+      UPDATE "research"."QueryRun"
+      SET "status"='FAILED', "safeErrorCode"='RESEARCH_CANCELLED_BY_USER', "finishedAt"=CURRENT_TIMESTAMP
+      WHERE "runId"=${input.runId} AND "status"='PENDING'
+    `);
+    await transaction.$executeRaw(Prisma.sql`
       UPDATE "research"."Run"
       SET "status"='CANCELLED', "safeErrorCode"='RESEARCH_CANCELLED_BY_USER',
         "finishedAt"=CURRENT_TIMESTAMP, "updatedAt"=CURRENT_TIMESTAMP
@@ -436,7 +441,7 @@ export class PrismaResearchRepository implements ResearchRepository {
     return rows[0]?.active ?? false;
   }
 
-  async appendAudit(input: { organizationId: string; projectId: string; actorId: string; action: string; entityId: string; correlationId: string; marker: Prisma.InputJsonValue }, transaction: DatabaseTransaction) {
+  async appendAudit(input: { organizationId: string; projectId: string; actorId: string; action: string; entityId: string; correlationId: string; marker: { [key: string]: ResearchAuditJsonValue } }, transaction: DatabaseTransaction) {
     await appendAudit(transaction, input);
   }
 

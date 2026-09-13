@@ -7,13 +7,14 @@ const repository = readFileSync(
 );
 
 describe("Research failed-run settlement", () => {
-  it("closes unexecuted query rows without assigning them a cost", () => {
+  it("closes unexecuted query rows without assigning them a cost and settles started failures", () => {
     expect(repository).toContain(`"status" IN ('PENDING','RUNNING')`);
     expect(repository).toContain(`WHEN "status"='PENDING' THEN 'RESEARCH_RUN_ABORTED'`);
     const terminalQueryUpdates = (repository.match(/UPDATE "research"\."QueryRun"[^`]+/g) ?? [])
       .filter((statement) => statement.includes(`"status" IN ('PENDING','RUNNING')`));
     expect(terminalQueryUpdates.length).toBeGreaterThanOrEqual(2);
     expect(terminalQueryUpdates.every((statement) => !statement.includes(`"costKopecks"`))).toBe(true);
+    expect(repository).toContain(`SET "status"='FAILED', "costKopecks"=${'${costKopecks}'}`);
   });
 
   it("persists actual spend as the sum of recorded query costs on failure", () => {

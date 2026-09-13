@@ -1,4 +1,3 @@
-import type { Prisma } from "../../../../generated/prisma/client.ts";
 import type { DatabaseTransaction } from "../../../../platform/database/transaction.ts";
 import type {
   CreateResearchInput,
@@ -10,6 +9,14 @@ import type {
   ResearchRunSummary,
   UpdateResearchInput,
 } from "../../domain/research.ts";
+
+export type ResearchAuditJsonValue =
+  | string
+  | number
+  | boolean
+  | null
+  | ResearchAuditJsonValue[]
+  | { [key: string]: ResearchAuditJsonValue };
 
 export interface ResearchRepository {
   listByProject(organizationId: string, projectId: string): Promise<ResearchRecord[]>;
@@ -47,6 +54,6 @@ export interface ResearchRepository {
     action: string;
     entityId: string;
     correlationId: string;
-    marker: Prisma.InputJsonValue;
+    marker: { [key: string]: ResearchAuditJsonValue };
   }, transaction: DatabaseTransaction): Promise<void>;
 }

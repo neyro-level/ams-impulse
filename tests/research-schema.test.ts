@@ -27,7 +27,7 @@ const querySnapshotSql = readFileSync(
   "utf8",
 );
 const terminalSpendSql = readFileSync(
-  new URL("../prisma/migrations/20260912181000_include_terminal_research_spend/migration.sql", import.meta.url),
+  new URL("../prisma/migrations/20260913160000_harden_research_runtime_invariants/migration.sql", import.meta.url),
   "utf8",
 );
 
@@ -92,5 +92,17 @@ describe("Tools and Research database contract", () => {
     expect(terminalSpendSql).toContain("'PARTIAL'");
     expect(terminalSpendSql).toContain("'FAILED'");
     expect(terminalSpendSql).toContain('run."projectId" = authorized_project_id');
+  });
+
+  it("rejects terminal runs while any query remains pending or running", () => {
+    expect(terminalSpendSql).toContain('CREATE TRIGGER "Run_terminal_queries_guard"');
+    expect(terminalSpendSql).toContain("query_run.\"status\" IN ('PENDING', 'RUNNING')");
+    expect(terminalSpendSql).toContain("ERRCODE = '23514'");
+  });
+
+  it("removes PUBLIC execution from security-definer authorization helpers", () => {
+    expect(terminalSpendSql).toContain('REVOKE ALL ON FUNCTION "platform"."can_access_tools_project"(TEXT, TEXT) FROM PUBLIC');
+    expect(terminalSpendSql).toContain('GRANT EXECUTE ON FUNCTION "platform"."can_access_tools_project"(TEXT, TEXT) TO ams_web, ams_worker');
+    expect(terminalSpendSql).not.toContain('TO PUBLIC;');
   });
 });

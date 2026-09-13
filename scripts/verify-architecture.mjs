@@ -50,6 +50,12 @@ export function inspectArchitectureSource(relativePath, source) {
   if (source.includes("infrastructure/database/prisma")) {
     failures.push(`Legacy database boundary import: ${normalizedPath}`);
   }
+  if (
+    /generated\/prisma\//.test(source)
+    && !/^src\/(?:platform\/database|modules\/[^/]+\/infrastructure|generated)\//.test(normalizedPath)
+  ) {
+    failures.push(`Prisma outside infrastructure boundary: ${normalizedPath}`);
+  }
   if (source.includes("ActorContext")) {
     failures.push(`Legacy authorization context: ${normalizedPath}`);
   }

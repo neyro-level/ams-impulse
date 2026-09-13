@@ -19,5 +19,7 @@ runuser -u postgres -- psql -v ON_ERROR_STOP=1 \
   --command "CREATE ROLE ams_web LOGIN PASSWORD 'seo_monitor_test' NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOBYPASSRLS"
 runuser -u postgres -- psql -v ON_ERROR_STOP=1 \
   --command "CREATE ROLE ams_worker LOGIN PASSWORD 'seo_monitor_test' NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOBYPASSRLS"
+runuser -u postgres -- psql -v ON_ERROR_STOP=1 \
+  --command "CREATE ROLE ams_backup LOGIN PASSWORD 'seo_monitor_test' NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOBYPASSRLS"
 runuser -u postgres -- createdb --owner "${TEST_DATABASE_USER}" "${TEST_DATABASE_NAME}"
 pnpm exec playwright install --with-deps chromium

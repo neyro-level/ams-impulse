@@ -147,7 +147,7 @@ async function handleEvent(event: ClaimedReliabilityEvent, boss: OutboxQueueClie
       schemaVersion: RESEARCH_RUN_SCHEMA,
       ...payload.data,
       correlationId: event.correlationId,
-    } satisfies ResearchRunJob);
+    } satisfies ResearchRunJob, { singletonKey: payload.data.runId });
     return;
   }
 

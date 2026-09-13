@@ -1,8 +1,10 @@
 # ARCHITECTURE
 
-Platform contract: `AMS Application Platform Core 3.4 - Solo Minimal`.
+Platform contract: `AMS Application Platform Core 4.0 - Solo Minimal`.
 
-Profile: `TENANCY = multi-tenant`, `ASYNC = outbox-plus-queue`, `DATA = pii`, `DELIVERY = own-saas`, `PLATFORM_ADMIN = enabled`, `DATABASE = managed-postgresql-target`.
+Profile: `TENANCY = multi-tenant`, `ASYNC = outbox-plus-queue`, `DATA = pii`, `DELIVERY = own-saas`, `PLATFORM_ADMIN = enabled`, `DATABASE = managed-postgresql`, `DELIVERY_PROFILE = CRITICAL`.
+
+`DELIVERY_PROFILE = CRITICAL` выбран владельцем перед merge/release: проект использует real-user authentication, PII, multi-tenancy, ценную постоянную PostgreSQL и production integrations. Перед каждым merge обязателен один exact-head SourceCraft Gate выбранного класса риска; release выполняется только из clean canonical `main`.
 
 ## Status Convention
 
@@ -285,6 +287,8 @@ SourceCraft does not start verification merely because a PR was created. Merge e
 - `risky-check` runs `verify:quick`, explicit relevant unit and PostgreSQL integration tests,
   and adds Semgrep and/or a production build only when the classified risk requires them;
 - `release-check` remains the full exact-head release proof for canonical `main`.
+
+`daily` is also manual. Branch pushes, PR creation and schedules do not start development verification; the owner starts DAILY proof only at the real daily/release boundary.
 
 The test file inputs are data, not shell fragments: the scoped runner accepts only existing
 `tests/*.test.ts` paths and invokes Node processes without a shell.

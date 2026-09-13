@@ -1,9 +1,3 @@
-on:
-  schedule:
-    - workflows: [daily]
-      cron: "0 1 * * *"
-      description: "Nightly full verification of canonical main"
-
 workflows:
   standard-check:
     inputs:
@@ -109,7 +103,7 @@ workflows:
     settings:
       max_cube_duration: 120m
     tasks:
-      - name: nightly-main
+      - name: daily-main
         env:
           APP_ENV: test
           EXPECTED_COMMIT_SHA: ""

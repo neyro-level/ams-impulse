@@ -46,7 +46,7 @@ async function ensureQueue(boss: PgBoss) {
     deleteAfterSeconds: 0,
   });
   await boss.createQueue(RESEARCH_RUN_QUEUE, {
-    policy: "singleton",
+    policy: "standard",
     retryLimit: RESEARCH_JOB_RETRY_LIMIT,
     retryDelay: RESEARCH_JOB_RETRY_DELAY_SECONDS,
     expireInSeconds: RESEARCH_JOB_EXPIRE_IN_SECONDS,

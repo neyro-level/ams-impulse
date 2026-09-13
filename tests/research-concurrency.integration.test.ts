@@ -25,6 +25,8 @@ const ids = {
   access: `${prefix}-access`,
   research: `${prefix}-research`,
   query: `${prefix}-query`,
+  researchB: `${prefix}-research-b`,
+  queryB: `${prefix}-query-b`,
 } as const;
 const principal: PlatformAnalystPrincipal = {
   kind: "platform-analyst",
@@ -41,8 +43,11 @@ async function removeFixture(database: PrismaContext) {
   await database.pool.query('DELETE FROM "public"."AuditEvent" WHERE "correlationId" = $1', [correlationId]);
   await database.pool.query('DELETE FROM "research"."Export" WHERE "researchId" = $1', [ids.research]);
   await database.pool.query('DELETE FROM "research"."Run" WHERE "researchId" = $1', [ids.research]);
+  await database.pool.query('DELETE FROM "research"."Run" WHERE "researchId" = $1', [ids.researchB]);
   await database.pool.query('DELETE FROM "research"."Query" WHERE "researchId" = $1', [ids.research]);
+  await database.pool.query('DELETE FROM "research"."Query" WHERE "researchId" = $1', [ids.researchB]);
   await database.pool.query('DELETE FROM "research"."Research" WHERE "id" = $1', [ids.research]);
+  await database.pool.query('DELETE FROM "research"."Research" WHERE "id" = $1', [ids.researchB]);
   await database.pool.query('DELETE FROM "tools"."ToolsProjectAccess" WHERE "id" = $1', [ids.access]);
   await database.pool.query('DELETE FROM "tools"."ToolsMembership" WHERE "id" = $1', [ids.membership]);
   await database.pool.query('DELETE FROM "tools"."ToolsProject" WHERE "id" = $1', [ids.project]);
@@ -103,6 +108,18 @@ integrationDescription("Research budget concurrency and idempotency", () => {
        VALUES ($1, $2, $3, $4, 'synthetic query', 0)`,
       [ids.query, ids.organization, ids.project, ids.research],
     );
+    await database.pool.query(
+      `INSERT INTO "research"."Research"
+        ("id", "organizationId", "projectId", "title", "brief", "createdByUserId")
+       VALUES ($1, $2, $3, 'Concurrency proof B', '', $4)`,
+      [ids.researchB, ids.organization, ids.project, ids.user],
+    );
+    await database.pool.query(
+      `INSERT INTO "research"."Query"
+        ("id", "organizationId", "projectId", "researchId", "text", "position")
+       VALUES ($1, $2, $3, $4, 'synthetic query b', 0)`,
+      [ids.queryB, ids.organization, ids.project, ids.researchB],
+    );
 
     const authorization = new AuthorizationService(
       new PrismaAccessGrantRepository(database.prisma),
@@ -133,12 +150,13 @@ integrationDescription("Research budget concurrency and idempotency", () => {
     uploadedObjectKeys.length = 0;
     await database.pool.query(
       `DELETE FROM "public"."OutboxEvent"
-       WHERE "topic" = 'research.run.v1' AND "payload"->>'researchId' = $1`,
-      [ids.research],
+       WHERE "topic" = 'research.run.v1' AND "payload"->>'researchId' IN ($1, $2)`,
+      [ids.research, ids.researchB],
     );
     await database.pool.query('DELETE FROM "public"."AuditEvent" WHERE "correlationId" = $1', [correlationId]);
     await database.pool.query('DELETE FROM "research"."Export" WHERE "researchId" = $1', [ids.research]);
     await database.pool.query('DELETE FROM "research"."Run" WHERE "researchId" = $1', [ids.research]);
+    await database.pool.query('DELETE FROM "research"."Run" WHERE "researchId" = $1', [ids.researchB]);
   });
 
   afterAll(async () => {
@@ -146,11 +164,11 @@ integrationDescription("Research budget concurrency and idempotency", () => {
     await database.close();
   });
 
-  function ref() {
+  function ref(researchId: string = ids.research) {
     return {
       organizationId: ids.organization,
       projectId: ids.project,
-      researchId: ids.research,
+      researchId,
     };
   }
 
@@ -165,8 +183,8 @@ integrationDescription("Research budget concurrency and idempotency", () => {
       [`${prefix}-baseline`, ids.organization, ids.project, ids.research, `${prefix}:baseline`, proofNow],
     );
     const estimates = await Promise.allSettled([
-      research.estimateRun(principal, { ...ref(), idempotencyKey: `${prefix}:estimate-a` }),
-      research.estimateRun(principal, { ...ref(), idempotencyKey: `${prefix}:estimate-b` }),
+      research.estimateRun(principal, ref()),
+      research.estimateRun(principal, ref(ids.researchB)),
     ]);
     const accepted = estimates.find(({ status }) => status === "fulfilled");
     expect(accepted).toMatchObject({
@@ -186,10 +204,47 @@ integrationDescription("Research budget concurrency and idempotency", () => {
     });
     const state = await database.pool.query<{ status: string; count: string }>(
       `SELECT "status"::text, COUNT(*)::text AS count FROM "research"."Run"
-       WHERE "researchId" = $1 GROUP BY "status" ORDER BY "status"`,
-      [ids.research],
+       WHERE "researchId" IN ($1, $2) GROUP BY "status" ORDER BY "status"`,
+      [ids.research, ids.researchB],
     );
     expect(state.rows).toEqual([{ status: "QUEUED", count: "2" }]);
+  });
+
+  it("rejects a terminal Run while its QueryRun is still pending", async () => {
+    const estimate = await research.estimateRun(principal, ref());
+    const client = await database.pool.connect();
+    try {
+      await client.query("BEGIN");
+      await client.query("SELECT set_config('ams.user_id', $1, true)", [ids.user]);
+      await expect(client.query(
+        `UPDATE "research"."Run" SET "status"='SUCCEEDED' WHERE "id"=$1`,
+        [estimate.runId],
+      )).rejects.toMatchObject({ code: "23514" });
+      await client.query("ROLLBACK");
+    } finally {
+      client.release();
+    }
+  });
+
+  it("keeps privileged helper execution off PUBLIC and backup roles", async () => {
+    const privileges = await database.pool.query<{
+      publicAccess: boolean;
+      webAccess: boolean;
+      backupAccess: boolean;
+      workerStaleAccess: boolean;
+    }>(`
+      SELECT
+        has_function_privilege('public', 'platform.can_access_tools_project(text,text)', 'EXECUTE') AS "publicAccess",
+        has_function_privilege('ams_web', 'platform.can_access_tools_project(text,text)', 'EXECUTE') AS "webAccess",
+        has_function_privilege('ams_backup', 'platform.can_access_tools_project(text,text)', 'EXECUTE') AS "backupAccess",
+        has_function_privilege('ams_worker', 'platform.stale_research_run_scopes(timestamptz)', 'EXECUTE') AS "workerStaleAccess"
+    `);
+    expect(privileges.rows[0]).toEqual({
+      publicAccess: false,
+      webAccess: true,
+      backupAccess: false,
+      workerStaleAccess: true,
+    });
   });
 
   it("queues one outbox event when the same run is confirmed twice", async () => {

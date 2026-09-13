@@ -97,7 +97,7 @@ export function createResearchCommands(dependencies: {
       if (!(["DRAFT", "READY", "PARTIAL", "FAILED"] as const).includes(research.status as "DRAFT" | "READY" | "PARTIAL" | "FAILED")) throw new ResearchError("RESEARCH_NOT_EDITABLE");
       const estimatedCostKopecks = dependencies.pricing.estimateRunCostKopecks(research.queries.length);
       if (!Number.isSafeInteger(estimatedCostKopecks) || estimatedCostKopecks < 0) throw new ResearchError("RESEARCH_PRICING_UNAVAILABLE");
-      const idempotencyKey = input.idempotencyKey ?? deriveResearchEstimateIdempotencyKey({ researchId: research.id, version: research.version, queries: research.queries.map(({ text }) => text) });
+      const idempotencyKey = deriveResearchEstimateIdempotencyKey({ researchId: research.id, version: research.version, queries: research.queries.map(({ text }) => text) });
       const run = await dependencies.repository.reserveRunEstimate({ ref: input, idempotencyKey, queryCount: research.queries.length, estimatedCostKopecks, now: now(), dailyLimitKopecks: dependencies.budget.dailyLimitKopecks, monthlyLimitKopecks: dependencies.budget.monthlyLimitKopecks }, transaction);
       await dependencies.repository.appendAudit({ ...auditScope(input), actorId: actorId(principal), action: "research.run.estimate", entityId: run.runId, correlationId: principal.correlationId, marker: { toolsOrganizationId: input.organizationId, toolsProjectId: input.projectId, estimatedCostKopecks } }, transaction);
       return { ...run, queryCount: research.queries.length, estimatedCostKopecks, dailyLimitKopecks: dependencies.budget.dailyLimitKopecks, monthlyLimitKopecks: dependencies.budget.monthlyLimitKopecks, confirmationRequired: true as const };

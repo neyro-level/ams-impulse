@@ -106,8 +106,53 @@ function buildImage(target, tag, iidPath) {
   if (result.status !== 0) throw new Error(`docker buildx ${target} failed with status ${result.status}.`);
 }
 
+function verifyMigratorImage(tag) {
+  const probe = [
+    "require.resolve('prisma/package.json');",
+    "for (const name of ['typescript', 'eslint', 'vitest', '@playwright/test']) {",
+    "  try { require.resolve(name + '/package.json'); throw new Error('forbidden dev dependency: ' + name); } catch (error) {",
+    "    if (!String(error?.code ?? '').includes('MODULE_NOT_FOUND')) throw error;",
+    "  }",
+    "}",
+  ].join("\n");
+  execFileSync("docker", ["run", "--rm", "--entrypoint", "node", tag, "-e", probe], {
+    cwd: rootDir,
+    stdio: "inherit",
+  });
+}
+
+async function verifyImageVulnerabilities(tag, archiveName) {
+  const scanArchivePath = path.join(stagingDir, archiveName);
+  const relativeScanArchivePath = path.relative(rootDir, scanArchivePath).replaceAll("\\", "/");
+  const saveScanImage = spawnSync("docker", ["save", "--output", scanArchivePath, tag], {
+    cwd: rootDir,
+    encoding: "utf8",
+    stdio: "inherit",
+  });
+  if (saveScanImage.status !== 0) {
+    throw new Error(`docker save for vulnerability scan failed with status ${saveScanImage.status}.`);
+  }
+
+  try {
+    const scan = spawnSync("docker", ["scout", "cves",
+      "--only-severity", "critical,high",
+      "--only-fixed",
+      "--exit-code",
+      `archive://${relativeScanArchivePath}`,
+    ], { cwd: rootDir, encoding: "utf8", stdio: "inherit" });
+    if (scan.status !== 0) {
+      throw new Error(`Docker Scout rejected ${tag} with status ${scan.status}.`);
+    }
+  } finally {
+    await rm(scanArchivePath, { force: true });
+  }
+}
+
 buildImage("runtime", imageTag, imageIidPath);
 buildImage("migrator", migratorImageTag, migratorImageIidPath);
+verifyMigratorImage(migratorImageTag);
+await verifyImageVulnerabilities(imageTag, "runtime-scan.tar");
+await verifyImageVulnerabilities(migratorImageTag, "migrator-scan.tar");
 
 const saveResult = spawnSync("docker", ["save", "--output", imageTarPath, imageTag, migratorImageTag], {
   cwd: rootDir,
@@ -138,6 +183,11 @@ const manifest = {
   migratorImageTag,
   migratorImageDigest,
   dependencyLockSha256,
+  imageVulnerabilityScan: {
+    scanner: "docker-scout",
+    policy: "no-fixable-critical-or-high-cves",
+    status: "passed",
+  },
   deploymentStrategy: "build-off-host-load-image-and-compose-up",
 };
 

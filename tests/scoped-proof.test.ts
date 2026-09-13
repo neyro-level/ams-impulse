@@ -10,10 +10,7 @@ import {
 describe("scoped merge proof", () => {
   it("keeps PR verification cheap and merge proofs manual exact-head workflows", () => {
     const workflow = readFileSync(path.resolve(".sourcecraft/ci.yaml"), "utf8");
-    const triggerBlock = workflow.slice(
-      workflow.indexOf("on:"),
-      workflow.indexOf("\nworkflows:\n"),
-    );
+    const triggerBlock = workflow.slice(0, workflow.indexOf("workflows:\n"));
     const standardCheck = workflow.slice(
       workflow.indexOf("  standard-check:"),
       workflow.indexOf("  risky-check:"),
@@ -23,7 +20,8 @@ describe("scoped merge proof", () => {
       workflow.indexOf("  daily:"),
     );
 
-    expect(triggerBlock).toContain("workflows: [daily]");
+    expect(triggerBlock.trim()).toBe("");
+    expect(triggerBlock).not.toContain("schedule");
     expect(triggerBlock).not.toContain("pull_request");
     expect(triggerBlock).not.toContain("standard-check");
     expect(triggerBlock).not.toContain("risky-check");
@@ -32,6 +30,17 @@ describe("scoped merge proof", () => {
     expect(standardCheck).toContain("run-scoped-proof.mjs unit");
     expect(riskyCheck).toContain("run-scoped-proof.mjs integration");
     expect(riskyCheck).toContain("run-scoped-proof.mjs optional-risk");
+  });
+
+  it("prepares every restricted runtime role used by integration proofs", () => {
+    const setup = readFileSync(
+      path.resolve("scripts/ci/prepare-heavy-environment.sh"),
+      "utf8",
+    );
+
+    expect(setup).toContain("CREATE ROLE ams_web LOGIN");
+    expect(setup).toContain("CREATE ROLE ams_worker LOGIN");
+    expect(setup).toContain("CREATE ROLE ams_backup LOGIN");
   });
 
   it("accepts explicit existing test files and removes duplicates", () => {

@@ -1,6 +1,5 @@
 "use server";
 
-import { randomUUID } from "node:crypto";
 import { notFound, redirect } from "next/navigation";
 import { isApprovedPrivateStorageUrl, ResearchError } from "../../../modules/research/index.ts";
 import { createResearchCabinetService, createResearchReportService } from "../../../modules/research/server.ts";
@@ -83,7 +82,7 @@ const archiveResearchMutation = defineAction<ResearchRefInput & { version: numbe
 });
 
 const estimateResearchMutation = defineAction<ResearchRefInput, Awaited<ReturnType<ReturnType<typeof createResearchCabinetService>["estimateRun"]>>>({
-  execute: async ({ principal, input }) => createResearchCabinetService(principal).estimateRun(principal, { ...input, ...await resolveScope(principal, input), idempotencyKey: randomUUID() }),
+  execute: async ({ principal, input }) => createResearchCabinetService(principal).estimateRun(principal, { ...input, ...await resolveScope(principal, input) }),
   mapError: mapResearchError,
   revalidate: ({ input }) => [{ path: detailPath(input) }],
 });

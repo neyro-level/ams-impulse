@@ -3,6 +3,9 @@ import { z } from "zod";
 const idSchema = z.string().trim().min(1).max(128);
 const titleSchema = z.string().trim().min(2).max(180);
 const querySchema = z.string().trim().min(2).max(500);
+export const RESEARCH_MAX_QUERY_COUNT = 20;
+export const RESEARCH_PAID_CALLS_PER_QUERY = 3;
+export const RESEARCH_MAX_PAID_CALLS_PER_RUN = RESEARCH_MAX_QUERY_COUNT * RESEARCH_PAID_CALLS_PER_QUERY;
 
 export const researchStatusSchema = z.enum(["DRAFT", "READY", "RUNNING", "SUCCEEDED", "PARTIAL", "FAILED", "ARCHIVED"]);
 export const researchRunStatusSchema = z.enum(["DRAFT", "AWAITING_CONFIRMATION", "QUEUED", "RUNNING", "SUCCEEDED", "PARTIAL", "FAILED", "CANCELLED"]);
@@ -20,7 +23,7 @@ export const createResearchInputSchema = z.object({
   projectId: idSchema,
   title: titleSchema,
   brief: z.string().trim().max(5000).default(""),
-  queries: z.array(querySchema).min(1).max(20),
+  queries: z.array(querySchema).min(1).max(RESEARCH_MAX_QUERY_COUNT),
 });
 
 export const updateResearchInputSchema = createResearchInputSchema.omit({ organizationId: true, projectId: true }).extend({
@@ -36,9 +39,7 @@ export const researchRefSchema = z.object({
   researchId: idSchema,
 });
 
-export const estimateResearchRunInputSchema = researchRefSchema.extend({
-  idempotencyKey: z.string().trim().min(8).max(128).optional(),
-});
+export const estimateResearchRunInputSchema = researchRefSchema;
 
 export const confirmResearchRunInputSchema = researchRefSchema.extend({
   runId: idSchema,

@@ -3,6 +3,7 @@ import { z } from "zod";
 import type { PrincipalContext } from "../../../platform/authorization/principal.ts";
 import type { ResearchService } from "../application/research-service.ts";
 import type { ResearchReportService } from "../application/research-report-service.ts";
+import { RESEARCH_MAX_QUERY_COUNT } from "../domain/research.ts";
 import { normalizeStaleState } from "../../../platform/errors/stale-state.ts";
 import { createSafeErrorEnvelope } from "../../../platform/errors/safe-error-envelope.ts";
 
@@ -43,12 +44,12 @@ export function createResearchMcpServer(input: { principal: PrincipalContext; re
 
   server.registerTool("research_create_draft", {
     description: "Создать черновик исследования в явно доступном проекте Инструментов.",
-    inputSchema: z.object({ organizationId: ref.organizationId, projectId: ref.projectId, title: z.string().min(2).max(180), brief: z.string().max(5000).default(""), queries: z.array(z.string().min(2).max(500)).min(1).max(20) }),
+    inputSchema: z.object({ organizationId: ref.organizationId, projectId: ref.projectId, title: z.string().min(2).max(180), brief: z.string().max(5000).default(""), queries: z.array(z.string().min(2).max(500)).min(1).max(RESEARCH_MAX_QUERY_COUNT) }),
   }, (args) => safely(() => input.research.create(input.principal, args), input.principal.correlationId));
 
   server.registerTool("research_update_draft", {
     description: "Обновить редактируемое исследование с optimistic version check.",
-    inputSchema: z.object({ ...ref, title: z.string().min(2).max(180), brief: z.string().max(5000).default(""), queries: z.array(z.string().min(2).max(500)).min(1).max(20), version: z.number().int().positive() }),
+    inputSchema: z.object({ ...ref, title: z.string().min(2).max(180), brief: z.string().max(5000).default(""), queries: z.array(z.string().min(2).max(500)).min(1).max(RESEARCH_MAX_QUERY_COUNT), version: z.number().int().positive() }),
   }, (args) => safely(() => input.research.update(input.principal, args), input.principal.correlationId));
 
   server.registerTool("research_archive", {
@@ -63,7 +64,7 @@ export function createResearchMcpServer(input: { principal: PrincipalContext; re
 
   server.registerTool("research_estimate_run", {
     description: "Рассчитать серверную стоимость запуска без платных обращений к провайдеру.",
-    inputSchema: z.object({ ...ref, idempotencyKey: z.string().min(8).max(128) }),
+    inputSchema: z.object(ref),
   }, (args) => safely(() => input.research.estimateRun(input.principal, args), input.principal.correlationId));
 
   server.registerTool("research_confirm_and_run", {

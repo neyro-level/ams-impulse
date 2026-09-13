@@ -140,6 +140,45 @@ REVOKE ALL ON FUNCTION "platform"."stale_research_run_scopes"(timestamptz)
 GRANT EXECUTE ON FUNCTION "platform"."stale_research_run_scopes"(timestamptz)
   TO ams_worker;
 
+REVOKE ALL ON FUNCTION "platform"."research_committed_spend"(text, text, timestamptz)
+  FROM PUBLIC, ams_worker, ams_backup;
+GRANT EXECUTE ON FUNCTION "platform"."research_committed_spend"(text, text, timestamptz)
+  TO ams_web;
+
+REVOKE ALL ON FUNCTION "platform"."worker_can_access_seo_project"(text, text)
+  FROM PUBLIC, ams_backup;
+REVOKE ALL ON FUNCTION "platform"."worker_can_access_tools_project"(text, text)
+  FROM PUBLIC, ams_backup;
+GRANT EXECUTE ON FUNCTION "platform"."worker_can_access_seo_project"(text, text)
+  TO ams_web, ams_worker;
+GRANT EXECUTE ON FUNCTION "platform"."worker_can_access_tools_project"(text, text)
+  TO ams_web, ams_worker;
+
+REVOKE ALL ON FUNCTION "platform"."current_user_id"()
+  FROM PUBLIC, ams_backup;
+REVOKE ALL ON FUNCTION "platform"."is_restricted_runtime"()
+  FROM PUBLIC, ams_backup;
+REVOKE ALL ON FUNCTION "platform"."is_platform_admin"()
+  FROM PUBLIC, ams_worker, ams_backup;
+REVOKE ALL ON FUNCTION "platform"."can_access_seo_project"(text, text)
+  FROM PUBLIC, ams_backup;
+REVOKE ALL ON FUNCTION "platform"."can_access_seo_site"(text, text)
+  FROM PUBLIC, ams_backup;
+REVOKE ALL ON FUNCTION "platform"."can_access_tools_project"(text, text)
+  FROM PUBLIC, ams_backup;
+GRANT EXECUTE ON FUNCTION "platform"."current_user_id"()
+  TO ams_web, ams_worker;
+GRANT EXECUTE ON FUNCTION "platform"."is_restricted_runtime"()
+  TO ams_web, ams_worker;
+GRANT EXECUTE ON FUNCTION "platform"."is_platform_admin"()
+  TO ams_web;
+GRANT EXECUTE ON FUNCTION "platform"."can_access_seo_project"(text, text)
+  TO ams_web, ams_worker;
+GRANT EXECUTE ON FUNCTION "platform"."can_access_seo_site"(text, text)
+  TO ams_web, ams_worker;
+GRANT EXECUTE ON FUNCTION "platform"."can_access_tools_project"(text, text)
+  TO ams_web, ams_worker;
+
 DO $verify$
 BEGIN
   IF NOT has_function_privilege(

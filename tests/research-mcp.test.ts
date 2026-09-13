@@ -51,6 +51,20 @@ describe("Research MCP server", () => {
     await client.close(); await server.close();
   });
 
+  it("derives estimate idempotency on the server and drops a client-supplied key", async () => {
+    let received: unknown;
+    const { client, server } = await connect({
+      research: { estimateRun: async (_principal, input) => { received = input; return { runId: "run-1" } as never; } },
+      reports: {},
+    });
+    await client.callTool({
+      name: "research_estimate_run",
+      arguments: { organizationId: "org-1", projectId: "project-1", researchId: "research-1", idempotencyKey: "client-controlled" },
+    });
+    expect(received).toEqual({ organizationId: "org-1", projectId: "project-1", researchId: "research-1" });
+    await client.close(); await server.close();
+  });
+
   it("passes the complete resource scope to the application service", async () => {
     let received: unknown;
     const { client, server } = await connect({

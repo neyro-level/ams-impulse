@@ -32,7 +32,9 @@ Research UI mutations проходят через `defineAction`; revalidation �
 - XMLRiver: Yandex organic, ads, related/suggestions и Wordstat;
 - bounded XML parser без DTD/external entities;
 - provider failures classified as `PRE_REQUEST_RETRYABLE | DEFINITELY_NOT_CHARGED | AMBIGUOUS_AFTER_DISPATCH | NON_RETRYABLE`; finite retry разрешён только при доказанном отсутствии списания, а неоднозначный результат завершает run с `PROVIDER_RESULT_AMBIGUOUS` без retry;
-- pricing and daily/monthly budget limits are mandatory server configuration (`RESEARCH_QUERY_ESTIMATE_KOPECKS`, `RESEARCH_DAILY_LIMIT_KOPECKS`, `RESEARCH_MONTHLY_LIMIT_KOPECKS`); missing or invalid pricing fails closed with `RESEARCH_PRICING_UNAVAILABLE`;
+- pricing and daily/monthly budget limits are mandatory server configuration (`RESEARCH_QUERY_ESTIMATE_KOPECKS`, `RESEARCH_DAILY_LIMIT_KOPECKS`, `RESEARCH_MONTHLY_LIMIT_KOPECKS`); one configured query estimate covers the complete three-call XMLRiver bundle (SERP, suggestions and Wordstat), and missing or invalid pricing fails closed with `RESEARCH_PRICING_UNAVAILABLE`;
+- one run is capped at 20 queries and 60 potentially billable provider calls; the cap is enforced before provider dispatch;
+- daily and monthly budget windows are UTC calendar windows and do not depend on the PostgreSQL session timezone;
 - estimate reservation acquires the organization budget lock and performs expiry, idempotency lookup, committed-spend read, limit checks and insert in one transaction;
 - ambiguous timeout не повторяет платный вызов;
 - история запусков, Evidence и CompetitorProjection;
@@ -67,7 +69,9 @@ Worker публикует идемпотентные platform-team уведом�
 
 Server Component, server action, MCP и export повторно проверяют полный `organizationId/projectId/researchId`. Чужой ресурс возвращает not-found semantics.
 
-Cabinet повторный клик не создаёт новый estimate/export: server выводит versioned SHA-256 key из канонического Research/Run input. MCP может передать собственный idempotency key; repository принимает повтор только при полном совпадении material input, иначе возвращает `RESEARCH_IDEMPOTENCY_CONFLICT`.
+Cabinet и MCP не управляют ключом estimate: server всегда выводит versioned SHA-256 key из канонического Research input. CSV export также получает server-derived key; repository принимает повтор только при полном совпадении material input, иначе возвращает `RESEARCH_IDEMPOTENCY_CONFLICT`.
+
+Worker использует lock, вычисленный из конкретного `runId`; разные runs могут исполняться параллельно. Занятый run получает отдельный `lock-busy` disposition: текущая queue delivery завершается ошибкой только после durable requeue и никогда не помечается успешной. Терминальный Run допустим только после терминализации всех QueryRun; это проверяют application repository и PostgreSQL trigger. Утверждённая query allocation делится по трём provider calls: успешные и неоднозначные после dispatch части включаются в terminal spend, явно не тарифицированные отказы — нет.
 
 ## MCP
 

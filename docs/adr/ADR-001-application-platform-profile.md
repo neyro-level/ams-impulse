@@ -10,13 +10,13 @@ AMS IMPULSE combines public SEO marketing, private multi-tenant reporting, Platf
 
 ## Decision
 
-- Platform contract: `AMS Application Platform Core 3.4 — Solo Minimal`.
+- Platform contract: `AMS Application Platform Core 4.0 — Solo Minimal`.
 - `TENANCY = multi-tenant`.
 - `ASYNC = outbox-plus-queue`.
 - `DATA = pii`.
 - `DELIVERY = own-saas`.
 - `PLATFORM_ADMIN = enabled`.
-- `DATABASE = managed-postgresql-target`; production moved to Timeweb Managed PostgreSQL 18 on `2026-09-11`.
+- `DATABASE = managed-postgresql`; production moved to Timeweb Managed PostgreSQL 18 on `2026-09-11`.
 - Runtime keeps strict TypeScript `6.0.x` as an approved project version exception; exact `6.0.3` compatibility was verified against the installed stack on `2026-09-12` and remains lockfile-owned.
 - Architecture is one modular monolith on Next.js with separate web/worker processes from one immutable OCI image.
 - Data owner is PostgreSQL + Prisma; no second ORM/runtime store.

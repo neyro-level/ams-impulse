@@ -36,8 +36,8 @@ describe("XmlRiverClient", () => {
   });
 
   it("marks an explicit provider rejection as definitely not charged only for HTTP 429", async () => {
-    const rateLimited = new XmlRiverClient({ user: "user", key: "secret" }, async () => new Response("", { status: 429 }));
-    await expect(rateLimited.collectYandexSerp({ query: "test" })).rejects.toMatchObject({ category: "DEFINITELY_NOT_CHARGED" });
+    const rateLimited = new XmlRiverClient({ user: "user", key: "secret" }, async () => new Response("", { status: 429, headers: { "Retry-After": "12" } }));
+    await expect(rateLimited.collectYandexSerp({ query: "test" })).rejects.toMatchObject({ category: "DEFINITELY_NOT_CHARGED", retryAfterMs: 12_000 });
 
     const serverFailure = new XmlRiverClient({ user: "user", key: "secret" }, async () => new Response("", { status: 503 }));
     await expect(serverFailure.collectYandexSerp({ query: "test" })).rejects.toMatchObject({ category: "AMBIGUOUS_AFTER_DISPATCH" });

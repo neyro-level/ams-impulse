@@ -5,6 +5,7 @@ describe("structural architecture guards", () => {
   it.each([
     ["src/app/page.tsx", 'import "../modules/research/infrastructure/private.ts";', "App imports infrastructure"],
     ["src/modules/reporting/domain/report.ts", 'import { Prisma } from "../../../generated/prisma/client.ts";', "Prisma in domain/presentation"],
+    ["src/modules/reporting/application/ports/report-repository.ts", 'import type { Prisma } from "../../../../generated/prisma/client.ts";', "Prisma outside infrastructure boundary"],
     ["src/modules/reporting/application/service.ts", 'import { hidden } from "../../research/infrastructure/hidden.ts";', "Cross-module deep import"],
     ["src/components/client.tsx", '"use client";\nimport { auth } from "../modules/identity-access/server.ts";', "Client imports server-only boundary"],
     ["src/app/action.ts", '"use server";\nimport { revalidatePath } from "next/cache";', "Raw revalidation outside action adapter"],

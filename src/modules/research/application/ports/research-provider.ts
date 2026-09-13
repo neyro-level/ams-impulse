@@ -36,6 +36,7 @@ export class ResearchProviderError extends Error {
   constructor(
     public readonly code: "PROVIDER_CONFIGURATION_MISSING" | "PROVIDER_TIMEOUT_AMBIGUOUS" | "PROVIDER_RESPONSE_TOO_LARGE" | "PROVIDER_INVALID_RESPONSE" | "PROVIDER_REJECTED",
     public readonly category: ResearchProviderFailureCategory,
+    public readonly retryAfterMs?: number,
   ) {
     super(code);
     this.name = "ResearchProviderError";

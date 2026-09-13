@@ -1,9 +1,9 @@
 # PLATFORM CONFORMANCE
 
-Core Standard version: `AMS Application Platform Core 3.4 — Solo Minimal`
+Core Standard version: `AMS Application Platform Core 4.0 — Solo Minimal`
 
 Conformance reviewed: `2026-09-13`
-Reviewed scope: canonical code/runtime baseline `1c5c3d6450a6934034f10ce15d91cdfb18da7659`; subsequent documentation normalization changes no application behavior.
+Reviewed scope: current project code, database, CI and release contracts. Production remains separately proven only for baseline `1c5c3d6450a6934034f10ce15d91cdfb18da7659`.
 
 ## Project Profile
 
@@ -14,6 +14,7 @@ DATA = pii
 DELIVERY = own-saas
 PLATFORM_ADMIN = enabled
 DATABASE = managed-postgresql
+DELIVERY_PROFILE = CRITICAL
 ```
 
 Допустимые состояния: `IMPLEMENTED`, `PARTIAL`, `NOT_IMPLEMENTED`, `NOT_APPLICABLE`, `EXCEPTION`.
@@ -25,7 +26,7 @@ DATABASE = managed-postgresql
 | Node.js runtime | IMPLEMENTED | `.node-version` и `package.json` фиксируют Node.js `24.20.0`. |
 | Next.js | IMPLEMENTED | `package.json` фиксирует Next.js `16.3.3`, App Router находится в `src/app`. |
 | React | IMPLEMENTED | `package.json` фиксирует React `19.2.8`. |
-| TypeScript | EXCEPTION | Strict TypeScript `6.0.3` является проверенной project version line вместо baseline `5.9.x` Core 3.4; downgrade не требуется. |
+| TypeScript | IMPLEMENTED | Strict TypeScript `6.0.3` является текущей проверенной project version line; Core 4.0 намеренно не фиксирует долгоживущую minor/patch линию. |
 | Prisma | IMPLEMENTED | Prisma Client и CLI `7.10.0`, PostgreSQL adapter и `prisma.config.ts` присутствуют; migrations являются фактической историей schema. |
 | PostgreSQL | IMPLEMENTED | Production target — Timeweb Managed PostgreSQL 18 в private network; runtime, migrator и backup identities разделены по проектному канону. |
 | Better Auth | IMPLEMENTED | Better Auth `1.7.2` владеет identity/password/session; public signup отключён. |
@@ -33,10 +34,10 @@ DATABASE = managed-postgresql
 | Multi-tenancy | IMPLEMENTED | Product-local memberships/grants, server-owned selection, audit/outbox scope and composite ownership constraints are implemented. |
 | PostgreSQL RLS | IMPLEMENTED | `defineCommand` installs transaction-local principal/job context before repository work; runtime roles are non-owner `NOBYPASSRLS`, missing context denies. |
 | Async / outbox / queue | IMPLEMENTED | Outbox and pg-boss have long-lived outbox and Research workers in canonical Compose topology, bounded shutdown and no ambiguous paid retry. |
-| SourceCraft CI | IMPLEMENTED | PR creation не запускает verification; manual exact-head `standard-check`, `risky-check`, `daily` и `release-check` определены в `.sourcecraft/ci.yaml`. |
+| SourceCraft CI | IMPLEMENTED | Branch push, PR creation и schedule не запускают verification; manual exact-head `standard-check`, `risky-check`, `daily` и `release-check` определены в `.sourcecraft/ci.yaml`. |
 | Risk classification | IMPLEMENTED | `pnpm risk:classify` сопоставляет exact Git diff с high-risk paths и выдаёт только повышающий внимание `RISK_HINT`; semantic review остаётся обязательным. |
 | Main branch protection | IMPLEMENTED | `.sourcecraft/branches.yaml` запрещает force push, direct non-PR changes и удаление default branch. Review и exact-head gate остаются обязательным AMS process gate. |
-| Docker release | IMPLEMENTED | Separate runtime/migrator targets exclude source and dev tooling from web/worker images; non-root and read-only service hardening is explicit. |
+| Docker release | IMPLEMENTED | Separate runtime/migrator targets use production dependencies; final images omit npm/corepack, include the reviewed OS security update, and the release build blocks fixable critical/high image CVEs through Docker Scout. The migrator probe rejects development-only tooling. Non-root and read-only service hardening is explicit. |
 | Backup | IMPLEMENTED | Release selects logical or provider-physical strategy and requires offsite/restore or fresh Timeweb backup evidence before migration. |
 | Restore proof | IMPLEMENTED | Isolated logical restore smoke and managed PostgreSQL restore-drill tooling produce protected evidence; periodic execution remains an operations task. |
 | Platform Admin MFA | IMPLEMENTED | Verified TOTP is mandatory for Platform Admin authority; bootstrap and one-time hashed recovery material have explicit operator flows and tests. |
@@ -78,11 +79,13 @@ STANDARD and RISKY merge proofs, plus release proof, are manual exact-head workf
 
 | Topic | Classification | Project decision / required resolution |
 |---|---|---|
-| TypeScript `6.0.3` | EXCEPTION | Exact version сохранена как явная проверенная project line без downgrade. Следующий TypeScript major потребует отдельной RISKY-задачи. |
+| TypeScript `6.0.3` | PROJECT DECISION | Exact version сохранена как проверенная project line по version policy Core 4.0. Следующий TypeScript major потребует отдельной RISKY-задачи. |
 | SQL-owned `tools` / `research` schemas | PROJECT DECISION | PostgreSQL migrations и typed infrastructure repositories являются явными owners этих schemas. Prisma multi-schema не включается автоматически. |
 | Historical CUID identifiers | COMPATIBILITY DECISION | Существующие opaque IDs сохраняются без массовой миграции. Политика только для новых domain IDs определяется отдельно и не переписывает historical records. |
 | Historical runtime slug | COMPATIBILITY DECISION | Product/package/repository use `ams-impulse`; existing server paths, image/Compose/systemd names and health DTO keep technical slug `ams-seo-monitor` until a separately approved production migration. |
 | Research money | CONFORMING DECISION | Денежные значения хранятся целыми копейками; текущий Research contract использует RUB и не объявляет multi-currency. Float для денег запрещён. |
+| Compose host networking | EXCEPTION | Host networking preserves the Timeweb private PostgreSQL route and loopback Nginx contract without published container ports. Bridge migration requires separate staging connectivity and rollback proof. |
+| Framework CSP inline bootstrap | EXCEPTION | Public and private routes have CSP and security headers, but Next framework scripts/styles retain the documented `unsafe-inline` baseline. Nonce migration requires report-only measurement and acceptance of dynamic rendering instead of static/PPR output. |
 
 ## TypeScript 6 Project Line
 

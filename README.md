@@ -17,7 +17,7 @@ AMS IMPULSE - модульная CRM-платформа АМС: публичны
 ## Платформа
 
 ```text
-AMS Application Platform Core 3.4 - Solo Minimal
+AMS Application Platform Core 4.0 - Solo Minimal
 TENANCY = multi-tenant
 ASYNC = outbox-plus-queue
 DATA = pii

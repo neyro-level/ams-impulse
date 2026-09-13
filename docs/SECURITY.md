@@ -106,6 +106,8 @@ The migrator owns schema changes. `ams_web` and `ams_worker` are login roles wit
 
 `Site`, `SeoProjectAccess`, `ToolsMembership` and `ToolsProjectAccess` deliberately use ENABLE without FORCE because they are lookup inputs to tightly scoped `SECURITY DEFINER` authorization functions. PostgreSQL applies FORCE policies to a table owner; keeping FORCE here would recursively re-enter the same policy. The exception does not exempt runtime identities: they are verified non-owners with `NOBYPASSRLS`. Definer functions use fixed trusted `search_path` values ending in `pg_temp` and expose only boolean decisions.
 
+Execution on authorization `SECURITY DEFINER` helpers is revoked from `PUBLIC`. Only `ams_web` and/or `ams_worker` receive the exact function grants required by their RLS policies; stale-run scope discovery is worker-only. Budget boundaries are evaluated in UTC.
+
 ## Browser And UI
 
 - Server builds navigation from effective product access.
@@ -170,12 +172,14 @@ headers with its direct peer address; Better Auth reads only `X-Real-IP` and tru
 configured loopback proxy hop. Client-supplied forwarded chains never select a rate-limit or
 session IP identity.
 
-Private application routes enforce a Next 16-compatible CSP: same-origin defaults,
+Public and private application routes enforce a Next 16-compatible CSP: same-origin defaults,
 connections, fonts and forms; only local/data/blob images and local/blob workers; no
 objects, foreign base URI or framing. The current non-nonce baseline retains
 `unsafe-inline` only for framework scripts/styles. Removing it requires a measured
 report-only phase and the official request-proxy nonce flow because nonce rendering is
 fully dynamic and incompatible with static/PPR output.
+
+Next.js and Nginx both provide HSTS, MIME sniffing protection, strict-origin referrer policy, bounded browser permissions and opener isolation. The public lead endpoint is the only external browser connection allowed by application CSP.
 
 ## PII, Secrets And Logging
 

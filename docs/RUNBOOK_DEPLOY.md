@@ -14,6 +14,7 @@ Project topology:
 - `migrate` and `maintenance` are manual one-shot Compose services and never restart as daemons;
 - host Nginx terminates external traffic;
 - current application uses Timeweb Managed PostgreSQL 18 through private TLS networking without a public database endpoint;
+- Compose services deliberately use host networking so containers can reach the provider private-network route and the web process can bind the host loopback consumed by Nginx. No container port is published externally; replacing this exception requires staging proof that a bridge preserves both routes and rollback;
 - protected env files are separated for web, worker, migrator and backup;
 - database provider provisioning or another database cutover is a separate owner-approved RISKY operation and is never an ordinary code deploy side effect.
 
@@ -44,9 +45,10 @@ Artifact includes:
 - `docker-image.tar`;
 - `docker-compose.production.yml`;
 - reviewed `ops/` assets;
-- `release-manifest.json` with exact SHA, build timestamp, pinned Node base digest, separate runtime/migrator image tags and digests, and lock checksum.
+- `release-manifest.json` with exact SHA, build timestamp, pinned Node base digest, separate runtime/migrator image tags and digests, lock checksum and passed image vulnerability policy.
 
 Artifact does not include DB data, local env or secrets.
+The final images omit npm/corepack and install the reviewed OS security package set. The build executes the migrator image and rejects it when Prisma CLI is missing or development-only tooling is resolvable. Docker Scout scans both final images and blocks the artifact when a fixable critical or high CVE is present; scanner failure is also fail-closed.
 
 ## Target Preparation
 

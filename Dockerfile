@@ -22,11 +22,12 @@ FROM ${NODE_BASE} AS runtime-base
 ENV NODE_ENV=production
 ENV HOSTNAME=0.0.0.0
 ENV PORT=3000
-RUN apt-get update && apt-get install -y --no-install-recommends openssl && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y --no-install-recommends openssl libpcre2-8-0 && rm -rf /var/lib/apt/lists/*
+RUN rm -rf /usr/local/lib/node_modules && rm -f /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/corepack
 WORKDIR /app
 
 FROM runtime-base AS migrator
-COPY --from=build-deps /app/node_modules ./node_modules
+COPY --from=runtime-deps /app/node_modules ./node_modules
 COPY --from=build /app/prisma ./prisma
 COPY --from=build /app/prisma.config.ts ./prisma.config.ts
 COPY --from=build /app/src/platform/config/database-target.ts ./src/platform/config/database-target.ts

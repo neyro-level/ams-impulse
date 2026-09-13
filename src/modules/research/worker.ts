@@ -15,7 +15,7 @@ export { ResearchExecutionService } from "./application/research-execution-servi
 export { PrismaResearchExecutionRepository } from "./infrastructure/prisma-research-execution-repository.ts";
 export { XmlRiverClient, parseXmlRiverSerp, parseXmlRiverSuggestions, parseXmlRiverWordstat } from "./infrastructure/xmlriver-client.ts";
 
-type QueueClient = Pick<PgBoss, "fetch" | "complete">;
+type QueueClient = Pick<PgBoss, "fetch" | "complete" | "fail" | "send">;
 type ExecutionFactory = (job: ResearchRunJob) => Promise<ResearchExecutionService>;
 
 export async function recoverStaleResearchRunsWithDependencies(
@@ -47,6 +47,12 @@ export async function runNextResearchJobWithDependencies(queue: QueueClient, cre
   logger.info({ event: "research_job_started" }, "research job started");
   const execution = await createExecution(parsed.data);
   const result = await execution.execute(parsed.data.runId, parsed.data.correlationId);
+  if (result.status === "deferred") {
+    await queue.send(RESEARCH_RUN_QUEUE, parsed.data, { startAfter: 1 });
+    await queue.fail(RESEARCH_RUN_QUEUE, job.id, { status: "deferred", code: "RUN_LOCK_BUSY" });
+    logger.info({ event: "research_job_deferred", status: result.status }, "research job deferred");
+    return { handled: 1, ...result };
+  }
   await queue.complete(RESEARCH_RUN_QUEUE, job.id, result);
   logger.info({ event: "research_job_finished", status: result.status }, "research job finished");
   return { handled: 1, ...result };
@@ -57,6 +63,12 @@ export async function runNextResearchJob(env: Record<string, string | undefined>
   if (!user || !key) throw new Error("XMLRIVER_CONFIGURATION_MISSING");
   const boss = await getPgBoss();
   try {
+    const staleBefore = new Date(Date.now() - RESEARCH_STALE_RUN_AFTER_MS);
+    await recoverStaleResearchRunsWithDependencies(
+      staleBefore,
+      listStaleResearchRunScopes,
+      (scope, cutoff) => new PrismaResearchExecutionRepository(scope).failStaleRuns(cutoff),
+    );
     return await runNextResearchJobWithDependencies(
       boss,
       async (job) => {
@@ -64,7 +76,6 @@ export async function runNextResearchJob(env: Record<string, string | undefined>
           organizationId: job.toolsOrganizationId,
           projectId: job.toolsProjectId,
         });
-        await repository.failStaleRuns(new Date(Date.now() - RESEARCH_STALE_RUN_AFTER_MS));
         return new ResearchExecutionService(repository, new XmlRiverClient({ user, key }), undefined, new PrismaResearchLifecyclePublisher());
       },
     );
@@ -105,7 +116,6 @@ export async function runResearchWorkerDaemon(
             organizationId: job.toolsOrganizationId,
             projectId: job.toolsProjectId,
           });
-          await repository.failStaleRuns(new Date(Date.now() - RESEARCH_STALE_RUN_AFTER_MS));
           return new ResearchExecutionService(repository, new XmlRiverClient({ user, key }), undefined, new PrismaResearchLifecyclePublisher());
         },
       );

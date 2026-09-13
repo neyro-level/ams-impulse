@@ -82,6 +82,7 @@ describe("production configuration boundary", () => {
     expect(dockerfile).toContain("RUN pnpm install --prod --frozen-lockfile");
     expect(dockerfile).toContain("FROM runtime-base AS migrator");
     expect(dockerfile).toContain("COPY --from=runtime-deps /app/node_modules ./node_modules");
+    expect(dockerfile).not.toContain("COPY --from=build-deps /app/node_modules ./node_modules");
     expect(dockerfile).toContain(
       "COPY --from=build /app/src/platform/config/server-environment.ts ./src/platform/config/server-environment.ts",
     );
@@ -93,11 +94,21 @@ describe("production configuration boundary", () => {
     const build = readFileSync("scripts/build-release.mjs", "utf8");
 
     expect(dockerfile).toContain("node:24.20.0-bookworm-slim@sha256:ba849c60");
+    expect(dockerfile).toContain("openssl libpcre2-8-0");
+    expect(dockerfile).toContain("rm -rf /usr/local/lib/node_modules");
+    expect(dockerfile).toContain("rm -f /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/corepack");
     expect(build).toContain('buildImage("runtime"');
     expect(build).toContain('buildImage("migrator"');
+    expect(build).toContain("verifyMigratorImage(migratorImageTag)");
+    expect(build).toContain("forbidden dev dependency");
     expect(build).toContain("baseImageDigest");
     expect(build).toContain("migratorImageDigest");
     expect(build).toContain("buildTimestamp");
+    expect(build).toContain('docker", ["scout", "cves"');
+    expect(build).toContain('"critical,high"');
+    expect(build).toContain('"--only-fixed"');
+    expect(build).toContain('"--exit-code"');
+    expect(build).toContain("imageVulnerabilityScan");
   });
 
   it("hashes the release artifact as a stream without loading it entirely into memory", () => {

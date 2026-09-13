@@ -3,7 +3,7 @@ import { getPrismaClient } from "../../../platform/database/prisma/client.ts";
 import { newId } from "../../../platform/identifiers/new-id.ts";
 import { setDatabaseJobContext, type DatabaseJobContext } from "../../../platform/database/authorization-context.ts";
 import type { DatabaseTransaction } from "../../../platform/database/transaction.ts";
-import type { ClaimedResearchRun, ResearchExecutionRepository } from "../application/ports/research-execution-repository.ts";
+import type { ClaimedResearchRun, ResearchExecutionRepository, ResearchRunClaim } from "../application/ports/research-execution-repository.ts";
 import type { SearchEvidence, WordstatEvidence } from "../application/ports/research-provider.ts";
 
 export const RESEARCH_EVIDENCE_BATCH_SIZE = 250;
@@ -50,17 +50,17 @@ export class PrismaResearchExecutionRepository implements ResearchExecutionRepos
     });
   }
 
-  async claimRun(runId: string): Promise<ClaimedResearchRun | null> {
+  async claimRun(runId: string): Promise<ResearchRunClaim> {
     return this.withContext(async (transaction) => {
-      const locked = await transaction.$queryRaw<Array<{ locked: boolean }>>(Prisma.sql`SELECT pg_try_advisory_xact_lock(hashtextextended('research.run.v1', 0)) AS "locked"`);
-      if (!locked[0]?.locked) return null;
+      const locked = await transaction.$queryRaw<Array<{ locked: boolean }>>(Prisma.sql`SELECT pg_try_advisory_xact_lock(hashtextextended(${`research.run.v1:${runId}`}, 0)) AS "locked"`);
+      if (!locked[0]?.locked) return { status: "lock-busy" as const };
       const runs = await transaction.$queryRaw<Array<Omit<ClaimedResearchRun, "queries"> & { status: string }>>(Prisma.sql`
         SELECT "id" AS "runId", "organizationId", "projectId", "researchId", "approvedCostKopecks", "status"::text AS "status"
         FROM "research"."Run" WHERE "id"=${runId}
           AND "organizationId"=${this.jobContext.organizationId} AND "projectId"=${this.jobContext.projectId}
         FOR UPDATE
       `);
-      const run = runs[0]; if (!run || run.status !== "QUEUED" || run.approvedCostKopecks === null) return null;
+      const run = runs[0]; if (!run || run.status !== "QUEUED" || run.approvedCostKopecks === null) return { status: "not-claimable" as const };
       await transaction.$executeRaw(Prisma.sql`UPDATE "research"."Run" SET "status"='RUNNING', "startedAt"=CURRENT_TIMESTAMP, "updatedAt"=CURRENT_TIMESTAMP WHERE "id"=${runId}`);
       await transaction.$executeRaw(Prisma.sql`UPDATE "research"."Research" SET "status"='RUNNING', "version"="version"+1, "updatedAt"=CURRENT_TIMESTAMP WHERE "id"=${run.researchId} AND "organizationId"=${run.organizationId} AND "projectId"=${run.projectId}`);
       const queries = await transaction.$queryRaw<Array<{ queryRunId: string; queryId: string | null; text: string }>>(Prisma.sql`
@@ -68,7 +68,7 @@ export class PrismaResearchExecutionRepository implements ResearchExecutionRepos
         FROM "research"."QueryRun"
         WHERE "runId"=${runId} AND "status"='PENDING' ORDER BY "queryPosition"
       `);
-      return { runId: run.runId, organizationId: run.organizationId, projectId: run.projectId, researchId: run.researchId, approvedCostKopecks: run.approvedCostKopecks, queries };
+      return { status: "claimed" as const, run: { runId: run.runId, organizationId: run.organizationId, projectId: run.projectId, researchId: run.researchId, approvedCostKopecks: run.approvedCostKopecks, queries } };
     });
   }
 
@@ -100,9 +100,9 @@ export class PrismaResearchExecutionRepository implements ResearchExecutionRepos
     });
   }
 
-  async failQuery(queryRunId: string, safeErrorCode: string) {
+  async failQuery(queryRunId: string, safeErrorCode: string, costKopecks: number) {
     await this.withContext(async (transaction) => {
-      await transaction.$executeRaw(Prisma.sql`UPDATE "research"."QueryRun" SET "status"='FAILED', "safeErrorCode"=${safeErrorCode}, "finishedAt"=CURRENT_TIMESTAMP WHERE "id"=${queryRunId} AND "status"='RUNNING'`);
+      await transaction.$executeRaw(Prisma.sql`UPDATE "research"."QueryRun" SET "status"='FAILED', "costKopecks"=${costKopecks}, "safeErrorCode"=${safeErrorCode}, "finishedAt"=CURRENT_TIMESTAMP WHERE "id"=${queryRunId} AND "status"='RUNNING'`);
     });
   }
   async failRun(runId: string, safeErrorCode: string) {
@@ -124,7 +124,8 @@ export class PrismaResearchExecutionRepository implements ResearchExecutionRepos
       for (const domain of domains) {
         await transaction.$executeRaw(Prisma.sql`INSERT INTO "research"."CompetitorProjection" ("id", "organizationId", "projectId", "runId", "domain", "visibilityScore", "matchedQueryCount", "payload") VALUES (${newId()}, ${run.organizationId}, ${run.projectId}, ${run.runId}, ${domain.domain}, ${domain.visibilityScore}, ${Number(domain.matchedQueryCount)}, ${JSON.stringify({ domain: domain.domain, matchedQueryCount: Number(domain.matchedQueryCount), visibilityScore: domain.visibilityScore })}::jsonb) ON CONFLICT ("runId", "domain") DO UPDATE SET "visibilityScore"=EXCLUDED."visibilityScore", "matchedQueryCount"=EXCLUDED."matchedQueryCount", "payload"=EXCLUDED."payload"`);
       }
-      const counts = await transaction.$queryRaw<Array<{ failedCount: number }>>(Prisma.sql`SELECT COUNT(*) FILTER (WHERE "status"='FAILED')::int AS "failedCount" FROM "research"."QueryRun" WHERE "runId"=${run.runId}`);
+      const counts = await transaction.$queryRaw<Array<{ failedCount: number; nonterminalCount: number }>>(Prisma.sql`SELECT COUNT(*) FILTER (WHERE "status"='FAILED')::int AS "failedCount", COUNT(*) FILTER (WHERE "status" IN ('PENDING','RUNNING'))::int AS "nonterminalCount" FROM "research"."QueryRun" WHERE "runId"=${run.runId}`);
+      if ((counts[0]?.nonterminalCount ?? 0) > 0) throw new Error("RESEARCH_NONTERMINAL_QUERY_RUNS");
       const finalStatus = (counts[0]?.failedCount ?? 0) > 0 ? "PARTIAL" : "SUCCEEDED";
       await transaction.$executeRaw(Prisma.sql`UPDATE "research"."Run" SET "status"=${finalStatus}::"research"."RunStatus", "actualCostKopecks"=(SELECT COALESCE(SUM("costKopecks"),0) FROM "research"."QueryRun" WHERE "runId"=${run.runId}), "finishedAt"=CURRENT_TIMESTAMP, "updatedAt"=CURRENT_TIMESTAMP WHERE "id"=${run.runId} AND "status"='RUNNING'`);
       await transaction.$executeRaw(Prisma.sql`UPDATE "research"."Research" SET "status"=${finalStatus}::"research"."ResearchStatus", "version"="version"+1, "updatedAt"=CURRENT_TIMESTAMP WHERE "id"=${run.researchId} AND "organizationId"=${run.organizationId} AND "projectId"=${run.projectId}`);

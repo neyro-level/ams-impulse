@@ -9,12 +9,17 @@ export interface ClaimedResearchRun {
   queries: Array<{ queryRunId: string; queryId: string | null; text: string }>;
 }
 
+export type ResearchRunClaim =
+  | { status: "claimed"; run: ClaimedResearchRun }
+  | { status: "not-claimable" }
+  | { status: "lock-busy" };
+
 export interface ResearchExecutionRepository {
   failStaleRuns(startedBefore: Date): Promise<number>;
-  claimRun(runId: string): Promise<ClaimedResearchRun | null>;
+  claimRun(runId: string): Promise<ResearchRunClaim>;
   markQueryStarted(queryRunId: string): Promise<boolean>;
   completeQuery(input: { queryRunId: string; search: SearchEvidence[]; wordstat: WordstatEvidence[]; costKopecks: number }): Promise<void>;
-  failQuery(queryRunId: string, safeErrorCode: string): Promise<void>;
+  failQuery(queryRunId: string, safeErrorCode: string, costKopecks: number): Promise<void>;
   completeRun(run: ClaimedResearchRun): Promise<"succeeded" | "partial">;
   failRun(runId: string, safeErrorCode: string): Promise<void>;
 }

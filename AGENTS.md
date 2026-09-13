@@ -12,7 +12,7 @@ Canonical branch: `origin/main`.
 
 ## Platform Contract
 
-`AMS Application Platform Core 3.4 — Solo Minimal`.
+`AMS Application Platform Core 4.0 — Solo Minimal`.
 
 ```text
 TENANCY = multi-tenant
@@ -20,7 +20,8 @@ ASYNC = outbox-plus-queue
 DATA = pii
 DELIVERY = own-saas
 PLATFORM_ADMIN = enabled
-DATABASE = managed-postgresql-target
+DATABASE = managed-postgresql
+DELIVERY_PROFILE = CRITICAL
 ```
 
 Текущий production использует Timeweb Managed PostgreSQL 18 в частной сети без публичного database IP. Web, worker, migrator и backup используют отдельные provider-managed identities. Прежняя self-managed БД остаётся read-only только до завершения окна отката `2026-09-25`.
