@@ -107,7 +107,9 @@ for (const file of ["src/app/not-found.tsx", "src/modules/identity-access/presen
   if (/(?:text-\[(?:clamp|\d)|tracking-\[|leading-\[)/.test(source)) violations.push(`${file}: public typography must use an approved semantic role`);
 }
 
-const themeRoleNames = [...globals.matchAll(/^\s*--(?:color|radius|shadow|text|container|spacing)-([\w-]+):/gm)].map((match) => match[1]);
+const themeRoleNames = [...globals.matchAll(/^\s*--(?:color|radius|shadow|text|container|spacing)-([\w-]+):/gm)]
+  .map((match) => match[1])
+  .filter((role) => !role.includes("--"));
 const sourceCorpus = (await Promise.all((await filesUnder("src")).filter((file) => /\.(?:css|ts|tsx)$/.test(file) && file !== "src/app/globals.css").map((file) => readFile(path.join(root, file), "utf8")))).join("\n");
 const requiredRoleAllowlist = new Set(["sm"]);
 for (const role of themeRoleNames) {
