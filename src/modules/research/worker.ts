@@ -7,7 +7,7 @@ import { PrismaResearchLifecyclePublisher } from "./infrastructure/prisma-resear
 import { XmlRiverClient } from "./infrastructure/xmlriver-client.ts";
 import { setTimeout as sleep } from "node:timers/promises";
 import { recordRuntimeHeartbeat, RESEARCH_WORKER_RUNTIME, RUNTIME_HEARTBEAT_WRITE_INTERVAL_MS } from "../platform-operations/index.ts";
-import { RESEARCH_STALE_RUN_AFTER_MS, RESEARCH_WORKER_POLL_DELAY_MS } from "../../platform/workers/timing-policy.ts";
+import { RESEARCH_JOB_MAX_LOCK_DEFERRALS, RESEARCH_STALE_RUN_AFTER_MS, RESEARCH_WORKER_POLL_DELAY_MS } from "../../platform/workers/timing-policy.ts";
 import { closePrismaClient } from "../../platform/database/prisma/client.ts";
 import { getLogger } from "../../platform/observability/logger.ts";
 
@@ -49,9 +49,15 @@ export async function runNextResearchJobWithDependencies(queue: QueueClient, cre
   const result = await execution.execute(parsed.data.runId, parsed.data.correlationId);
   if (result.status === "deferred") {
     // Lock contention is a normal disposition, not a failed paid execution.
-    // The research queue has retryLimit=0, so enqueue exactly one future job
-    // before completing the current delivery.
-    await queue.send(RESEARCH_RUN_QUEUE, parsed.data, { startAfter: 1 });
+    // The research queue has retryLimit=0, so enqueue at most one bounded
+    // future delivery before completing the current one. Exhaustion leaves the
+    // paid run QUEUED for explicit recovery instead of manufacturing a failure.
+    if (parsed.data.deferralCount >= RESEARCH_JOB_MAX_LOCK_DEFERRALS) {
+      await queue.complete(RESEARCH_RUN_QUEUE, job.id, { status: "deferred-exhausted", code: "RUN_LOCK_DEFERRAL_EXHAUSTED" });
+      logger.warn({ event: "research_job_deferral_exhausted", deferralCount: parsed.data.deferralCount }, "research job lock deferral limit exhausted");
+      return { handled: 1, status: "deferred-exhausted" as const };
+    }
+    await queue.send(RESEARCH_RUN_QUEUE, { ...parsed.data, deferralCount: parsed.data.deferralCount + 1 }, { startAfter: 1 });
     await queue.complete(RESEARCH_RUN_QUEUE, job.id, { status: "deferred", code: "RUN_LOCK_BUSY" });
     logger.info({ event: "research_job_deferred", status: result.status }, "research job deferred");
     return { handled: 1, ...result };

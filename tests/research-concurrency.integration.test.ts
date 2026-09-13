@@ -1,8 +1,11 @@
-import { beforeAll, beforeEach, afterAll, describe, expect, it } from "vitest";
+import { beforeAll, beforeEach, afterAll, describe, expect, it, vi } from "vitest";
 
 import { PrismaAccessGrantRepository } from "../src/modules/identity-access/server.ts";
 import type { PrivateExportStorage } from "../src/modules/research/index.ts";
 import { PrismaResearchReportRepository, PrismaResearchRepository, ResearchReportService, ResearchService } from "../src/modules/research/server.ts";
+import { ResearchExecutionService, runNextResearchJobWithDependencies } from "../src/modules/research/worker.ts";
+import { RESEARCH_RUN_QUEUE } from "../src/modules/research/index.ts";
+import { getPgBoss, stopPgBoss } from "../src/modules/platform-operations/queue.ts";
 import { AuthorizationService } from "../src/platform/authorization/authorization-service.ts";
 import type { PlatformAnalystPrincipal } from "../src/platform/authorization/principal.ts";
 import { createPrismaContext, type PrismaContext } from "../src/platform/database/prisma/context.ts";
@@ -35,6 +38,11 @@ const principal: PlatformAnalystPrincipal = {
 };
 
 async function removeFixture(database: PrismaContext) {
+  await database.pool.query(
+    `DELETE FROM "pgboss"."job"
+     WHERE "name" = $1 AND "data"->>'researchId' = $2`,
+    [RESEARCH_RUN_QUEUE, ids.research],
+  );
   await database.pool.query(
     `DELETE FROM "public"."OutboxEvent"
      WHERE "topic" = 'research.run.v1' AND "payload"->>'researchId' = $1`,
@@ -240,6 +248,63 @@ integrationDescription("Research budget concurrency and idempotency", () => {
       await client.query("ROLLBACK");
     } finally {
       client.release();
+    }
+  });
+
+  it("keeps parallel lock deferrals to one future job without a paid provider call", async () => {
+    const boss = await getPgBoss();
+    const queueRunId = `${prefix}-lock-deferral-run`;
+    const provider = {
+      collectYandexSerp: vi.fn(),
+      collectYandexSuggestions: vi.fn(),
+      collectWordstat: vi.fn(),
+    };
+    const repository = {
+      claimRun: vi.fn().mockResolvedValue({ status: "lock-busy" as const }),
+      failStaleRuns: vi.fn(),
+      markQueryStarted: vi.fn(),
+      completeQuery: vi.fn(),
+      failQuery: vi.fn(),
+      completeRun: vi.fn(),
+      failRun: vi.fn(),
+    };
+
+    try {
+      await boss.send(RESEARCH_RUN_QUEUE, {
+        schemaVersion: 1,
+        toolsOrganizationId: ids.organization,
+        toolsProjectId: ids.project,
+        researchId: ids.research,
+        runId: queueRunId,
+        correlationId,
+      });
+
+      const outcomes = await Promise.all(
+        Array.from({ length: 8 }, () => runNextResearchJobWithDependencies(
+          boss,
+          async () => new ResearchExecutionService(repository as never, provider as never),
+        )),
+      );
+      expect(outcomes.filter((outcome) => outcome.status === "deferred")).toHaveLength(1);
+      expect(outcomes.filter((outcome) => outcome.status === "idle")).toHaveLength(7);
+
+      const futureJobs = await database.pool.query<{ count: number }>(
+        `SELECT COUNT(*)::int AS "count" FROM "pgboss"."job"
+         WHERE "name" = $1 AND "data"->>'runId' = $2
+           AND "state" IN ('created', 'retry', 'active')`,
+        [RESEARCH_RUN_QUEUE, queueRunId],
+      );
+      expect(futureJobs.rows[0]?.count).toBe(1);
+      expect(provider.collectYandexSerp).not.toHaveBeenCalled();
+      expect(provider.collectYandexSuggestions).not.toHaveBeenCalled();
+      expect(provider.collectWordstat).not.toHaveBeenCalled();
+    } finally {
+      await stopPgBoss();
+      await database.pool.query(
+        `DELETE FROM "pgboss"."job"
+         WHERE "name" = $1 AND "data"->>'runId' = $2`,
+        [RESEARCH_RUN_QUEUE, queueRunId],
+      );
     }
   });
 

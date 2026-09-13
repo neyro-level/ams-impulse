@@ -12,7 +12,7 @@ Profile: `TENANCY = multi-tenant`, `ASYNC = outbox-plus-queue`, `DATA = pii`, `D
 - `DEPLOYED` - наличие в production подтверждено release record + live proof точного SHA.
 - `PLANNED` - утверждено, но business runtime ещё не реализован.
 
-SEO Монитор, модульное ядро, Инструменты и Исследования относятся к `IMPLEMENTED` и `DEPLOYED` на production baseline `1c5c3d6450a6934034f10ce15d91cdfb18da7659` от `2026-09-13`. АМС Лиды и остальные внутренние инструменты относятся к `PLANNED`. Более новый docs-only SHA в `main` не меняет deployed runtime.
+SEO Монитор, модульное ядро, Инструменты и Исследования относятся к `IMPLEMENTED` и `DEPLOYED`. АМС Лиды и остальные внутренние инструменты относятся к `PLANNED`. Точный production SHA, digest образа и число миграций принадлежат root-only release proof и live health response; они намеренно не зашиваются в этот документ, потому что следующий документационный commit сразу сделал бы такое значение устаревшим.
 
 ## System Context
 
@@ -277,7 +277,7 @@ migrator contains only its database schema/configuration and migration entrypoin
 
 Web, worker, migrator and backup use separate provider-managed identities. The previous self-managed database is read-only through `2026-09-25`; deletion requires a separate owner decision. Research worker входит в каноническую release topology и выполняет только project-scoped jobs.
 
-Production release `1c5c3d6` применил все 42 immutable migrations. Web, outbox worker и Research worker прошли exact-image health/live proof; pre-migration recovery evidence использует fresh Timeweb provider-physical backup, поэтому несовместимый logical-backup timer отключён. Для пустого набора настроенных sync-проектов `integrationFreshness = unknown` допустим только когда оба поля sync history равны `null`; `stale` всегда блокирует release.
+Текущий production release применяет полную цепочку immutable migrations. Web, outbox worker и Research worker требуют exact-image health/live proof; точный SHA, digest образа, число применённых миграций и recovery point записываются в root-only release proof, а не в этот версионируемый архитектурный документ. Pre-migration recovery использует свежий Timeweb provider-physical backup, поэтому несовместимый logical-backup timer отключён. Для пустого набора настроенных sync-проектов `integrationFreshness = unknown` допустим только когда оба поля sync history равны `null`; `stale` всегда блокирует release.
 
 ## Verification
 

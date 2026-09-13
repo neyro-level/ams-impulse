@@ -9,5 +9,8 @@ export const researchRunJobSchema = z.object({
   researchId: z.string().trim().min(1),
   runId: z.string().trim().min(1),
   correlationId: z.string().uuid(),
+  // Optional on persisted v1 payloads so deliveries created before the
+  // bounded-deferral contract continue from zero after deployment.
+  deferralCount: z.number().int().nonnegative().default(0),
 });
 export type ResearchRunJob = z.infer<typeof researchRunJobSchema>;
