@@ -51,7 +51,7 @@ execFileSync("scp", [artifactPath, checksumPath, "ams:/tmp/"], {
 });
 
 const remoteScript = String.raw`
-set -euo pipefail
+set -Eeuo pipefail
 SHA="$1"
 ARTIFACT_NAME="$2"
 ARTIFACT_SHA256="$3"

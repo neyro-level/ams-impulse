@@ -11,6 +11,13 @@ const policyGapMigration = readFileSync(
   new URL("../prisma/migrations/20260912130000_close_rls_policy_gaps/migration.sql", import.meta.url),
   "utf8",
 );
+const staleScopeGrantMigration = readFileSync(
+  new URL(
+    "../prisma/migrations/20260913083000_grant_stale_research_scope_worker/migration.sql",
+    import.meta.url,
+  ),
+  "utf8",
+);
 
 describe("PostgreSQL RLS foundation", () => {
   it("creates every approved product schema", () => {
@@ -40,6 +47,11 @@ describe("PostgreSQL RLS foundation", () => {
     expect(roles).toContain("GRANT USAGE ON SCHEMA %I TO ams_worker, ams_backup");
     expect(roles).toContain("GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA %I TO ams_worker");
     expect(roles).toContain('GRANT EXECUTE ON FUNCTION "platform"."stale_research_run_scopes"(timestamptz)');
+    expect(staleScopeGrantMigration).toContain(
+      'GRANT EXECUTE ON FUNCTION "platform"."stale_research_run_scopes"(timestamptz)',
+    );
+    expect(staleScopeGrantMigration).toContain("TO ams_worker");
+    expect(roles).toContain("research worker must execute stale_research_run_scopes");
   });
 
   it("mentions every registered tenant-owned model in the effective RLS migrations", () => {

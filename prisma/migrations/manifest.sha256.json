@@ -39,5 +39,6 @@
   "20260912160000_add_stale_research_recovery_scope": "14162c6eb9158869d1087a138169141f5323509c059bc46f8f9bf7bb48844d75",
   "20260912173000_add_research_partial_status": "ad5be3389af6e75deefdd8ab6d0ce413b682fbe2d4117e9a6028152c79680e38",
   "20260912180000_snapshot_research_run_queries": "1d26c99c1e8d620aec141e7b1d3c49b0535efe8a5df4606899ee6e2536720b3d",
-  "20260912181000_include_terminal_research_spend": "be5b5f86232ed9d98c17fd072062edda686daa04933c45558216a5b78020360b"
+  "20260912181000_include_terminal_research_spend": "be5b5f86232ed9d98c17fd072062edda686daa04933c45558216a5b78020360b",
+  "20260913083000_grant_stale_research_scope_worker": "1e3a00fcc864c9fad8daa8751aeb7ca50fe0fcb2658bf8dc58dd5b14030ce37e"
 }

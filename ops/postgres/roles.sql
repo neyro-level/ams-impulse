@@ -142,6 +142,13 @@ GRANT EXECUTE ON FUNCTION "platform"."stale_research_run_scopes"(timestamptz)
 
 DO $verify$
 BEGIN
+  IF NOT has_function_privilege(
+    'ams_worker',
+    'platform.stale_research_run_scopes(timestamptz)',
+    'EXECUTE'
+  ) THEN
+    RAISE EXCEPTION 'research worker must execute stale_research_run_scopes';
+  END IF;
   IF to_regclass('pgboss.job') IS NOT NULL AND (
     has_table_privilege('ams_web', 'pgboss.job', 'SELECT')
     OR NOT has_table_privilege('ams_worker', 'pgboss.job', 'SELECT,INSERT,UPDATE,DELETE')

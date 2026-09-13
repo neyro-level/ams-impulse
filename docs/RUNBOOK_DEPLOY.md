@@ -92,7 +92,7 @@ Required:
 
 - public `/` returns 200 and canonical metadata;
 - `/api/health/live` returns 200, correlation ID and deployed SHA;
-- loopback `/api/health/ready` returns 200 with same SHA, PostgreSQL ready, auth configured, outbox counts, worker heartbeat and integration freshness;
+- loopback `/api/health/ready` returns 200 with same SHA, PostgreSQL ready, auth configured, outbox counts, worker heartbeat and integration freshness; `unknown` is valid only when both sync-history fields are null, while `stale` always blocks release;
 - external `/api/health/ready` returns 403;
 - unauthenticated `/analyst/` redirects to `/?login=1`;
 - `/manifest.webmanifest` returns the AMS PWA manifest and `/sw.js` has `no-store` headers;

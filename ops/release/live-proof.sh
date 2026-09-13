@@ -73,7 +73,14 @@ assert dependencies["postgresql"] == "ready"
 assert dependencies["auth"] == "configured"
 assert dependencies["outbox"]["status"] == "healthy"
 assert dependencies["worker"]["status"] == "healthy"
-assert dependencies["integrationFreshness"]["status"] == "fresh"
+freshness = dependencies["integrationFreshness"]
+assert freshness["status"] in {"fresh", "unknown"}
+if freshness["status"] == "unknown":
+    assert freshness["latestSyncFinishedAt"] is None
+    assert freshness["latestSyncStatus"] is None
+else:
+    assert freshness["latestSyncFinishedAt"] is not None
+    assert freshness["latestSyncStatus"] in {"success", "partial"}
 PY
   then
     READINESS_CONFIRMED=true

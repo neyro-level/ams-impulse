@@ -19,6 +19,21 @@ describe("production backup identity", () => {
 });
 
 describe("production configuration boundary", () => {
+  it("inherits the rollback ERR trap inside deploy helper functions", () => {
+    const deployScript = readFileSync("scripts/deploy-production.mjs", "utf8");
+
+    expect(deployScript).toContain("set -Eeuo pipefail");
+  });
+
+  it("accepts an honestly empty integration history without accepting stale evidence", () => {
+    const liveProof = readFileSync("ops/release/live-proof.sh", "utf8");
+
+    expect(liveProof).toContain('freshness["status"] in {"fresh", "unknown"}');
+    expect(liveProof).toContain('freshness["latestSyncFinishedAt"] is None');
+    expect(liveProof).toContain('freshness["latestSyncStatus"] is None');
+    expect(liveProof).not.toContain('freshness["status"] in {"fresh", "stale"}');
+  });
+
   it("provides the complete fail-closed Research budget policy to Playwright", () => {
     const playwrightConfig = readFileSync("playwright.config.ts", "utf8");
 
