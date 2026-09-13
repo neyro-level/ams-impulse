@@ -13,6 +13,14 @@ const client = new pg.Client({ connectionString: databaseUrl });
 await client.connect();
 
 try {
+  const timezone = await client.query("SHOW TimeZone");
+  const sessionTimezone = timezone.rows[0]?.TimeZone ?? timezone.rows[0]?.timezone;
+  if (sessionTimezone !== "UTC") {
+    throw new Error(
+      `UTC DateTime contract violation: database session TimeZone is ${sessionTimezone ?? "unknown"}, expected UTC.`,
+    );
+  }
+
   const result = await client.query(`
     SELECT table_schema, table_name, column_name, data_type
     FROM information_schema.columns
@@ -35,7 +43,7 @@ try {
     throw new Error(`UTC DateTime contract violations:\n${details}`);
   }
 
-  console.log(`DateTime contract valid: ${result.rowCount} application-owned UTC instants.`);
+  console.log(`DateTime contract valid: TimeZone=UTC; ${result.rowCount} application-owned UTC instants.`);
 } finally {
   await client.end();
 }

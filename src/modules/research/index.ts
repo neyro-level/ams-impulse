@@ -1,7 +1,7 @@
 export type { ResearchService } from "./application/research-service.ts";
 export type { ResearchExecutionService } from "./application/research-execution-service.ts";
 export type { ResearchReportService } from "./application/research-report-service.ts";
-export { ResearchError } from "./domain/research.ts";
+export { ResearchError, ResearchStateError } from "./domain/research.ts";
 export {
   archiveResearchInputSchema,
   cancelResearchRunInputSchema,

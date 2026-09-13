@@ -32,7 +32,8 @@ Research UI mutations проходят через `defineAction`; revalidation �
 - XMLRiver: Yandex organic, ads, related/suggestions и Wordstat;
 - bounded XML parser без DTD/external entities;
 - provider failures classified as `PRE_REQUEST_RETRYABLE | DEFINITELY_NOT_CHARGED | AMBIGUOUS_AFTER_DISPATCH | NON_RETRYABLE`; finite retry разрешён только при доказанном отсутствии списания, а неоднозначный результат завершает run с `PROVIDER_RESULT_AMBIGUOUS` без retry;
-- pricing and daily/monthly budget limits are mandatory server configuration (`RESEARCH_QUERY_ESTIMATE_KOPECKS`, `RESEARCH_DAILY_LIMIT_KOPECKS`, `RESEARCH_MONTHLY_LIMIT_KOPECKS`); one configured query estimate covers the complete three-call XMLRiver bundle (SERP, suggestions and Wordstat), and missing or invalid pricing fails closed with `RESEARCH_PRICING_UNAVAILABLE`;
+- pricing and daily/monthly budget limits are mandatory server configuration (`RESEARCH_QUERY_ESTIMATE_KOPECKS`, `RESEARCH_DAILY_LIMIT_KOPECKS`, `RESEARCH_MONTHLY_LIMIT_KOPECKS`); one configured query estimate is an operator-maintained aggregate allocation for the complete three-call XMLRiver bundle (SERP, suggestions and Wordstat), not a provider invoice, and missing or invalid pricing fails closed with `RESEARCH_PRICING_UNAVAILABLE`;
+- provider documentation checked on 2026-09-13 treats [Yandex suggestions](https://xmlriver.com/apiydoc/apiy-tips/), [Yandex search and Wordstat tariffs](https://xmlriver.com/price.html), and the [Wordstat endpoint](https://xmlriver.com/apiwordstatnew/apiwn-about/) as distinct operations; exact account pricing remains operator-managed because it depends on the active XMLRiver tariff;
 - one run is capped at 20 queries and 60 potentially billable provider calls; the cap is enforced before provider dispatch;
 - daily and monthly budget windows are UTC calendar windows and do not depend on the PostgreSQL session timezone;
 - estimate reservation acquires the organization budget lock and performs expiry, idempotency lookup, committed-spend read, limit checks and insert in one transaction;
@@ -47,11 +48,11 @@ Research UI mutations проходят через `defineAction`; revalidation �
 
 - Research: `DRAFT | READY | RUNNING | SUCCEEDED | PARTIAL | FAILED | ARCHIVED`.
 - Run: `DRAFT | AWAITING_CONFIRMATION | QUEUED | RUNNING | SUCCEEDED | PARTIAL | FAILED | CANCELLED`.
-- QueryRun: `PENDING | RUNNING | SUCCEEDED | FAILED`. Terminal `Run` failure closes every remaining `PENDING`/`RUNNING` query as `FAILED`; unexecuted queries keep `costKopecks = null`, while `Run.actualCostKopecks` sums only recorded query costs.
+- QueryRun: `PENDING | RUNNING | SUCCEEDED | FAILED`. Terminal `Run` failure closes every remaining `PENDING`/`RUNNING` query as `FAILED`; unexecuted queries keep `allocatedCostKopecks = null`, while `Run.allocatedCostKopecks` sums only recorded query costs.
 
 При неоднозначном результате provider call запуск завершается `FAILED` с безопасным кодом; автоматического повтора нет. Зависший `RUNNING` старше 20 минут восстанавливается только внутри scope текущего job.
 
-Обычный безопасно классифицированный отказ одного запроса не стирает доказательства остальных запросов: worker продолжает bounded run и завершает его как `PARTIAL`. Для каждого запроса сохраняются собственный статус, безопасная причина и фактическая стоимость успешного provider-вызова. CSV для `PARTIAL` содержит только реально сохранённые данные. Повтор не выполняется автоматически: новый запуск требует новой оценки и отдельного подтверждения стоимости.
+Обычный безопасно классифицированный отказ одного запроса не стирает доказательства остальных запросов: worker продолжает bounded run и завершает его как `PARTIAL`. Для каждого запроса сохраняются собственный статус, безопасная причина и распределённая часть одобренной оценки для успешных или неоднозначных после dispatch provider-вызовов. Это поле не выдаётся за фактическое списание XMLRiver. CSV для `PARTIAL` содержит только реально сохранённые данные. Повтор не выполняется автоматически: новый запуск требует новой оценки и отдельного подтверждения стоимости.
 
 Состав и порядок запросов snapshot-ятся в `QueryRun` в момент estimate. Пока запуск находится в `AWAITING_CONFIRMATION`, `QUEUED` или `RUNNING`, редактирование и архивирование исследования запрещены. После терминального состояния текущий черновик можно изменить для нового запуска, не меняя историю, evidence и стоимость прежнего.
 

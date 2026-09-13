@@ -92,7 +92,7 @@ export interface ResearchRunSummary {
   status: ResearchRunStatus;
   queryCount: number;
   estimatedCostKopecks: number;
-  actualCostKopecks: number | null;
+  allocatedCostKopecks: number | null;
   safeErrorCode: string | null;
   pendingCount: number;
   runningCount: number;
@@ -110,7 +110,7 @@ export interface ResearchListItem {
   status: ResearchStatus;
   queryCount: number;
   updatedAt: string;
-  lastRun: Pick<ResearchRunSummary, "runId" | "status" | "queryCount" | "estimatedCostKopecks" | "actualCostKopecks" | "safeErrorCode" | "createdAt"> | null;
+  lastRun: Pick<ResearchRunSummary, "runId" | "status" | "queryCount" | "estimatedCostKopecks" | "allocatedCostKopecks" | "safeErrorCode" | "createdAt"> | null;
 }
 
 export interface ResearchListResult {
@@ -135,5 +135,14 @@ export class ResearchError extends Error {
   constructor(public readonly code: ResearchErrorCode) {
     super(code);
     this.name = "ResearchError";
+  }
+}
+
+export class ResearchStateError extends Error {
+  readonly code = "RESEARCH_STATE_INVALID" as const;
+
+  constructor(message: string) {
+    super(message);
+    this.name = "ResearchStateError";
   }
 }

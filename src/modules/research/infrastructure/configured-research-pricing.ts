@@ -24,7 +24,7 @@ export class ConfiguredResearchBudgetPolicy implements ResearchBudgetPolicy {
 }
 
 export class ConfiguredResearchPricing implements ResearchPricingPolicy {
-  private constructor(private readonly queryCostKopecks: number) {}
+  private constructor(private readonly queryAllocationKopecks: number) {}
 
   static fromEnvironment(env: Record<string, string | undefined> = process.env) {
     const raw = env.RESEARCH_QUERY_ESTIMATE_KOPECKS?.trim();
@@ -35,6 +35,6 @@ export class ConfiguredResearchPricing implements ResearchPricingPolicy {
   }
 
   estimateRunCostKopecks(queryCount: number) {
-    return this.queryCostKopecks * queryCount;
+    return this.queryAllocationKopecks * queryCount;
   }
 }

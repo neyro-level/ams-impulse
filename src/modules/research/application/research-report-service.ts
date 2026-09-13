@@ -17,10 +17,10 @@ function csvCell(value: string | number | null) {
 }
 
 function reportToCsv(report: ResearchRunReport) {
-  const rows = [["query", "status", "cost_kopecks", "evidence_type", "url", "title", "snippet"]];
+  const rows = [["query", "status", "allocated_cost_kopecks", "evidence_type", "url", "title", "snippet"]];
   for (const query of report.queries) {
-    if (query.evidence.length === 0) rows.push([query.query, query.status, String(query.costKopecks ?? ""), "", "", "", ""]);
-    for (const evidence of query.evidence) rows.push([query.query, query.status, String(query.costKopecks ?? ""), evidence.type, evidence.url ?? "", evidence.title ?? "", evidence.snippet ?? ""]);
+    if (query.evidence.length === 0) rows.push([query.query, query.status, String(query.allocatedCostKopecks ?? ""), "", "", "", ""]);
+    for (const evidence of query.evidence) rows.push([query.query, query.status, String(query.allocatedCostKopecks ?? ""), evidence.type, evidence.url ?? "", evidence.title ?? "", evidence.snippet ?? ""]);
   }
   return `\uFEFF${rows.map((row) => row.map(csvCell).join(",")).join("\r\n")}\r\n`;
 }

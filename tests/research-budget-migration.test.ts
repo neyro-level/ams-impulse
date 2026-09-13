@@ -13,6 +13,14 @@ const terminalSpendMigration = readFileSync(
   new URL("../prisma/migrations/20260913160000_harden_research_runtime_invariants/migration.sql", import.meta.url),
   "utf8",
 );
+const utcBudgetMigration = readFileSync(
+  new URL("../prisma/migrations/20260913190000_unify_research_budget_utc/migration.sql", import.meta.url),
+  "utf8",
+);
+const allocatedCostMigration = readFileSync(
+  new URL("../prisma/migrations/20260913191000_rename_research_allocated_cost/migration.sql", import.meta.url),
+  "utf8",
+);
 
 describe("Research budget serialization", () => {
   it("aggregates organization spend behind an authorized project", () => {
@@ -36,8 +44,19 @@ describe("Research budget serialization", () => {
   });
 
   it("uses explicit UTC budget windows independent of the database session timezone", () => {
-    expect(terminalSpendMigration).toContain("reference_time AT TIME ZONE 'UTC'");
-    expect(terminalSpendMigration).toContain("date_trunc('day'");
-    expect(terminalSpendMigration).toContain("date_trunc('month'");
+    expect(utcBudgetMigration).toContain('"platform"."research_budget_boundaries"');
+    expect(utcBudgetMigration).toContain("reference_time AT TIME ZONE 'UTC'");
+    expect(utcBudgetMigration).toContain("date_trunc('day'");
+    expect(utcBudgetMigration).toContain("date_trunc('month'");
+    expect(repository).toContain('boundaries."dayStart"');
+    expect(repository).toContain('boundaries."monthStart"');
+    expect(repository).not.toContain("date_trunc('day', ${input.now}");
+  });
+
+  it("names estimated allocations honestly without rewriting migration history", () => {
+    expect(allocatedCostMigration).toContain('RENAME COLUMN "actualCostKopecks" TO "allocatedCostKopecks"');
+    expect(allocatedCostMigration).toContain('RENAME COLUMN "costKopecks" TO "allocatedCostKopecks"');
+    expect(allocatedCostMigration).toContain('COALESCE(run."allocatedCostKopecks", 0)');
+    expect(terminalSpendMigration).toContain('COALESCE(run."actualCostKopecks", 0)');
   });
 });

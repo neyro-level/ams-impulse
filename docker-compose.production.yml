@@ -23,6 +23,7 @@ services:
       PORT: 3000
       NODE_ENV: production
       DATABASE_RUNTIME: web
+      PGOPTIONS: -c TimeZone=UTC -c statement_timeout=60000 -c lock_timeout=5000 -c idle_in_transaction_session_timeout=15000
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/api/health/live').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
       interval: 30s
@@ -71,7 +72,7 @@ services:
       NODE_ENV: production
       OUTBOX_WORKER_ID: seo-monitor-outbox
       DATABASE_RUNTIME: worker
-      PGOPTIONS: -c statement_timeout=60000 -c lock_timeout=5000 -c idle_in_transaction_session_timeout=15000
+      PGOPTIONS: -c TimeZone=UTC -c statement_timeout=60000 -c lock_timeout=5000 -c idle_in_transaction_session_timeout=15000
     healthcheck:
       test: ["CMD", "node", "dist-collector/src/worker/healthcheck.js", "outbox-worker", "seo-monitor-outbox"]
       interval: 60s
@@ -108,7 +109,7 @@ services:
       NODE_ENV: production
       RESEARCH_WORKER_ID: seo-monitor-research
       DATABASE_RUNTIME: worker
-      PGOPTIONS: -c statement_timeout=60000 -c lock_timeout=5000 -c idle_in_transaction_session_timeout=15000
+      PGOPTIONS: -c TimeZone=UTC -c statement_timeout=60000 -c lock_timeout=5000 -c idle_in_transaction_session_timeout=15000
     healthcheck:
       test: ["CMD", "node", "dist-collector/src/worker/healthcheck.js", "research-worker", "seo-monitor-research"]
       interval: 60s
@@ -144,7 +145,7 @@ services:
       APP_ENV: production
       NODE_ENV: production
       DATABASE_RUNTIME: migrator
-      PGOPTIONS: -c statement_timeout=900000 -c lock_timeout=10000 -c idle_in_transaction_session_timeout=60000 -c application_name=ams-impulse-migrator
+      PGOPTIONS: -c TimeZone=UTC -c statement_timeout=900000 -c lock_timeout=10000 -c idle_in_transaction_session_timeout=60000 -c application_name=ams-impulse-migrator
     healthcheck:
       disable: true
 
@@ -177,6 +178,6 @@ services:
       APP_ENV: production
       NODE_ENV: production
       DATABASE_RUNTIME: worker
-      PGOPTIONS: -c statement_timeout=60000 -c lock_timeout=5000 -c idle_in_transaction_session_timeout=15000
+      PGOPTIONS: -c TimeZone=UTC -c statement_timeout=60000 -c lock_timeout=5000 -c idle_in_transaction_session_timeout=15000
     healthcheck:
       disable: true

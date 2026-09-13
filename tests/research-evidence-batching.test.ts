@@ -45,7 +45,7 @@ describe("Research evidence persistence", () => {
         snippet: null,
       })),
       wordstat: [],
-      costKopecks: 100,
+      allocatedCostKopecks: 100,
     });
 
     // One context statement, three evidence batches and one QueryRun update.

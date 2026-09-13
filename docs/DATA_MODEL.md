@@ -135,7 +135,7 @@ Implemented and future internal tools reference `ToolsProject`. They do not crea
 ### ResearchRun
 
 - research scope and query count;
-- estimate, expiry, approved and actual cost in kopecks;
+- estimate, expiry, approved amount and allocated conservative cost in kopecks;
 - idempotency key, confirmation actor/time;
 - lifecycle timestamps and safe error code.
 
@@ -223,6 +223,9 @@ query plans when production-like volume is available.
 - every new DateTime field declares its category;
 - blind timezone conversion is prohibited.
 - `research` and `tools` columns ending in `At` are application-owned UTC instants and are checked through `information_schema` by `scripts/verify-datetime-contract.mjs`;
+- every application, worker, migration, maintenance, test, and release database session sets `TimeZone=UTC`; the DateTime contract check fails closed when the session differs;
+- Research daily and monthly money limits use calendar boundaries at `00:00:00 UTC`, calculated only by `platform.research_budget_boundaries` so reservation and aggregation cannot disagree at a day or month rollover;
+- `Run.allocatedCostKopecks` and `QueryRun.allocatedCostKopecks` are allocations of the approved conservative estimate across dispatched provider operations. They protect the internal budget but are not evidence of the exact XMLRiver invoice; a future provider reconciliation may introduce a separate factual cost field only when supported by provider billing evidence;
 - Better Auth and OAuth timestamps in `public` remain library-managed and are excluded from bulk conversion; a library-contract review is required before changing them.
 
 ## Identifier Policy

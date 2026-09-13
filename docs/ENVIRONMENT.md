@@ -70,7 +70,7 @@ Changing `NEXT_PUBLIC_*` requires rebuild/redeploy. Changing runtime secret requ
 - `PGBOSS_RUNTIME_ROLE` — local/CI pg-boss migration target role, not a production application secret.
 - `XMLRIVER_USER`
 - `XMLRIVER_KEY`
-- `RESEARCH_QUERY_ESTIMATE_KOPECKS`
+- `RESEARCH_QUERY_ESTIMATE_KOPECKS` — operator-maintained aggregate allocation per logical query covering three separately billable XMLRiver operations (SERP, suggestions and Wordstat); this is a conservative budget estimate, not the provider invoice amount;
 - `RESEARCH_DAILY_LIMIT_KOPECKS`
 - `RESEARCH_MONTHLY_LIMIT_KOPECKS`
 - `S3_BUCKET`

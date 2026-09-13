@@ -5,14 +5,14 @@ export interface ResearchRunReport {
   status: string;
   estimatedCostKopecks: number;
   approvedCostKopecks: number | null;
-  actualCostKopecks: number | null;
+  allocatedCostKopecks: number | null;
   safeErrorCode: string | null;
   createdAt: string;
   finishedAt: string | null;
   queries: Array<{
     query: string;
     status: string;
-    costKopecks: number | null;
+    allocatedCostKopecks: number | null;
     safeErrorCode: string | null;
     startedAt: string | null;
     finishedAt: string | null;

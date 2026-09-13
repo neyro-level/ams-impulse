@@ -36,8 +36,8 @@ describe("Research operational list", () => {
       await transaction.$executeRaw(Prisma.sql`INSERT INTO "tools"."ToolsProjectAccess" ("id", "membershipId", "organizationId", "projectId", "role") VALUES (${ids.access}, ${ids.membership}, ${ids.organization}, ${ids.project}, 'ANALYST') ON CONFLICT ("id") DO NOTHING`);
       await transaction.$executeRaw(Prisma.sql`INSERT INTO "research"."Research" ("id", "organizationId", "projectId", "title", "createdByUserId", "status") VALUES (${ids.research}, ${ids.organization}, ${ids.project}, 'Офисный рынок', ${ids.user}, 'READY') ON CONFLICT ("id") DO NOTHING`);
       await transaction.$executeRaw(Prisma.sql`INSERT INTO "research"."Query" ("id", "organizationId", "projectId", "researchId", "text", "position") VALUES (${ids.query}, ${ids.organization}, ${ids.project}, ${ids.research}, 'офисы', 0) ON CONFLICT ("id") DO NOTHING`);
-      await transaction.$executeRaw(Prisma.sql`INSERT INTO "research"."Run" ("id", "organizationId", "projectId", "researchId", "status", "queryCount", "estimatedCostKopecks", "actualCostKopecks", "estimateExpiresAt", "idempotencyKey") VALUES (${ids.run}, ${ids.organization}, ${ids.project}, ${ids.research}, 'SUCCEEDED', 1, 125, 120, CURRENT_TIMESTAMP + INTERVAL '15 minutes', 'research-list-run-key') ON CONFLICT ("id") DO NOTHING`);
-      await transaction.$executeRaw(Prisma.sql`INSERT INTO "research"."Run" ("id", "organizationId", "projectId", "researchId", "status", "queryCount", "estimatedCostKopecks", "actualCostKopecks", "estimateExpiresAt", "idempotencyKey", "createdAt") SELECT ${ids.latestRun}, ${ids.organization}, ${ids.project}, ${ids.research}, 'SUCCEEDED', 1, 135, 130, CURRENT_TIMESTAMP + INTERVAL '15 minutes', 'research-list-latest-run-key', "createdAt" FROM "research"."Run" WHERE "id" = ${ids.run} ON CONFLICT ("id") DO NOTHING`);
+      await transaction.$executeRaw(Prisma.sql`INSERT INTO "research"."Run" ("id", "organizationId", "projectId", "researchId", "status", "queryCount", "estimatedCostKopecks", "allocatedCostKopecks", "estimateExpiresAt", "idempotencyKey") VALUES (${ids.run}, ${ids.organization}, ${ids.project}, ${ids.research}, 'SUCCEEDED', 1, 125, 120, CURRENT_TIMESTAMP + INTERVAL '15 minutes', 'research-list-run-key') ON CONFLICT ("id") DO NOTHING`);
+      await transaction.$executeRaw(Prisma.sql`INSERT INTO "research"."Run" ("id", "organizationId", "projectId", "researchId", "status", "queryCount", "estimatedCostKopecks", "allocatedCostKopecks", "estimateExpiresAt", "idempotencyKey", "createdAt") SELECT ${ids.latestRun}, ${ids.organization}, ${ids.project}, ${ids.research}, 'SUCCEEDED', 1, 135, 130, CURRENT_TIMESTAMP + INTERVAL '15 minutes', 'research-list-latest-run-key', "createdAt" FROM "research"."Run" WHERE "id" = ${ids.run} ON CONFLICT ("id") DO NOTHING`);
     });
   });
 
@@ -64,7 +64,7 @@ describe("Research operational list", () => {
     });
     expect(result).toMatchObject({
       total: 1,
-      items: [{ id: ids.research, queryCount: 1, lastRun: { runId: ids.latestRun, actualCostKopecks: 130 } }],
+      items: [{ id: ids.research, queryCount: 1, lastRun: { runId: ids.latestRun, allocatedCostKopecks: 130 } }],
     });
   });
 });

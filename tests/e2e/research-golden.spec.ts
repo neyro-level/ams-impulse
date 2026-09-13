@@ -60,7 +60,7 @@ test.describe("Research golden journey", () => {
     const downloadPath = await download.path();
     if (!downloadPath) throw new Error("Research CSV download did not produce a local artifact");
     const csv = readFileSync(downloadPath, "utf8");
-    expect(csv).toContain('"query","status","cost_kopecks"');
+    expect(csv).toContain('"query","status","allocated_cost_kopecks"');
     expect(csv).toContain("synthetic query one");
     expect(csv).toContain("competitor.example.invalid");
 

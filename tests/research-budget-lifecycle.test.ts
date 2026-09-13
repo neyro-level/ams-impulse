@@ -9,15 +9,20 @@ const repository = readFileSync(
   new URL("../src/modules/research/infrastructure/prisma-research-repository.ts", import.meta.url),
   "utf8",
 );
+const allocatedCostMigration = readFileSync(
+  new URL("../prisma/migrations/20260913191000_rename_research_allocated_cost/migration.sql", import.meta.url),
+  "utf8",
+);
 
 describe("Research budget lifecycle contract", () => {
-  it("counts active reservations, approved work and terminal actual spend", () => {
+  it("counts active reservations, approved work and terminal allocated spend", () => {
     expect(migration).toContain("run.\"status\" = 'AWAITING_CONFIRMATION'");
     expect(migration).toContain("run.\"estimateExpiresAt\" > reference_time");
     expect(migration).toContain("run.\"status\" IN ('QUEUED', 'RUNNING')");
     expect(migration).toContain("run.\"status\" IN ('SUCCEEDED', 'FAILED')");
     expect(migration).toContain("COALESCE(run.\"actualCostKopecks\", 0)");
     expect(migration).not.toContain("'CANCELLED'");
+    expect(allocatedCostMigration).toContain("COALESCE(run.\"allocatedCostKopecks\", 0)");
   });
 
   it("expires stale estimates before reading committed spend", () => {

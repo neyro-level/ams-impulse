@@ -18,8 +18,8 @@ export interface ResearchExecutionRepository {
   failStaleRuns(startedBefore: Date): Promise<number>;
   claimRun(runId: string): Promise<ResearchRunClaim>;
   markQueryStarted(queryRunId: string): Promise<boolean>;
-  completeQuery(input: { queryRunId: string; search: SearchEvidence[]; wordstat: WordstatEvidence[]; costKopecks: number }): Promise<void>;
-  failQuery(queryRunId: string, safeErrorCode: string, costKopecks: number): Promise<void>;
+  completeQuery(input: { queryRunId: string; search: SearchEvidence[]; wordstat: WordstatEvidence[]; allocatedCostKopecks: number }): Promise<void>;
+  failQuery(queryRunId: string, safeErrorCode: string, allocatedCostKopecks: number): Promise<void>;
   completeRun(run: ClaimedResearchRun): Promise<"succeeded" | "partial">;
   failRun(runId: string, safeErrorCode: string): Promise<void>;
 }

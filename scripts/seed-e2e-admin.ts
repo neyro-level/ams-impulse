@@ -199,13 +199,13 @@ async function main() {
     await prisma.$executeRaw(Prisma.sql`
       INSERT INTO "research"."Run"
         ("id", "organizationId", "projectId", "researchId", "status", "queryCount",
-         "estimatedCostKopecks", "estimateExpiresAt", "approvedCostKopecks", "actualCostKopecks",
+         "estimatedCostKopecks", "estimateExpiresAt", "approvedCostKopecks", "allocatedCostKopecks",
          "idempotencyKey", "confirmedByUserId", "confirmedAt", "finishedAt")
       VALUES ('e2e-budget-run', ${E2E_RESEARCH.budgetOrganizationId}, ${E2E_RESEARCH.budgetProjectId},
         ${E2E_RESEARCH.budgetResearchId}, 'SUCCEEDED', 1, 50000, CURRENT_TIMESTAMP + INTERVAL '1 hour',
         50000, 50000, 'e2e-budget-limit', ${E2E_RESEARCH.analystUserId}, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
       ON CONFLICT ("id") DO UPDATE SET "status"='SUCCEEDED', "approvedCostKopecks"=50000,
-        "actualCostKopecks"=50000, "confirmedAt"=CURRENT_TIMESTAMP, "finishedAt"=CURRENT_TIMESTAMP
+        "allocatedCostKopecks"=50000, "confirmedAt"=CURRENT_TIMESTAMP, "finishedAt"=CURRENT_TIMESTAMP
     `);
 
     const organization = await prisma.organization.findUniqueOrThrow({

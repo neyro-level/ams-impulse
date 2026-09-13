@@ -4,7 +4,7 @@ import { ResearchReportService } from "../src/modules/research/server.ts";
 import { AuthorizationService } from "../src/platform/authorization/authorization-service.ts";
 import { createPlatformAnalystPrincipal, createTenantUserPrincipal } from "./helpers/principal.ts";
 
-const report: ResearchRunReport = { runId: "run-1", status: "SUCCEEDED", estimatedCostKopecks: 100, approvedCostKopecks: 100, actualCostKopecks: 100, safeErrorCode: null, createdAt: "2026-09-11T00:00:00.000Z", finishedAt: "2026-09-11T00:01:00.000Z", queries: [{ query: "запрос", status: "SUCCEEDED", costKopecks: 100, safeErrorCode: null, startedAt: "2026-09-11T00:00:10.000Z", finishedAt: "2026-09-11T00:00:20.000Z", evidence: [{ type: "organic", url: "https://example.test", title: "Пример", snippet: null }] }], competitors: [] };
+const report: ResearchRunReport = { runId: "run-1", status: "SUCCEEDED", estimatedCostKopecks: 100, approvedCostKopecks: 100, allocatedCostKopecks: 100, safeErrorCode: null, createdAt: "2026-09-11T00:00:00.000Z", finishedAt: "2026-09-11T00:01:00.000Z", queries: [{ query: "запрос", status: "SUCCEEDED", allocatedCostKopecks: 100, safeErrorCode: null, startedAt: "2026-09-11T00:00:10.000Z", finishedAt: "2026-09-11T00:00:20.000Z", evidence: [{ type: "organic", url: "https://example.test", title: "Пример", snippet: null }] }], competitors: [] };
 
 class MemoryReports implements ResearchReportRepository {
   status: "PENDING" | "READY" = "PENDING"; objectKey: string | null = null;
@@ -58,7 +58,7 @@ describe("ResearchReportService", () => {
 
   it("exports an explicit partial result without inventing missing evidence", async () => {
     const repository = new MemoryReports();
-    repository.getRunReport = async () => ({ ...report, status: "PARTIAL", queries: [{ ...report.queries[0]!, status: "FAILED", costKopecks: null, evidence: [] }] });
+    repository.getRunReport = async () => ({ ...report, status: "PARTIAL", queries: [{ ...report.queries[0]!, status: "FAILED", allocatedCostKopecks: null, evidence: [] }] });
     const isolatedStorage: PrivateExportStorage & { body?: string } = { async putCsv(_key, body) { this.body = body; }, async createDownloadUrl() { return "https://storage.test/signed"; } };
     await new ResearchReportService(repository, authorization, isolatedStorage).createExport(createPlatformAnalystPrincipal("analyst"), { organizationId: "org-1", projectId: "project-1", researchId: "research-1", runId: "run-1", idempotencyKey: "export-003" });
     expect(isolatedStorage.body).toContain('"FAILED"');

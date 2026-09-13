@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ResearchProviderError, type ClaimedResearchRun, type ResearchExecutionRepository, type ResearchLifecycleEvent, type ResearchProvider, type ResearchRunClaim } from "../src/modules/research/index.ts";
+import { ResearchProviderError, ResearchStateError, type ClaimedResearchRun, type ResearchExecutionRepository, type ResearchLifecycleEvent, type ResearchProvider, type ResearchRunClaim } from "../src/modules/research/index.ts";
 import { ResearchExecutionService, recoverStaleResearchRunsWithDependencies } from "../src/modules/research/worker.ts";
 
 class ExecutionRepository implements ResearchExecutionRepository {
@@ -8,8 +8,8 @@ class ExecutionRepository implements ResearchExecutionRepository {
   async failStaleRuns() { return 0; }
   async claimRun(): Promise<ResearchRunClaim> { if (this.runStatus !== "QUEUED" || !this.run) return { status: "not-claimable" }; this.runStatus = "RUNNING"; return { status: "claimed", run: this.run }; }
   async markQueryStarted(id: string) { this.started.push(id); return true; }
-  async completeQuery(input: { queryRunId: string; costKopecks: number }) { this.completed.push(input.queryRunId); this.costs.push(input.costKopecks); }
-  async failQuery(id: string, code: string, costKopecks: number) { this.failed.push([id, code, costKopecks]); }
+  async completeQuery(input: { queryRunId: string; allocatedCostKopecks: number }) { this.completed.push(input.queryRunId); this.costs.push(input.allocatedCostKopecks); }
+  async failQuery(id: string, code: string, allocatedCostKopecks: number) { this.failed.push([id, code, allocatedCostKopecks]); }
   async completeRun() { this.runStatus = this.failed.length ? "PARTIAL" : "SUCCEEDED"; return this.failed.length ? "partial" as const : "succeeded" as const; }
   async failRun(_id: string, code: string) { this.runStatus = `FAILED:${code}`; }
 }
@@ -110,13 +110,13 @@ describe("ResearchExecutionService", () => {
     await expect(service.execute("run-1")).resolves.toEqual({ status: "ignored" });
   });
 
-  it("fails the run with an internal code when persistence fails", async () => {
+  it("settles paid calls before failing a run on an invalid persistence state", async () => {
     const repository = new ExecutionRepository();
-    repository.completeQuery = async () => { throw new Error("database detail"); };
+    repository.completeQuery = async () => { throw new ResearchStateError("QUERY_RUN_NOT_RUNNING"); };
 
-    await expect(new ResearchExecutionService(repository, provider).execute("run-1")).resolves.toEqual({ status: "failed", code: "RESEARCH_INTERNAL_FAILURE" });
-    expect(repository.failed).toEqual([]);
-    expect(repository.runStatus).toBe("FAILED:RESEARCH_INTERNAL_FAILURE");
+    await expect(new ResearchExecutionService(repository, provider).execute("run-1")).resolves.toEqual({ status: "failed", code: "RESEARCH_STATE_INVALID" });
+    expect(repository.failed).toEqual([["qr-1", "RESEARCH_STATE_INVALID", 100]]);
+    expect(repository.runStatus).toBe("FAILED:RESEARCH_STATE_INVALID");
   });
 
   it("defers a concurrent delivery when the per-run lock is busy", async () => {

@@ -79,6 +79,7 @@ workflows:
           DATABASE_NAME: seo_monitor_ci_test
           DATABASE_SSLMODE: disable
           DATABASE_URL: postgresql://seo_monitor_test:seo_monitor_test@127.0.0.1:5432/seo_monitor_ci_test?sslmode=disable
+          PGOPTIONS: -c TimeZone=UTC
           BETTER_AUTH_SECRET: ci-only-secret-not-for-production-1234567890
           BETTER_AUTH_URL: http://127.0.0.1:3100
         cubes:
@@ -122,6 +123,7 @@ workflows:
           DATABASE_NAME: seo_monitor_ci_test
           DATABASE_SSLMODE: disable
           DATABASE_URL: postgresql://seo_monitor_test:seo_monitor_test@127.0.0.1:5432/seo_monitor_ci_test?sslmode=disable
+          PGOPTIONS: -c TimeZone=UTC
           BETTER_AUTH_SECRET: ci-only-secret-not-for-production-1234567890
           BETTER_AUTH_URL: http://127.0.0.1:3100
         cubes:
@@ -165,6 +167,7 @@ workflows:
           DATABASE_NAME: seo_monitor_ci_test
           DATABASE_SSLMODE: disable
           DATABASE_URL: postgresql://seo_monitor_test:seo_monitor_test@127.0.0.1:5432/seo_monitor_ci_test?sslmode=disable
+          PGOPTIONS: -c TimeZone=UTC
           BETTER_AUTH_SECRET: ci-only-secret-not-for-production-1234567890
           BETTER_AUTH_URL: http://127.0.0.1:3100
         cubes:

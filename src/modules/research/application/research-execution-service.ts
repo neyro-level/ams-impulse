@@ -1,9 +1,10 @@
 import type { ResearchExecutionRepository } from "./ports/research-execution-repository.ts";
 import { silentResearchLifecyclePublisher, type ResearchLifecycleEvent, type ResearchLifecyclePublisher } from "./ports/research-lifecycle-publisher.ts";
 import type { ResearchProvider } from "./ports/research-provider.ts";
-import { RESEARCH_MAX_PAID_CALLS_PER_RUN, RESEARCH_PAID_CALLS_PER_QUERY } from "../domain/research.ts";
+import { ResearchStateError, RESEARCH_MAX_PAID_CALLS_PER_RUN, RESEARCH_PAID_CALLS_PER_QUERY } from "../domain/research.ts";
 
 function safeProviderCode(error: unknown) {
+  if (error instanceof ResearchStateError) return error.code;
   if (error && typeof error === "object" && "category" in error && error.category === "AMBIGUOUS_AFTER_DISPATCH") {
     return "PROVIDER_RESULT_AMBIGUOUS";
   }
@@ -61,30 +62,30 @@ export class ResearchExecutionService {
     try {
       for (const [index, query] of run.queries.entries()) {
         if (!await this.repository.markQueryStarted(query.queryRunId)) continue;
-        const queryCostKopecks = baseCost + (index < costRemainder ? 1 : 0);
-        const providerCallBaseCost = Math.floor(queryCostKopecks / RESEARCH_PAID_CALLS_PER_QUERY);
-        const providerCallCostRemainder = queryCostKopecks % RESEARCH_PAID_CALLS_PER_QUERY;
-        const providerCallCost = (operationIndex: number) => providerCallBaseCost + (operationIndex < providerCallCostRemainder ? 1 : 0);
-        let settledCostKopecks = 0;
-        let currentProviderCallCostKopecks = providerCallCost(0);
+        const queryAllocationKopecks = baseCost + (index < costRemainder ? 1 : 0);
+        const providerCallBaseAllocation = Math.floor(queryAllocationKopecks / RESEARCH_PAID_CALLS_PER_QUERY);
+        const providerCallAllocationRemainder = queryAllocationKopecks % RESEARCH_PAID_CALLS_PER_QUERY;
+        const providerCallAllocation = (operationIndex: number) => providerCallBaseAllocation + (operationIndex < providerCallAllocationRemainder ? 1 : 0);
+        let allocatedCostKopecks = 0;
+        let currentProviderCallAllocationKopecks = providerCallAllocation(0);
         try {
           const request = { query: query.text, correlationId };
           const search = await this.providerCall(() => this.provider.collectYandexSerp(request));
-          settledCostKopecks += currentProviderCallCostKopecks;
-          currentProviderCallCostKopecks = providerCallCost(1);
+          allocatedCostKopecks += currentProviderCallAllocationKopecks;
+          currentProviderCallAllocationKopecks = providerCallAllocation(1);
           const suggestions = await this.providerCall(() => this.provider.collectYandexSuggestions(request));
-          settledCostKopecks += currentProviderCallCostKopecks;
-          currentProviderCallCostKopecks = providerCallCost(2);
+          allocatedCostKopecks += currentProviderCallAllocationKopecks;
+          currentProviderCallAllocationKopecks = providerCallAllocation(2);
           const wordstat = await this.providerCall(() => this.provider.collectWordstat(request));
-          settledCostKopecks += currentProviderCallCostKopecks;
+          allocatedCostKopecks += currentProviderCallAllocationKopecks;
           const suggestionEvidence = suggestions.map((title) => ({ type: "related" as const, url: null, domain: null, title, snippet: null }));
-          await this.repository.completeQuery({ queryRunId: query.queryRunId, search: [...search, ...suggestionEvidence], wordstat, costKopecks: settledCostKopecks });
+          await this.repository.completeQuery({ queryRunId: query.queryRunId, search: [...search, ...suggestionEvidence], wordstat, allocatedCostKopecks });
         } catch (error) {
-          if (!error || typeof error !== "object" || !("category" in error)) throw error;
           const code = safeProviderCode(error);
-          const ambiguousCostKopecks = error.category === "AMBIGUOUS_AFTER_DISPATCH" ? currentProviderCallCostKopecks : 0;
-          await this.repository.failQuery(query.queryRunId, code, settledCostKopecks + ambiguousCostKopecks);
-          if (code.includes("AMBIGUOUS")) {
+          const category = error && typeof error === "object" && "category" in error ? error.category : null;
+          const ambiguousAllocationKopecks = category === "AMBIGUOUS_AFTER_DISPATCH" ? currentProviderCallAllocationKopecks : 0;
+          await this.repository.failQuery(query.queryRunId, code, allocatedCostKopecks + ambiguousAllocationKopecks);
+          if (category === null || code.includes("AMBIGUOUS")) {
             await this.repository.failRun(run.runId, code);
             await this.publish("failed", run);
             await this.publish("action_required", run);

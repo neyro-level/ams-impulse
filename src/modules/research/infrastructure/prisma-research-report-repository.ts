@@ -20,13 +20,13 @@ export class PrismaResearchReportRepository implements ResearchReportRepository 
   async getRunReport(ref: ResearchRef & { runId: string }): Promise<ResearchRunReport | null> {
     return this.withContext(async (transaction) => {
       const runs = await transaction.$queryRaw<Array<Omit<ResearchRunReport, "queries" | "competitors" | "createdAt" | "finishedAt"> & { createdAt: Date; finishedAt: Date | null }>>(Prisma.sql`
-        SELECT "id" AS "runId", "status"::text, "estimatedCostKopecks", "approvedCostKopecks", "actualCostKopecks", "safeErrorCode", "createdAt", "finishedAt"
+        SELECT "id" AS "runId", "status"::text, "estimatedCostKopecks", "approvedCostKopecks", "allocatedCostKopecks", "safeErrorCode", "createdAt", "finishedAt"
         FROM "research"."Run" WHERE "id"=${ref.runId} AND "researchId"=${ref.researchId}
           AND "organizationId"=${ref.organizationId} AND "projectId"=${ref.projectId} LIMIT 1
       `);
       const run = runs[0]; if (!run) return null;
-      const queryRows = await transaction.$queryRaw<Array<{ queryRunId: string | null; query: string; status: string; costKopecks: number | null; safeErrorCode: string | null; startedAt: Date | null; finishedAt: Date | null }>>(Prisma.sql`
-        SELECT "id" AS "queryRunId", "queryText" AS "query", "status"::text AS "status", "costKopecks", "safeErrorCode", "startedAt", "finishedAt"
+      const queryRows = await transaction.$queryRaw<Array<{ queryRunId: string | null; query: string; status: string; allocatedCostKopecks: number | null; safeErrorCode: string | null; startedAt: Date | null; finishedAt: Date | null }>>(Prisma.sql`
+        SELECT "id" AS "queryRunId", "queryText" AS "query", "status"::text AS "status", "allocatedCostKopecks", "safeErrorCode", "startedAt", "finishedAt"
         FROM "research"."QueryRun"
         WHERE "runId"=${ref.runId} AND "organizationId"=${ref.organizationId} AND "projectId"=${ref.projectId}
         ORDER BY "queryPosition"

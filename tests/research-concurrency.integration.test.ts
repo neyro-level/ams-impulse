@@ -226,6 +226,38 @@ integrationDescription("Research budget concurrency and idempotency", () => {
     }
   });
 
+  it("keeps research budget boundaries on UTC across database session timezones", async () => {
+    const client = await database.pool.connect();
+    try {
+      await client.query("BEGIN");
+      await client.query("SET LOCAL TIME ZONE 'America/Los_Angeles'");
+      const boundaries = await client.query<{ dayStart: Date; monthStart: Date }>(
+        `SELECT * FROM "platform"."research_budget_boundaries"($1::timestamptz)`,
+        ["2026-09-14T00:00:01.000Z"],
+      );
+      expect(boundaries.rows[0]?.dayStart.toISOString()).toBe("2026-09-14T00:00:00.000Z");
+      expect(boundaries.rows[0]?.monthStart.toISOString()).toBe("2026-09-01T00:00:00.000Z");
+      await client.query("ROLLBACK");
+    } finally {
+      client.release();
+    }
+  });
+
+  it("exposes allocated estimate columns without legacy actual-cost naming", async () => {
+    const columns = await database.pool.query<{ tableName: string; columnName: string }>(`
+      SELECT table_name AS "tableName", column_name AS "columnName"
+      FROM information_schema.columns
+      WHERE table_schema = 'research'
+        AND table_name IN ('Run', 'QueryRun')
+        AND column_name IN ('allocatedCostKopecks', 'actualCostKopecks', 'costKopecks')
+      ORDER BY table_name, column_name
+    `);
+    expect(columns.rows).toEqual([
+      { tableName: "QueryRun", columnName: "allocatedCostKopecks" },
+      { tableName: "Run", columnName: "allocatedCostKopecks" },
+    ]);
+  });
+
   it("keeps privileged helper execution off PUBLIC and backup roles", async () => {
     const privileges = await database.pool.query<{
       publicAccess: boolean;
@@ -276,7 +308,7 @@ integrationDescription("Research budget concurrency and idempotency", () => {
       `INSERT INTO "research"."Run"
         ("id", "organizationId", "projectId", "researchId", "status", "queryCount",
          "estimatedCostKopecks", "estimateExpiresAt", "approvedCostKopecks",
-         "actualCostKopecks", "idempotencyKey", "confirmedAt", "finishedAt")
+         "allocatedCostKopecks", "idempotencyKey", "confirmedAt", "finishedAt")
        VALUES ($1, $2, $3, $4, 'SUCCEEDED', 1, 100, CURRENT_TIMESTAMP + INTERVAL '1 hour',
          100, 100, $5, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
       [runId, ids.organization, ids.project, ids.research, `${prefix}:succeeded`],

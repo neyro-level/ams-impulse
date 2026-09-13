@@ -28,19 +28,19 @@ function safeHttpUrl(value: string | null) {
 export function ResearchRunProgress({ report }: { report: ResearchRunReport }) {
   const completed = report.queries.filter((query) => ["SUCCEEDED", "FAILED"].includes(query.status)).length;
   const failed = report.queries.filter((query) => query.status === "FAILED").length;
-  const actualCost = report.actualCostKopecks ?? report.queries.reduce((sum, query) => sum + (query.costKopecks ?? 0), 0);
+  const allocatedCost = report.allocatedCostKopecks ?? report.queries.reduce((sum, query) => sum + (query.allocatedCostKopecks ?? 0), 0);
 
   return (
     <SectionCard title="Ход выбранного запуска" note={`${completed} из ${report.queries.length} запросов обработано`}>
       <div className="grid gap-3 sm:grid-cols-3">
         <KpiCard label="Прогресс" value={`${completed}/${report.queries.length}`} tone="primary" />
         <KpiCard label="Ошибки запросов" value={String(failed)} tone={failed ? "soft" : "default"} />
-        <KpiCard label="Фактические расходы" value={rubles(actualCost)} />
+        <KpiCard label="Учтено по оценке" value={rubles(allocatedCost)} />
       </div>
       <div className="mt-5 overflow-x-auto">
         <table className="w-full min-w-[640px] text-left text-sm">
-          <thead className="border-b border-[var(--border)] text-app-muted-foreground"><tr><th className="px-3 py-2 font-medium">Запрос</th><th className="px-3 py-2 font-medium">Статус</th><th className="px-3 py-2 font-medium">Стоимость</th><th className="px-3 py-2 font-medium">Пояснение</th></tr></thead>
-          <tbody>{report.queries.map((query) => <tr key={query.query} className="border-b border-[var(--border)] last:border-0"><td className="px-3 py-3 font-medium text-app-foreground">{query.query}</td><td className="px-3 py-3"><StatusBadge label={label[query.status] ?? query.status} tone={tone[query.status] ?? "neutral"} /></td><td className="px-3 py-3">{query.costKopecks === null ? "—" : rubles(query.costKopecks)}</td><td className="max-w-sm px-3 py-3 text-app-secondary">{safeFailureReason(query.safeErrorCode) ?? (query.status === "SUCCEEDED" ? `${query.evidence.length} свидетельств` : "—")}</td></tr>)}</tbody>
+          <thead className="border-b border-[var(--border)] text-app-muted-foreground"><tr><th className="px-3 py-2 font-medium">Запрос</th><th className="px-3 py-2 font-medium">Статус</th><th className="px-3 py-2 font-medium">Расчётная доля</th><th className="px-3 py-2 font-medium">Пояснение</th></tr></thead>
+          <tbody>{report.queries.map((query) => <tr key={query.query} className="border-b border-[var(--border)] last:border-0"><td className="px-3 py-3 font-medium text-app-foreground">{query.query}</td><td className="px-3 py-3"><StatusBadge label={label[query.status] ?? query.status} tone={tone[query.status] ?? "neutral"} /></td><td className="px-3 py-3">{query.allocatedCostKopecks === null ? "—" : rubles(query.allocatedCostKopecks)}</td><td className="max-w-sm px-3 py-3 text-app-secondary">{safeFailureReason(query.safeErrorCode) ?? (query.status === "SUCCEEDED" ? `${query.evidence.length} свидетельств` : "—")}</td></tr>)}</tbody>
         </table>
       </div>
       <div className="mt-6 space-y-3">

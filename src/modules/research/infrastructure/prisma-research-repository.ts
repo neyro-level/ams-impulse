@@ -27,7 +27,7 @@ type ResearchListRow = Omit<ResearchListItem, "updatedAt" | "lastRun" | "queryCo
   lastRunStatus: ResearchRunStatus | null;
   lastRunQueryCount: number | null;
   lastRunEstimatedCostKopecks: number | null;
-  lastRunActualCostKopecks: number | null;
+  lastRunAllocatedCostKopecks: number | null;
   lastRunSafeErrorCode: string | null;
   lastRunCreatedAt: Date | null;
 };
@@ -108,7 +108,7 @@ export class PrismaResearchRepository implements ResearchRepository {
       : query.sort === "status"
         ? Prisma.sql`research."status" ASC, research."updatedAt" DESC, research."id" ASC`
         : query.sort === "cost"
-          ? Prisma.sql`COALESCE(last_run."actualCostKopecks", last_run."estimatedCostKopecks", 0) DESC, research."updatedAt" DESC, research."id" ASC`
+          ? Prisma.sql`COALESCE(last_run."allocatedCostKopecks", last_run."estimatedCostKopecks", 0) DESC, research."updatedAt" DESC, research."id" ASC`
           : Prisma.sql`research."updatedAt" DESC, research."id" ASC`;
     const status = query.status;
     const offset = (query.page - 1) * query.pageSize;
@@ -130,19 +130,19 @@ export class PrismaResearchRepository implements ResearchRepository {
             last_run."id" AS "lastRunId", last_run."status"::text AS "lastRunStatus",
             last_run."queryCount" AS "lastRunQueryCount",
             last_run."estimatedCostKopecks" AS "lastRunEstimatedCostKopecks",
-            last_run."actualCostKopecks" AS "lastRunActualCostKopecks",
+            last_run."allocatedCostKopecks" AS "lastRunAllocatedCostKopecks",
             last_run."safeErrorCode" AS "lastRunSafeErrorCode",
             last_run."createdAt" AS "lastRunCreatedAt"
           FROM "research"."Research" research
           LEFT JOIN "research"."Query" query_row ON query_row."researchId" = research."id"
           LEFT JOIN LATERAL (
-            SELECT run."id", run."status", run."queryCount", run."estimatedCostKopecks", run."actualCostKopecks", run."safeErrorCode", run."createdAt"
+            SELECT run."id", run."status", run."queryCount", run."estimatedCostKopecks", run."allocatedCostKopecks", run."safeErrorCode", run."createdAt"
             FROM "research"."Run" run
             WHERE run."researchId" = research."id" AND run."organizationId" = research."organizationId" AND run."projectId" = research."projectId"
             ORDER BY run."createdAt" DESC, run."id" DESC LIMIT 1
           ) last_run ON TRUE
           WHERE ${where}
-          GROUP BY research."id", last_run."id", last_run."status", last_run."queryCount", last_run."estimatedCostKopecks", last_run."actualCostKopecks", last_run."safeErrorCode", last_run."createdAt"
+          GROUP BY research."id", last_run."id", last_run."status", last_run."queryCount", last_run."estimatedCostKopecks", last_run."allocatedCostKopecks", last_run."safeErrorCode", last_run."createdAt"
           ORDER BY ${orderBy}
           OFFSET ${offset} LIMIT ${query.pageSize}
         `),
@@ -165,7 +165,7 @@ export class PrismaResearchRepository implements ResearchRepository {
                 status: row.lastRunStatus,
                 queryCount: row.lastRunQueryCount,
                 estimatedCostKopecks: row.lastRunEstimatedCostKopecks,
-                actualCostKopecks: row.lastRunActualCostKopecks,
+                allocatedCostKopecks: row.lastRunAllocatedCostKopecks,
                 safeErrorCode: row.lastRunSafeErrorCode,
                 createdAt: row.lastRunCreatedAt.toISOString(),
               }
@@ -203,7 +203,7 @@ export class PrismaResearchRepository implements ResearchRepository {
     return this.withContext(async (transaction) => {
       const rows = await transaction.$queryRaw<Array<Omit<ResearchRunSummary, "createdAt" | "finishedAt"> & { createdAt: Date; finishedAt: Date | null }>>(Prisma.sql`
         SELECT run."id" AS "runId", run."status"::text, run."queryCount", run."estimatedCostKopecks",
-          COALESCE(run."actualCostKopecks", (SELECT COALESCE(SUM(query_run."costKopecks"), 0)::int FROM "research"."QueryRun" AS query_run WHERE query_run."runId"=run."id")) AS "actualCostKopecks",
+          COALESCE(run."allocatedCostKopecks", (SELECT COALESCE(SUM(query_run."allocatedCostKopecks"), 0)::int FROM "research"."QueryRun" AS query_run WHERE query_run."runId"=run."id")) AS "allocatedCostKopecks",
           run."safeErrorCode", run."createdAt", run."finishedAt",
           (SELECT COUNT(*) FILTER (WHERE query_run."status"='PENDING')::int FROM "research"."QueryRun" AS query_run WHERE query_run."runId"=run."id") AS "pendingCount",
           (SELECT COUNT(*) FILTER (WHERE query_run."status"='RUNNING')::int FROM "research"."QueryRun" AS query_run WHERE query_run."runId"=run."id") AS "runningCount",
@@ -365,15 +365,16 @@ export class PrismaResearchRepository implements ResearchRepository {
         currentRunInMonthlyWindow: boolean;
       }>>(Prisma.sql`
         SELECT committed.*,
-          current_run."createdAt" >= date_trunc('day', ${input.now}::timestamptz)
+          current_run."createdAt" >= boundaries."dayStart"
             AS "currentRunInDailyWindow",
-          current_run."createdAt" >= date_trunc('month', ${input.now}::timestamptz)
+          current_run."createdAt" >= boundaries."monthStart"
             AS "currentRunInMonthlyWindow"
         FROM "platform"."research_committed_spend"(
           ${input.ref.organizationId},
           ${input.ref.projectId},
           ${input.now}::timestamptz
         ) AS committed
+        CROSS JOIN "platform"."research_budget_boundaries"(${input.now}::timestamptz) AS boundaries
         JOIN "research"."Run" AS current_run ON current_run.id = ${input.runId}
       `);
       const currentSpend = spend[0];

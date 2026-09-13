@@ -45,7 +45,7 @@ describe("production configuration boundary", () => {
 
     const seed = readFileSync("scripts/seed-e2e-admin.ts", "utf8");
     expect(seed).toContain("${E2E_RESEARCH.budgetResearchId}, 'SUCCEEDED'");
-    expect(seed).toContain('"actualCostKopecks"=50000');
+    expect(seed).toContain('"allocatedCostKopecks"=50000');
   });
 
   it("completes Platform Admin sign-in through the verified TOTP challenge", () => {
@@ -145,6 +145,17 @@ describe("production configuration boundary", () => {
     expect(compose).not.toContain("/tmp:size=");
     expect(compose.match(/type: tmpfs/g)).toHaveLength(6);
     expect(compose).toContain("mode: 01777");
+  });
+
+  it("pins every production database session and database-backed gate to UTC", () => {
+    const compose = readFileSync("docker-compose.production.yml", "utf8");
+    const ci = readFileSync(".sourcecraft/ci.yaml", "utf8");
+    const verifier = readFileSync("scripts/verify-datetime-contract.mjs", "utf8");
+
+    expect(compose.match(/PGOPTIONS: -c TimeZone=UTC/g)).toHaveLength(5);
+    expect(ci.match(/PGOPTIONS: -c TimeZone=UTC/g)).toHaveLength(3);
+    expect(verifier).toContain('client.query("SHOW TimeZone")');
+    expect(verifier).toContain('sessionTimezone !== "UTC"');
   });
 
   it("deploys migrations without importing operator configuration", () => {
