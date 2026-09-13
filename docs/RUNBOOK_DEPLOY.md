@@ -48,7 +48,7 @@ Artifact includes:
 - `release-manifest.json` with exact SHA, build timestamp, pinned Node base digest, separate runtime/migrator image tags and digests, lock checksum and passed image vulnerability policy.
 
 Artifact does not include DB data, local env or secrets.
-The final images omit npm/corepack and install the reviewed OS security package set. The build executes the migrator image and rejects it when Prisma CLI is missing or development-only tooling is resolvable. Docker Scout scans both final images and blocks the artifact when a fixable critical or high CVE is present; scanner failure is also fail-closed.
+The final images omit npm/corepack and install the reviewed OS security package set. The migrator image preloads the exact Prisma schema engine during build; its release probe executes Prisma CLI as the non-root runtime user with a read-only root filesystem and rejects missing engines, missing CLI or resolvable development-only tooling. Docker Scout scans both final images and blocks the artifact when a fixable critical or high CVE is present; scanner failure is also fail-closed.
 
 ## Target Preparation
 

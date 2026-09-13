@@ -82,6 +82,9 @@ describe("production configuration boundary", () => {
     expect(dockerfile).toContain("RUN pnpm install --prod --frozen-lockfile");
     expect(dockerfile).toContain("FROM runtime-base AS migrator");
     expect(dockerfile).toContain("COPY --from=runtime-deps /app/node_modules ./node_modules");
+    expect(dockerfile).toContain(
+      "RUN node node_modules/prisma/build/index.js --version >/dev/null",
+    );
     expect(dockerfile).not.toContain("COPY --from=build-deps /app/node_modules ./node_modules");
     expect(dockerfile).toContain(
       "COPY --from=build /app/src/platform/config/server-environment.ts ./src/platform/config/server-environment.ts",
@@ -100,6 +103,8 @@ describe("production configuration boundary", () => {
     expect(build).toContain('buildImage("runtime"');
     expect(build).toContain('buildImage("migrator"');
     expect(build).toContain("verifyMigratorImage(migratorImageTag)");
+    expect(build).toContain('"--read-only"');
+    expect(build).toContain('"node_modules/prisma/build/index.js"');
     expect(build).toContain("forbidden dev dependency");
     expect(build).toContain("baseImageDigest");
     expect(build).toContain("migratorImageDigest");

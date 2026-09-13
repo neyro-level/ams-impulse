@@ -119,6 +119,21 @@ function verifyMigratorImage(tag) {
     cwd: rootDir,
     stdio: "inherit",
   });
+  execFileSync("docker", [
+    "run",
+    "--rm",
+    "--read-only",
+    "--tmpfs",
+    "/tmp:rw,noexec,nosuid,size=64m",
+    "--entrypoint",
+    "node",
+    tag,
+    "node_modules/prisma/build/index.js",
+    "--version",
+  ], {
+    cwd: rootDir,
+    stdio: "inherit",
+  });
 }
 
 async function verifyImageVulnerabilities(tag, archiveName) {

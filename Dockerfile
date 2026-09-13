@@ -13,6 +13,7 @@ RUN pnpm install --frozen-lockfile
 FROM base AS runtime-deps
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 RUN pnpm install --prod --frozen-lockfile
+RUN node node_modules/prisma/build/index.js --version >/dev/null
 
 FROM build-deps AS build
 COPY . .
