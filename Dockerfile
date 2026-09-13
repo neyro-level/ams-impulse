@@ -30,6 +30,7 @@ COPY --from=build-deps /app/node_modules ./node_modules
 COPY --from=build /app/prisma ./prisma
 COPY --from=build /app/prisma.config.ts ./prisma.config.ts
 COPY --from=build /app/src/platform/config/database-target.ts ./src/platform/config/database-target.ts
+COPY --from=build /app/src/platform/config/server-environment.ts ./src/platform/config/server-environment.ts
 COPY --from=build /app/scripts/migrator-entrypoint.mjs ./scripts/migrator-entrypoint.mjs
 COPY --from=build /app/scripts/pgboss-migrate.mjs ./scripts/pgboss-migrate.mjs
 USER node

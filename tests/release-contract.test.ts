@@ -67,6 +67,9 @@ describe("production configuration boundary", () => {
     expect(dockerfile).toContain("RUN pnpm install --prod --frozen-lockfile");
     expect(dockerfile).toContain("FROM runtime-base AS migrator");
     expect(dockerfile).toContain("COPY --from=runtime-deps /app/node_modules ./node_modules");
+    expect(dockerfile).toContain(
+      "COPY --from=build /app/src/platform/config/server-environment.ts ./src/platform/config/server-environment.ts",
+    );
     expect(compose).toContain("AMS_SEO_MONITOR_MIGRATOR_IMAGE");
   });
 
