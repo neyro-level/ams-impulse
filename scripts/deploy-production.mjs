@@ -330,7 +330,7 @@ for expected_digest in "$BUILT_IMAGE_DIGEST" "$BUILT_MIGRATOR_IMAGE_DIGEST"; do
   fi
   expected_hash="$(printf '%s' "$expected_digest" | cut -d: -f2)"
   expected_blob="blobs/sha256/$expected_hash"
-  tar -tf "$IMAGE_TAR" | grep -Fqx "$expected_blob" || {
+  tar -tf "$IMAGE_TAR" "$expected_blob" >/dev/null 2>&1 || {
     echo "Release image archive is missing expected config digest: $expected_digest" >&2
     exit 1
   }

@@ -99,7 +99,10 @@ describe("production configuration boundary", () => {
     expect(deployScript).toContain('^sha256:[0-9a-f]{64}$');
     expect(deployScript).toContain('expected_hash="$(printf \'%s\' "$expected_digest" | cut -d: -f2)"');
     expect(deployScript).toContain('expected_blob="blobs/sha256/$expected_hash"');
-    expect(deployScript).toContain('tar -tf "$IMAGE_TAR" | grep -Fqx "$expected_blob"');
+    expect(deployScript).toContain(
+      'tar -tf "$IMAGE_TAR" "$expected_blob" >/dev/null 2>&1',
+    );
+    expect(deployScript).not.toContain('tar -tf "$IMAGE_TAR" | grep');
     expect(deployScript).toContain('IMAGE_DIGEST="$ACTUAL_IMAGE_ID"');
     expect(deployScript).toContain('MIGRATOR_IMAGE_DIGEST="$ACTUAL_MIGRATOR_IMAGE_ID"');
   });
