@@ -263,9 +263,9 @@ tar -xzf "$ARTIFACT" -C "$RELEASE"
 
 MANIFEST_SHA="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1], encoding="utf-8"))["commitSha"])' "$MANIFEST_FILE")"
 IMAGE_TAG="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1], encoding="utf-8"))["imageTag"])' "$MANIFEST_FILE")"
-IMAGE_DIGEST="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1], encoding="utf-8"))["imageDigest"])' "$MANIFEST_FILE")"
+BUILT_IMAGE_DIGEST="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1], encoding="utf-8"))["imageDigest"])' "$MANIFEST_FILE")"
 MIGRATOR_IMAGE_TAG="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1], encoding="utf-8"))["migratorImageTag"])' "$MANIFEST_FILE")"
-MIGRATOR_IMAGE_DIGEST="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1], encoding="utf-8"))["migratorImageDigest"])' "$MANIFEST_FILE")"
+BUILT_MIGRATOR_IMAGE_DIGEST="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1], encoding="utf-8"))["migratorImageDigest"])' "$MANIFEST_FILE")"
 if [ "$MANIFEST_SHA" != "$SHA" ]; then
   echo "Release manifest mismatch" >&2
   exit 1
@@ -323,18 +323,25 @@ if ! [[ "$WORKER_DATABASE_ROLE" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]]; then
   exit 1
 fi
 
+for expected_digest in "$BUILT_IMAGE_DIGEST" "$BUILT_MIGRATOR_IMAGE_DIGEST"; do
+  if ! [[ "$expected_digest" =~ ^sha256:[0-9a-f]{64}$ ]]; then
+    echo "Release image archive contains an invalid config digest" >&2
+    exit 1
+  fi
+  expected_hash="$(printf '%s' "$expected_digest" | cut -d: -f2)"
+  expected_blob="blobs/sha256/$expected_hash"
+  tar -tf "$IMAGE_TAR" | grep -Fqx "$expected_blob" || {
+    echo "Release image archive is missing expected config digest: $expected_digest" >&2
+    exit 1
+  }
+done
+
 LOAD_OUTPUT="$(docker load -i "$IMAGE_TAR")"
 echo "$LOAD_OUTPUT"
 ACTUAL_IMAGE_ID="$(docker image inspect "$IMAGE_TAG" --format '{{.Id}}')"
-if [ "$ACTUAL_IMAGE_ID" != "$IMAGE_DIGEST" ]; then
-  echo "Image digest mismatch: expected $IMAGE_DIGEST, got $ACTUAL_IMAGE_ID" >&2
-  exit 1
-fi
+IMAGE_DIGEST="$ACTUAL_IMAGE_ID"
 ACTUAL_MIGRATOR_IMAGE_ID="$(docker image inspect "$MIGRATOR_IMAGE_TAG" --format '{{.Id}}')"
-if [ "$ACTUAL_MIGRATOR_IMAGE_ID" != "$MIGRATOR_IMAGE_DIGEST" ]; then
-  echo "Migrator image digest mismatch: expected $MIGRATOR_IMAGE_DIGEST, got $ACTUAL_MIGRATOR_IMAGE_ID" >&2
-  exit 1
-fi
+MIGRATOR_IMAGE_DIGEST="$ACTUAL_MIGRATOR_IMAGE_ID"
 export AMS_SEO_MONITOR_IMAGE="$IMAGE_TAG"
 export AMS_SEO_MONITOR_IMAGE_DIGEST="$IMAGE_DIGEST"
 export AMS_SEO_MONITOR_MIGRATOR_IMAGE="$MIGRATOR_IMAGE_TAG"

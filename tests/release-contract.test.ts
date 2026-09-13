@@ -82,6 +82,26 @@ describe("production configuration boundary", () => {
     expect(build).toContain("buildTimestamp");
   });
 
+  it("verifies archived image configs before accepting engine-normalized runtime IDs", () => {
+    const deployScript = readFileSync("scripts/deploy-production.mjs", "utf8");
+
+    expect(deployScript).toContain('^sha256:[0-9a-f]{64}$');
+    expect(deployScript).toContain('expected_hash="$(printf \'%s\' "$expected_digest" | cut -d: -f2)"');
+    expect(deployScript).toContain('expected_blob="blobs/sha256/$expected_hash"');
+    expect(deployScript).toContain('tar -tf "$IMAGE_TAR" | grep -Fqx "$expected_blob"');
+    expect(deployScript).toContain('IMAGE_DIGEST="$ACTUAL_IMAGE_ID"');
+    expect(deployScript).toContain('MIGRATOR_IMAGE_DIGEST="$ACTUAL_MIGRATOR_IMAGE_ID"');
+  });
+
+  it("uses portable long-form tmpfs mounts for production Compose", () => {
+    const compose = readFileSync("docker-compose.production.yml", "utf8");
+
+    expect(compose).not.toContain("tmpfs: [");
+    expect(compose).not.toContain("/tmp:size=");
+    expect(compose.match(/type: tmpfs/g)).toHaveLength(6);
+    expect(compose).toContain("mode: 01777");
+  });
+
   it("deploys migrations without importing operator configuration", () => {
     const deployScript = readFileSync("scripts/deploy-production.mjs", "utf8");
     const integrationRunner = readFileSync("scripts/run-integration-tests.mjs", "utf8");
