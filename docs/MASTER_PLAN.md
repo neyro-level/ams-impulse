@@ -2,16 +2,6 @@
 
 Документ содержит только незавершённую работу. Реализованные изменения сохраняются в Git и SourceCraft.
 
-## Следующий Release
-
-Только после отдельной команды владельца:
-
-1. Выпустить reviewed exact SHA canonical `main` по `docs/RUNBOOK_DEPLOY.md`.
-2. Подтвердить release record, image digest, migration state, web/outbox/research-worker readiness и fresh Timeweb backup proof.
-3. Выполнить live smoke изменённых SEO Monitor, Research, Platform Admin и PWA-сценариев без публикации PII/readiness body.
-
-Merge не является release. До владельческой команды эти пункты остаются операционными и не блокируют завершение кода remediation.
-
 ## Внешние Проверки
 
 - выполнить первый подтверждённый платный тестовый запуск Research через MCP после серверной оценки и явного подтверждения стоимости;
@@ -19,7 +9,7 @@ Merge не является release. До владельческой коман�
 - проверить восстановление Research job после контролируемого перезапуска выпущенного worker без повторения неоднозначного paid call;
 - подтвердить OAuth/MCP ещё на двух локальных компьютерах;
 - проверить установку и private-cache поведение PWA на реальных Android и iOS устройствах; Windows Chromium proof выполнен;
-- проверить responsive кабинет с реальными test data на `375`, `768`, `1280`, `1440` после выпуска exact SHA.
+- проверить responsive кабинет с реальными test data на `375`, `768`, `1280`, `1440`; synthetic visual baseline уже проходит CI.
 
 ## Следующие Продуктовые Эпики
 
@@ -39,5 +29,5 @@ Merge не является release. До владельческой коман�
 - синхронизировать ротированные DB credentials в AMS IMPULSE Doppler, не меняя раздельные runtime identities;
 - завершить безопасное подключение существующих SEO provider mappings;
 - подтвердить SourceCraft secret scanning;
-- завершить sanitation GitHub mirror до public visibility;
+- выполнить отдельный full-history secrets/PII scan уже публичного GitHub mirror; current-tree проверки не заменяют history proof;
 - добавить внешний monitor без публикации readiness body.

@@ -3,7 +3,7 @@
 Core Standard version: `AMS Application Platform Core 3.4 — Solo Minimal`
 
 Conformance reviewed: `2026-09-13`
-Reviewed scope: canonical `main` after EPIC-18 plus the final EPIC-19 diff; exact evidence is attached to the final PR gate.
+Reviewed scope: canonical code/runtime baseline `1c5c3d6450a6934034f10ce15d91cdfb18da7659`; subsequent documentation normalization changes no application behavior.
 
 ## Project Profile
 
@@ -42,11 +42,11 @@ DATABASE = managed-postgresql
 | Platform Admin MFA | IMPLEMENTED | Verified TOTP is mandatory for Platform Admin authority; bootstrap and one-time hashed recovery material have explicit operator flows and tests. |
 | MCP | IMPLEMENTED | OAuth 2.1 + PKCE, bounded CIMD, disabled unauthenticated DCR, same-origin browser policy, per-subject rate limiting and 12 Research tools are implemented. |
 | PWA private cache safety | IMPLEMENTED | Service worker intercepts only immutable static paths, deletes old versions and respects response cache prohibitions; logout/offline browser proof exists. Android/iOS install QA remains operational. |
-| Production live proof | IMPLEMENTED | Headless proof validates exact SHA/digests, health, workers, queue, timers and private read paths and writes a root-only record. An actual result exists only after an owner-authorized release. |
+| Production live proof | IMPLEMENTED | Owner-authorized release `1c5c3d6` completed on `2026-09-13`: exact SHA/digests, web/outbox/research-worker health, queue/timers, private read paths, 42 migrations and fresh Timeweb backup were recorded in the root-only proof. |
 
 ## Interpretation
 
-Матрица описывает реализованный contract reviewed branch, а не утверждает production rollout. `IMPLEMENTED` требует code/configuration и executable proof; deployed state требует отдельный exact-SHA release record и live proof.
+Матрица описывает реализованный contract. Production rollout отдельно подтверждён только для baseline `1c5c3d6`; более новый docs-only `main` не меняет runtime и не считается новым release.
 
 ## Guarantee → Proof Matrix
 
@@ -96,4 +96,4 @@ STANDARD and RISKY merge proofs, plus release proof, are manual exact-head workf
 - installed package contracts не задают несовместимого upper bound для Next.js `16.3.3`, React `19.2.8`, Prisma `7.10.0`, ESLint `9.39.5`, Vitest `4.1.11` и Playwright `1.62.1`;
 - `typecheck`, ESLint, the full unit suite, Playwright test discovery and Next.js production build are exercised by the project gates with TypeScript `6.0.3`.
 
-Локальный shell использовал Node ниже project floor `24.20.0`, поэтому exact runtime evidence должен быть повторно подтверждён SourceCraft workflow на зафиксированном Node image перед merge. Docker Desktop автоматически не запускался.
+Exact runtime evidence подтверждён SourceCraft gates и production release на закреплённом Node `24.20.0` image. Локальный shell не является заменой этому exact-head proof.

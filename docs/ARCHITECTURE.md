@@ -6,10 +6,11 @@ Profile: `TENANCY = multi-tenant`, `ASYNC = outbox-plus-queue`, `DATA = pii`, `D
 
 ## Status Convention
 
-- `CURRENT` - реализовано в canonical `main`; наличие в production подтверждается только release record и live proof точного SHA.
-- `PLANNED` - утверждено, но ещё не реализовано или не выпущено.
+- `IMPLEMENTED` - реализовано в canonical `main`.
+- `DEPLOYED` - наличие в production подтверждено release record + live proof точного SHA.
+- `PLANNED` - утверждено, но business runtime ещё не реализован.
 
-SEO Монитор, модульное ядро, Инструменты и Исследования относятся к `CURRENT`. АМС Лиды и остальные внутренние инструменты относятся к `PLANNED`.
+SEO Монитор, модульное ядро, Инструменты и Исследования относятся к `IMPLEMENTED` и `DEPLOYED` на production baseline `1c5c3d6450a6934034f10ce15d91cdfb18da7659` от `2026-09-13`. АМС Лиды и остальные внутренние инструменты относятся к `PLANNED`. Более новый docs-only SHA в `main` не меняет deployed runtime.
 
 ## System Context
 
@@ -29,6 +30,40 @@ Outbox -> pg-boss -> bounded product worker -> provider/storage -> PostgreSQL
 Web, MCP и worker собираются из одного repository и immutable OCI image. Research worker является отдельным process/service, но не отдельным микросервисом.
 
 Каноническая product/repository identity — `ams-impulse`. Исторический runtime-slug `ams-seo-monitor` намеренно сохранён для существующих server paths, OCI tags, Compose project, systemd/Nginx assets и health DTO. Его переименование является отдельной production migration, а не частью обычной нормализации документов.
+
+## Actual Stack
+
+Exact versions определяют `package.json`, `pnpm-lock.yaml` и `.node-version`:
+
+| Layer | Current implementation |
+| --- | --- |
+| Runtime | Node.js `24.20.0`, pnpm `11.5.1` |
+| Web | Next.js `16.3.3`, React `19.2.8`, TypeScript strict `6.0.3` |
+| Identity | Better Auth `1.7.2` |
+| Data | Prisma `7.10.0` for `public`; typed parameterized SQL repositories for `tools` and `research` |
+| Database | Timeweb Managed PostgreSQL `18`, private network + TLS |
+| Queue | transactional outbox + pg-boss `12.30.0` |
+| Delivery | immutable OCI runtime/migrator images, Docker Compose, host Nginx/systemd |
+
+Version-sensitive changes require exact installed-version evidence; this document does not override the lockfile.
+
+## Module Map
+
+| Boundary | Responsibility | Runtime entrypoints |
+| --- | --- | --- |
+| `identity-access` | Better Auth principal, product membership and project grants | `index.ts`, `server.ts`, `worker.ts` |
+| `product-catalog` | browser-safe product/tool codes and availability | `index.ts` |
+| `project-registry` | SEO organizations, projects, sites and configuration | `index.ts`, `server.ts`, `worker.ts` |
+| `data-ingestion` | provider orchestration and normalized evidence | `index.ts`, `server.ts`, `worker.ts` |
+| `ranking-analytics` | pure ranking semantics | `index.ts` |
+| `reporting` | `SiteReportSnapshot`, director analytics and report reads | `index.ts`, `server.ts`, `worker.ts` |
+| `tools-workspace` | Tools organizations, projects and grants | `index.ts`, `server.ts` |
+| `research` | Research lifecycle, XMLRiver execution, exports and MCP | `index.ts`, `server.ts`, `worker.ts` |
+| `notifications` | browser-safe lifecycle notifications | `index.ts`, `server.ts`, `actions.ts` |
+| `platform-operations` | audit, idempotency, outbox, queue, readiness and retention | `index.ts`, `server.ts`, `worker.ts` |
+| `platform-admin` | protected composition of module-owned admin workflows | `index.ts`, `server.ts` |
+
+`src/app` composes routes only; `src/platform` owns neutral technical contracts. Cross-module consumers use public entrypoints, not another module's infrastructure files.
 
 ## Product Boundaries
 
@@ -127,10 +162,11 @@ Product-specific membership/project-access tables preserve real foreign keys. Ge
 Current PostgreSQL layout:
 
 - `public` - existing Better Auth identity, SEO data, audit, outbox and runtime records;
-- `platform` - RLS context helpers and reserved platform boundary;
+- `platform` - active RLS context helpers and platform boundary;
 - `tools` - Tools organizations, projects and grants;
 - `research` - Research records and exports;
-- `seo`, `leads`, `contracts`, `invoices`, `presentations`, `site_clone`, `ops`, `pgboss` - reserved schemas for incremental extraction of the corresponding domains.
+- `pgboss` - active queue transport objects owned by pg-boss;
+- `seo`, `leads`, `contracts`, `invoices`, `presentations`, `site_clone`, `ops` - reserved schemas for incremental extraction of the corresponding domains.
 
 The Prisma schema owns the existing `public` models. Immutable SQL migrations and typed repository adapters own the cross-schema Tools/Research tables. A reserved schema is not evidence that its product is implemented, and product schemas do not imply separate database servers.
 
@@ -187,7 +223,7 @@ Canonical endpoint: `/mcp`, Streamable HTTP. OAuth 2.1 + PKCE maps token subject
 
 Private shell uses server-built navigation and accessible organization/project options. Client state owns only presentation interactions such as drawer state. Direct URL access always reauthorizes server-side.
 
-Research routes в production:
+Private Research routes deployed in the current production baseline:
 
 - `/tools/research/`;
 - `/tools/research/[researchId]/`.
@@ -237,7 +273,9 @@ small runtime entrypoint. Source TypeScript, Prisma schema/tooling, tsconfig,
 framework build configuration, Compose and build scripts are absent. The separate
 migrator contains only its database schema/configuration and migration entrypoint.
 
-Web, worker, migrator and backup use separate provider-managed identities. The previous self-managed database is read-only through `2026-09-25`; deletion requires a separate owner decision. Research worker входит в каноническую release topology и выполняет только project-scoped jobs после выпуска соответствующего exact SHA.
+Web, worker, migrator and backup use separate provider-managed identities. The previous self-managed database is read-only through `2026-09-25`; deletion requires a separate owner decision. Research worker входит в каноническую release topology и выполняет только project-scoped jobs.
+
+Production release `1c5c3d6` применил все 42 immutable migrations. Web, outbox worker и Research worker прошли exact-image health/live proof; pre-migration recovery evidence использует fresh Timeweb provider-physical backup, поэтому несовместимый logical-backup timer отключён. Для пустого набора настроенных sync-проектов `integrationFreshness = unknown` допустим только когда оба поля sync history равны `null`; `stale` всегда блокирует release.
 
 ## Verification
 

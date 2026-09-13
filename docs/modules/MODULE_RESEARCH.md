@@ -101,7 +101,7 @@ MCP не предоставляет SQL, provider credentials или admin beare
 - PostgreSQL migrations, RLS integration и tenant-isolation suite проходят release gate;
 - один проект не читает соседний проект, а missing user/job context получает deny;
 - OAuth 2.1 + PKCE вход из Codex проверен на основном Windows-компьютере;
-- MCP публикует только шесть ограниченных Research tools;
+- MCP публикует только двенадцать ограниченных Research tools, перечисленных в разделе `MCP`;
 - web и worker проходят production health check на exact release SHA;
 - платный XMLRiver-вызов без подтверждения стоимости не выполнялся.
 

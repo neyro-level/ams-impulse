@@ -1,10 +1,18 @@
 # PRODUCT
 
-Этот документ - единственный product source of truth AMS IMPULSE. Фактическую готовность определяют код и слитые Pull Request.
+Этот документ - единственный product/PRD source of truth AMS IMPULSE. Реализованное поведение определяет canonical `main`, а production availability определяется deployed exact SHA и его live proof.
 
 ## Назначение
 
 AMS IMPULSE - личная CRM-платформа владельца АМС с частичным клиентским доступом. Она объединяет клиентские продукты и внутренние инструменты под одной identity-системой, но сохраняет жёсткие границы данных и разрешений.
+
+## Статус Поставки
+
+- `IMPLEMENTED`: SEO Монитор, модульное platform-ядро, Инструменты, Исследования, OAuth/MCP, приватный кабинет и static-only PWA находятся в canonical `main`.
+- `DEPLOYED`: production release `2026-09-13` на exact SHA `1c5c3d6450a6934034f10ce15d91cdfb18da7659` подтвердил web, outbox worker, Research worker, managed PostgreSQL 18 и private read smoke.
+- `PLANNED`: АМС Лиды, Договоры, Счета, Презентации, Клон сайтов и внутренний AI-агент не имеют business runtime.
+
+Docs-only commits после указанного release SHA не означают изменение production-функций и не требуют повторного deploy.
 
 ## Продуктовая Карта
 
@@ -46,7 +54,7 @@ Tools Organization
 
 Модули:
 
-1. **Исследования** - реализован в canonical `main`; платный запуск требует отдельного подтверждения рассчитанной стоимости. Production availability определяется deployed exact SHA.
+1. **Исследования** - реализован в canonical `main` и выпущен в production baseline `1c5c3d6`; платный запуск требует отдельного подтверждения рассчитанной стоимости. Production availability определяется deployed exact SHA.
 2. **Договоры**.
 3. **Счета**.
 4. **Презентации**.
@@ -82,12 +90,17 @@ Worker действует в scope конкретного job. MCP действ�
 
 ## Access Scenarios
 
+Текущие исполняемые сценарии:
+
 - SEO only: пользователь видит только SEO Монитор и назначенные SEO projects.
-- Leads only: пользователь видит только АМС Лиды и назначенные Leads projects.
-- SEO + Leads: оба продукта видимы, scopes остаются независимыми.
 - Tools denied: раздел отсутствует в navigation, direct URL/API/MCP возвращает безопасный отказ.
 - One project: sibling projects той же organization не видны.
 - Revoked grant: web и MCP теряют доступ со следующего запроса, sessions отзываются.
+
+Целевая матрица после реализации АМС Лиды:
+
+- Leads only: пользователь видит только АМС Лиды и назначенные Leads projects.
+- SEO + Leads: оба продукта видимы, scopes остаются независимыми.
 
 ## Исследования MVP
 
@@ -163,9 +176,9 @@ Public signup отключён. Наличие формы заявки не оз
 
 Native App Store/Google Play applications вне первого цикла.
 
-PWA-код реализован в canonical `main`: manifest, install command и static-only allowlist service worker. Windows Chromium proof выполнен; Android/iOS device proof и production availability подтверждаются отдельно.
+PWA-код реализован в canonical `main`: manifest, install command и static-only allowlist service worker. Windows Chromium и production static-cache proof выполнены на release `1c5c3d6`; Android/iOS device proof подтверждается отдельно.
 
-## Non-goals Первого Цикла
+## Non-goals Текущего Продуктового Цикла
 
 - реализация АМС Лиды;
 - договоры, счета, презентации и клон сайтов;

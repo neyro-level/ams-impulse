@@ -18,7 +18,7 @@ Provider HTTP, provider credentials, report mutations from browser, second compi
 
 ## Principals
 
-Platform Analyst can read reports globally. Tenant User can read only reports inside fresh Membership organization. Route slugs do not prove access.
+Platform Admin has global read with an explicit target. Analyst and Client identities read only projects returned by fresh explicit SEO grants; organization membership alone does not open sibling projects. Route slugs do not prove access.
 
 ## Route Contract
 

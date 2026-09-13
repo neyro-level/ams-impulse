@@ -9,6 +9,7 @@ AMS IMPULSE - модульная CRM-платформа АМС: публичны
 ## Текущий Статус
 
 - `main`: модульное ядро, SEO Монитор, строгие назначения, RLS, Инструменты, Исследования, XMLRiver worker, OAuth/MCP, кабинет и PWA. Production feature set определяется только deployed SHA и live proof, а не содержимым `main`.
+- Production baseline: exact SHA `1c5c3d6450a6934034f10ce15d91cdfb18da7659` выпущен `2026-09-13`; web, outbox worker и Research worker прошли live proof, все 42 migrations применены. Последующие docs-only commits в `main` не меняют этот runtime baseline.
 - OAuth-подключение AMS IMPULSE к Codex проверено на основном Windows-компьютере; проверка ещё на двух компьютерах остаётся операционной задачей.
 - АМС Лиды, Договоры, Счета, Презентации и Клон сайтов пока не реализованы.
 - Production работает на Timeweb Managed PostgreSQL 18 в частной сети без публичного database IP; прежняя локальная БД сохранена read-only до `2026-09-25`.

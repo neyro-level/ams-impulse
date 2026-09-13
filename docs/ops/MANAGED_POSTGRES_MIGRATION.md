@@ -1,6 +1,6 @@
 # Managed PostgreSQL Migration
 
-Status: completed on `2026-09-11`.
+Status: infrastructure cutover completed on `2026-09-11`; application/RLS release completed on `2026-09-13`.
 
 Production was moved after the explicit owner command. This document now records the active contract and rollback boundary; it is not authorization for another infrastructure change.
 
@@ -20,17 +20,17 @@ With `BACKUP_STRATEGY=provider-physical`, deployment calls the Timeweb Cloud API
 
 1. Fresh source backup, checksum and isolated restore smoke passed.
 2. Four provider-managed login identities were created and least-privilege DML/DDL checks passed.
-3. Current immutable production image completed migrations and live/ready smoke against the target.
+3. Immutable production release `1c5c3d6450a6934034f10ce15d91cdfb18da7659` completed all 42 migrations and live/ready smoke against the target.
 4. Final write freeze and restore completed; exact row counts matched for all 55 persistent tables.
 5. Web and worker returned healthy status after the switch; PostgreSQL, auth, outbox, worker heartbeat and integration freshness were ready.
 6. A post-cutover logical dump, checksum and private S3 upload passed.
 7. The previous local database is read-only with zero application connections and retained through `2026-09-25`.
 
-The product RLS authorization matrix remains part of the unmerged access-control release gate. It was not applied to the current production schema during this infrastructure-only cutover.
+The product RLS authorization matrix was applied by the `2026-09-13` release after an exact-head RISKY gate. Runtime identities remain non-owner `NOBYPASSRLS`; web and project-scoped workers passed allowed/denied access proof. The release used a fresh provider-physical Timeweb backup and kept the incompatible logical backup timer disabled.
 
 ## Hard stops
 
 - Do not grant `BYPASSRLS` or table ownership to web/worker logins.
-- Do not activate runtime group roles until every request/job opens a transaction and sets its verified authorization context.
+- Runtime roles may remain active only while every protected request/job opens a transaction and sets its verified authorization context.
 - Do not expose the managed database through a public IP.
 - Do not treat a successful dump as recovery proof; restore and row-count checks are mandatory.
