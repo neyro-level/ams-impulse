@@ -6,7 +6,7 @@ export const Input = React.forwardRef<HTMLInputElement, React.InputHTMLAttribute
     <input
       ref={ref}
       className={cn(
-        "min-h-11 w-full rounded-[var(--radius)] border border-[var(--input)] bg-[var(--card)] px-3 text-sm text-app-foreground outline-none transition focus-visible:border-[var(--ring)] focus-visible:ring-2 focus-visible:ring-[color-mix(in_srgb,var(--ring)_20%,transparent)] disabled:bg-[var(--muted)] disabled:opacity-60 aria-invalid:border-[var(--destructive)]",
+        "min-h-11 w-full rounded border border-input bg-card px-3 text-sm text-foreground outline-none transition focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring-soft disabled:bg-muted disabled:opacity-60 aria-invalid:border-destructive",
         className,
       )}
       {...props}
@@ -20,7 +20,7 @@ export const Textarea = React.forwardRef<HTMLTextAreaElement, React.TextareaHTML
     <textarea
       ref={ref}
       className={cn(
-        "min-h-28 w-full rounded-[var(--radius)] border border-[var(--input)] bg-[var(--card)] px-3 py-2 text-sm text-app-foreground outline-none transition focus-visible:border-[var(--ring)] focus-visible:ring-2 focus-visible:ring-[color-mix(in_srgb,var(--ring)_20%,transparent)] disabled:bg-[var(--muted)] disabled:opacity-60 aria-invalid:border-[var(--destructive)]",
+        "min-h-28 w-full rounded border border-input bg-card px-3 py-2 text-sm text-foreground outline-none transition focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring-soft disabled:bg-muted disabled:opacity-60 aria-invalid:border-destructive",
         className,
       )}
       {...props}

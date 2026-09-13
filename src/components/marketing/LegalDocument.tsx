@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { legalOperator } from "../../shared/legal/legal-config.ts";
 import { SiteFooter } from "./SiteFooter.tsx";
 import styles from "./LegalDocument.module.css";
+import landingStyles from "./ImpulseLanding.module.css";
 
 type LegalDocumentProps = {
   eyebrow: string;
@@ -16,7 +17,7 @@ type LegalDocumentProps = {
 
 export function LegalDocument({ eyebrow, title, description, version, effectiveDate, children }: LegalDocumentProps) {
   return (
-    <main className="theme-public impulse-landing min-h-screen bg-[var(--ch-bg-page)] text-[var(--ch-text-primary)]">
+    <main className={`theme-public ${landingStyles.landing} min-h-screen bg-[var(--ch-bg-page)] text-[var(--ch-text-primary)]`}>
       <header className="bg-[var(--ch-bg-deepest)] text-[var(--ch-white)]">
         <div className="mx-auto w-full max-w-[1120px] px-5 pb-16 pt-6 sm:px-6 sm:pb-20 sm:pt-8">
           <div className="flex items-center justify-between gap-6">

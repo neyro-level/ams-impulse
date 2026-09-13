@@ -1,3 +1,7 @@
+.landing {
+  font-family: "Manrope", "PT Root UI", "Segoe UI", ui-sans-serif, system-ui, sans-serif;
+}
+
 .grid {
   background-image: var(--ch-grid-image);
   background-size: 72px 72px;

@@ -7,9 +7,9 @@ export default function ProjectsLoading() {
         <Skeleton className="h-4 w-28" />
         <Skeleton className="h-8 w-48" />
       </div>
-      <Skeleton className="h-16 rounded-[var(--radius-panel)] border border-[var(--border)] bg-[var(--card)]" />
-      <Skeleton className="h-24 rounded-[var(--radius-panel)] border border-[var(--border)] bg-[var(--card)]" />
-      <Skeleton className="h-80 rounded-[var(--radius-panel)] border border-[var(--border)] bg-[var(--card)]" />
+      <Skeleton className="h-16 rounded-panel border border-border bg-card" />
+      <Skeleton className="h-24 rounded-panel border border-border bg-card" />
+      <Skeleton className="h-80 rounded-panel border border-border bg-card" />
     </div>
   );
 }

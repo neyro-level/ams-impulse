@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { Button } from "../ui/button.tsx";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "../ui/dialog.tsx";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip.tsx";
+import styles from "../shell/SidebarControls.module.css";
 
 interface InstallPromptEvent extends Event {
   prompt(): Promise<void>;
@@ -35,7 +36,7 @@ export function InstallAppButton({ collapsed = false }: { collapsed?: boolean })
     await prompt.userChoice;
     setPrompt(null);
   }
-  const button = <Button type="button" variant="ghost" size={collapsed ? "icon" : "sm"} className={collapsed ? "sidebar-action size-8 min-h-8" : "sidebar-action w-full justify-start"} onClick={install} aria-label="Установить приложение"><Download aria-hidden />{collapsed ? null : "Установить"}</Button>;
+  const button = <Button type="button" variant="ghost" size={collapsed ? "icon" : "sm"} className={collapsed ? `${styles.action} size-8 min-h-8` : `${styles.action} w-full justify-start`} onClick={install} aria-label="Установить приложение"><Download aria-hidden />{collapsed ? null : "Установить"}</Button>;
   return <>
     {collapsed ? <Tooltip><TooltipTrigger render={button} /><TooltipContent>Установить приложение</TooltipContent></Tooltip> : button}
     <Dialog open={showIosHelp} onOpenChange={setShowIosHelp}><DialogContent><DialogHeader><DialogTitle>Установка на iPhone или iPad</DialogTitle><DialogDescription>Откройте меню «Поделиться» в Safari и выберите «На экран Домой».</DialogDescription></DialogHeader></DialogContent></Dialog>

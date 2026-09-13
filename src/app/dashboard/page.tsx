@@ -64,7 +64,7 @@ export default async function DashboardPage() {
           hasPermission(state.principal, "project:read:any") ? (
             <Link
               href="/analyst/"
-              className="inline-flex min-h-10 items-center rounded-[var(--radius)] bg-[var(--primary)] px-4 py-2 text-sm font-semibold text-app-primary-foreground"
+              className="inline-flex min-h-10 items-center rounded bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground"
             >
               Все проекты
             </Link>
@@ -77,24 +77,24 @@ export default async function DashboardPage() {
         note={attentionCount > 0 ? `${attentionCount} сигналов` : "Критичных сигналов нет"}
       >
         {attentionCount === 0 ? (
-          <div className="rounded-[var(--radius-panel)] border border-[var(--success)]/20 bg-[var(--success-soft)] p-4">
-            <p className="font-semibold text-app-success">Рабочих отклонений не обнаружено</p>
-            <p className="mt-1 text-sm text-app-secondary">
+          <div className="rounded-panel border border-success/20 bg-success-soft p-4">
+            <p className="font-semibold text-success">Рабочих отклонений не обнаружено</p>
+            <p className="mt-1 text-sm text-secondary-text">
               {eventSummary
                 ? "Все доступные проекты настроены, а свежих предупреждений по источникам нет."
                 : "Все доступные проекты настроены и готовы к следующему обновлению отчётов."}
             </p>
           </div>
         ) : (
-          <div className="divide-y divide-[var(--border)] rounded-[var(--radius-panel)] border border-[var(--border)]">
+          <div className="divide-y divide-border rounded-panel border border-border">
             {sourceIssues.slice(0, 4).map((item) => (
               <article key={item.id} className="grid gap-3 p-4 sm:grid-cols-[1fr_auto] sm:items-center">
                 <div className="min-w-0">
-                  <p className="font-semibold text-app-foreground">{item.title}</p>
-                  <p className="mt-1 text-sm text-app-secondary">{item.message}</p>
-                  <p className="mt-2 text-xs text-app-muted-foreground">{item.projectName ?? item.siteName ?? "Система"} · {formatDate(item.occurredAt)}</p>
+                  <p className="font-semibold text-foreground">{item.title}</p>
+                  <p className="mt-1 text-sm text-secondary-text">{item.message}</p>
+                  <p className="mt-2 text-xs text-muted-foreground">{item.projectName ?? item.siteName ?? "Система"} · {formatDate(item.occurredAt)}</p>
                 </div>
-                <Link href={item.route ?? "/notifications/"} className="inline-flex min-h-10 items-center justify-center rounded-[var(--radius)] border border-[var(--border)] px-3 text-sm font-semibold text-app-foreground">
+                <Link href={item.route ?? "/notifications/"} className="inline-flex min-h-10 items-center justify-center rounded border border-border px-3 text-sm font-semibold text-foreground">
                   Проверить
                 </Link>
               </article>
@@ -109,10 +109,10 @@ export default async function DashboardPage() {
               return (
                 <article key={project.projectId} className="grid gap-3 p-4 sm:grid-cols-[1fr_auto] sm:items-center">
                   <div>
-                    <p className="font-semibold text-app-foreground">{project.name}</p>
-                    <p className="mt-1 text-sm text-app-secondary">{explanation}</p>
+                    <p className="font-semibold text-foreground">{project.name}</p>
+                    <p className="mt-1 text-sm text-secondary-text">{explanation}</p>
                   </div>
-                  <Link href={`/c/${project.projectSlug}/`} className="inline-flex min-h-10 items-center justify-center rounded-[var(--radius)] border border-[var(--border)] px-3 text-sm font-semibold text-app-foreground">
+                  <Link href={`/c/${project.projectSlug}/`} className="inline-flex min-h-10 items-center justify-center rounded border border-border px-3 text-sm font-semibold text-foreground">
                     Открыть
                   </Link>
                 </article>
@@ -125,21 +125,21 @@ export default async function DashboardPage() {
       {eventSummary ? (
         <SectionCard title="Последние отчёты и события" note="8 последних событий">
           {eventSummary.items.length > 0 ? (
-            <div className="divide-y divide-[var(--border)]">
+            <div className="divide-y divide-border">
               {eventSummary.items.slice(0, 5).map((item) => (
                 <div key={item.id} className="grid gap-1 py-3 sm:grid-cols-[1fr_auto] sm:items-center">
                   <div>
-                    <p className="text-sm font-semibold text-app-foreground">{item.title}</p>
-                    <p className="text-sm text-app-secondary">{item.projectName ?? item.organizationName ?? "Система"}</p>
+                    <p className="text-sm font-semibold text-foreground">{item.title}</p>
+                    <p className="text-sm text-secondary-text">{item.projectName ?? item.organizationName ?? "Система"}</p>
                   </div>
-                  <time className="text-xs text-app-muted-foreground" dateTime={item.occurredAt}>{formatDate(item.occurredAt)}</time>
+                  <time className="text-xs text-muted-foreground" dateTime={item.occurredAt}>{formatDate(item.occurredAt)}</time>
                 </div>
               ))}
             </div>
           ) : (
-            <p className="text-sm text-app-secondary">Событий пока нет. Они появятся после подключения источников и первого обновления отчётов.</p>
+            <p className="text-sm text-secondary-text">Событий пока нет. Они появятся после подключения источников и первого обновления отчётов.</p>
           )}
-          <Link href="/notifications/" className="mt-4 inline-flex min-h-10 items-center text-sm font-semibold text-app-primary">Открыть историю событий</Link>
+          <Link href="/notifications/" className="mt-4 inline-flex min-h-10 items-center text-sm font-semibold text-primary">Открыть историю событий</Link>
         </SectionCard>
       ) : null}
 

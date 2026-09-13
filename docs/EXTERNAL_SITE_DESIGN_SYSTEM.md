@@ -4,6 +4,8 @@ Canonical UI contract for public AMS IMPULSE routes: `/`, legal pages and login/
 
 Private cabinet UI is governed by [`INTERNAL_DASHBOARD_DESIGN_SYSTEM.md`](INTERNAL_DASHBOARD_DESIGN_SYSTEM.md).
 
+The implementation baseline is **AMS UI Core 5.0**. This document remains the source of project-specific public identity.
+
 ## Character
 
 Public profile: cold service-premium. It is strict, technological and clear without cyberpunk, neon, warm luxury or generic SaaS softness.
@@ -12,7 +14,7 @@ One screen should communicate one meaning: route, value and action first; decora
 
 ## Theme
 
-Public UI uses isolated `.theme-public`, Manrope and `ch-*` tokens only. These tokens must not leak into private reusable components.
+Public UI uses isolated `.theme-public`, Manrope and `ch-*` tokens only. These tokens must not leak into private reusable components. The Manrope boundary is a locally owned CSS-module class; public business selectors do not live in `globals.css`.
 
 Core rhythm:
 
@@ -29,6 +31,8 @@ Steel-blue accent is used sparingly for primary CTA, focus and one data/structur
 - Body: `16px`, comfortable line height.
 - Eyebrow: uppercase small marker only when it adds structure.
 
+Repeated fluid display, heading and label values are exposed through the `text-public-*` roles; one-off decorative geometry may remain component-local.
+
 No meaningful text is baked into images. Long Russian headings wrap instead of shrinking to unreadable size.
 
 ## Layout
@@ -41,6 +45,8 @@ padding-inline: 24px;
 ```
 
 Mobile padding: `20px`.
+
+The shared Tailwind layout roles are `max-w-site`, `px-container` and `sm:px-container-wide`; public section composition may wrap them in the project-owned `Container` and `Section` primitives without importing private visual tokens.
 
 Preferred patterns:
 
@@ -100,7 +106,7 @@ Legal text is readable HTML and does not require JavaScript. Footer contains bra
 
 ## Motion
 
-Use short motion `150–220ms`: opacity, border, background and translate up to `2px`. Respect `prefers-reduced-motion`. Avoid card scale, parallax and glow.
+Use short motion `150–220ms`: opacity, border, background and translate up to `2px`. The global reduced-motion contract collapses non-essential animation and transition duration when `prefers-reduced-motion: reduce`. Avoid card scale, parallax and glow.
 
 ## Acceptance
 

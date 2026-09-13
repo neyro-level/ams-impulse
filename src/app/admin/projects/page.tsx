@@ -32,9 +32,9 @@ export default async function ProjectsPage({
   if (!hasPermission(state.principal, "project:manage:any")) {
     return (
       <>
-        <main className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+        <div className="w-full">
           <PermissionDeniedState title="Раздел недоступен" description="У текущей роли нет права управлять проектами." />
-        </main>
+        </div>
       </>
     );
   }
@@ -64,11 +64,11 @@ export default async function ProjectsPage({
 
   return (
     <>
-      <main className="mx-auto w-full max-w-7xl space-y-6 px-4 py-6 sm:px-6 lg:px-8">
+      <div className="w-full space-y-6">
         <header>
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-app-info">Администрирование</p>
-          <h1 className="mt-2 text-2xl font-semibold text-app-foreground">Проекты</h1>
-          <p className="mt-2 text-sm text-app-secondary">Найдено проектов: {projects.total}</p>
+          <p className="text-label font-semibold uppercase tracking-widest text-info">Администрирование</p>
+          <h1 className="mt-2 text-2xl font-semibold text-foreground">Проекты</h1>
+          <p className="mt-2 text-sm text-secondary-text">Найдено проектов: {projects.total}</p>
         </header>
 
         {hasRequiredOptions ? (
@@ -79,7 +79,7 @@ export default async function ProjectsPage({
 
         <FilterBar className="gap-4 sm:grid-cols-[minmax(0,1fr)_220px_auto]" method="get">
           <label className="space-y-1.5">
-            <span className="block text-sm font-medium text-app-foreground">Поиск</span>
+            <span className="block text-sm font-medium text-foreground">Поиск</span>
             <Input
               defaultValue={query.search}
               maxLength={100}
@@ -88,7 +88,7 @@ export default async function ProjectsPage({
             />
           </label>
           <label className="space-y-1.5">
-            <span className="block text-sm font-medium text-app-foreground">Статус</span>
+            <span className="block text-sm font-medium text-foreground">Статус</span>
             <NativeSelect
               defaultValue={query.status ?? ""}
               name="status"
@@ -101,7 +101,7 @@ export default async function ProjectsPage({
           </label>
           <div className="flex items-end gap-2">
             <Button type="submit">Применить</Button>
-            {filtersActive ? <Link className="inline-flex min-h-11 items-center px-2 text-sm font-semibold text-app-muted-foreground hover:text-app-foreground" href="/admin/projects">Сбросить</Link> : null}
+            {filtersActive ? <Link className="inline-flex min-h-11 items-center px-2 text-sm font-semibold text-muted-foreground hover:text-foreground" href="/admin/projects">Сбросить</Link> : null}
           </div>
         </FilterBar>
 
@@ -116,7 +116,7 @@ export default async function ProjectsPage({
           }}
           result={projects}
         />
-      </main>
+      </div>
     </>
   );
 }

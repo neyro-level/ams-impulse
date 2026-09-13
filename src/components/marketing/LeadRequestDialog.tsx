@@ -9,6 +9,7 @@ import { MarketingButton } from "./MarketingButton.tsx";
 import { Checkbox } from "../ui/checkbox.tsx";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../ui/dialog.tsx";
 import { Input } from "../ui/input.tsx";
+import landingStyles from "./ImpulseLanding.module.css";
 import { sendLead } from "../../shared/leads/send-lead.ts";
 
 type SubmitState = "idle" | "loading" | "success" | "error";
@@ -127,7 +128,7 @@ export function LeadRequestDialog() {
 
       <Dialog open={open} onOpenChange={(nextOpen) => (nextOpen ? setOpen(true) : closeDialog())}>
         <DialogContent
-          className="theme-public impulse-landing w-[min(576px,calc(100%_-_32px))] rounded-none border-[var(--ch-border-control)] bg-[var(--ch-bg-deeper)] p-7 text-[var(--ch-white)] shadow-[var(--ch-overlay-shadow)] sm:p-10"
+          className={`theme-public ${landingStyles.landing} w-[min(576px,calc(100%_-_32px))] rounded-none border-[var(--ch-border-control)] bg-[var(--ch-bg-deeper)] p-7 text-[var(--ch-white)] shadow-[var(--ch-overlay-shadow)] sm:p-10`}
           showCloseButton={submitState !== "loading"}
         >
           {submitState === "success" ? (

@@ -22,7 +22,7 @@ const quickLinks = [
 
 export default function NotFound() {
   return (
-    <main className="theme-public impulse-landing relative isolate flex min-h-dvh items-center overflow-hidden bg-[var(--ch-bg-deepest)] px-5 py-14 text-[var(--ch-white)] sm:px-6">
+    <main className={`theme-public ${styles.landing} relative isolate flex min-h-dvh items-center overflow-hidden bg-[var(--ch-bg-deepest)] px-5 py-14 text-[var(--ch-white)] sm:px-6`}>
       <div className={`${styles.grid} absolute inset-0 -z-20 opacity-70`} aria-hidden />
       <div className="absolute left-1/2 top-1/2 -z-10 -translate-x-1/2 -translate-y-1/2 select-none text-[clamp(170px,28vw,390px)] font-extrabold leading-none tracking-[-0.08em] text-[var(--ch-ghost-ondark)]" aria-hidden>
         404

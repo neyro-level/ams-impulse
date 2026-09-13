@@ -3,16 +3,16 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "../../shared/lib/cn.ts";
 
 export const buttonVariants = cva(
-  "inline-flex min-h-11 items-center justify-center gap-2 rounded-[var(--radius)] px-4 text-sm font-semibold whitespace-nowrap transition-[color,background-color,border-color,box-shadow,transform] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)] focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
+  "inline-flex min-h-11 items-center justify-center gap-2 rounded px-4 text-sm font-semibold whitespace-nowrap transition-[color,background-color,border-color,box-shadow,transform] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
   {
     variants: {
       variant: {
-        default: "bg-[var(--primary)] text-app-primary-foreground hover:bg-[color-mix(in_srgb,var(--primary)_90%,white)]",
-        secondary: "bg-[var(--secondary)] text-app-secondary-foreground hover:bg-[var(--accent)]",
-        outline: "border border-[var(--input)] bg-[var(--background)] text-app-foreground hover:bg-[var(--accent)]",
-        ghost: "text-app-foreground hover:bg-[var(--accent)]",
-        link: "min-h-0 rounded-none px-0 text-app-link underline-offset-4 hover:underline",
-        destructive: "bg-[var(--destructive)] text-app-destructive-foreground hover:bg-[color-mix(in_srgb,var(--destructive)_88%,black)]",
+        default: "bg-primary text-primary-foreground hover:bg-primary-hover",
+        secondary: "bg-secondary text-secondary-foreground hover:bg-accent",
+        outline: "border border-input bg-background text-foreground hover:bg-accent",
+        ghost: "text-foreground hover:bg-accent",
+        link: "min-h-0 rounded-none px-0 text-link underline-offset-4 hover:underline",
+        destructive: "bg-destructive text-destructive-foreground hover:bg-destructive-hover",
       },
       size: {
         default: "h-11",

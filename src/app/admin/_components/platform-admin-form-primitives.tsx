@@ -35,7 +35,7 @@ export function FeedbackMessage({ feedback, onRefresh }: { feedback: Feedback; o
   if (!feedback) return null;
   return (
     <div
-      className={feedback.kind === "success" ? "text-sm font-medium text-app-success" : feedback.kind === "stale" ? "text-sm font-medium text-app-warning" : "text-sm font-medium text-app-destructive"}
+      className={feedback.kind === "success" ? "text-sm font-medium text-success" : feedback.kind === "stale" ? "text-sm font-medium text-warning" : "text-sm font-medium text-destructive"}
       role={feedback.kind === "success" ? "status" : "alert"}
     >
       <span>{feedback.message}</span>
@@ -60,8 +60,8 @@ export function SectionCard({
   return (
     <Card>
       <CardHeader>
-        <h2 className="text-lg font-semibold text-app-foreground">{title}</h2>
-        <p className="text-sm leading-6 text-app-secondary">{description}</p>
+        <h2 className="text-lg font-semibold text-foreground">{title}</h2>
+        <p className="text-sm leading-6 text-secondary-text">{description}</p>
       </CardHeader>
       <CardContent>{children}</CardContent>
     </Card>
@@ -84,7 +84,7 @@ export function FormField({
   return (
     <Field>
       <FieldLabel className="grid gap-2">
-        <span>{label}{required ? <span className="ml-1 text-app-destructive">*</span> : null}</span>
+        <span>{label}{required ? <span className="ml-1 text-destructive">*</span> : null}</span>
         {children}
       </FieldLabel>
       {helper ? <FieldDescription>{helper}</FieldDescription> : null}

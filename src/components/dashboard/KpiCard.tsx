@@ -7,10 +7,10 @@ type KpiCardProps = {
 };
 
 const toneMap: Record<NonNullable<KpiCardProps["tone"]>, string> = {
-  default: "border-[var(--border)] bg-[var(--card)] text-app-foreground",
-  primary: "border-[var(--primary)] bg-[var(--primary)] text-app-primary-foreground",
-  soft: "border-[var(--info)]/20 bg-[var(--info-soft)] text-app-foreground",
-  success: "border-[var(--success)]/20 bg-[var(--success-soft)] text-app-foreground",
+  default: "border-border bg-card text-foreground",
+  primary: "border-primary bg-primary text-primary-foreground",
+  soft: "border-info/20 bg-info-soft text-foreground",
+  success: "border-success/20 bg-success-soft text-foreground",
 };
 
 export function KpiCard({
@@ -21,26 +21,26 @@ export function KpiCard({
   deltaTone = "neutral",
 }: KpiCardProps) {
   return (
-    <article className={`rounded-[var(--radius-card)] border p-5 shadow-[var(--shadow-surface)] ${toneMap[tone]}`}>
+    <article className={`rounded-card border p-5 shadow-surface ${toneMap[tone]}`}>
       <p
         className={`text-xs font-semibold uppercase ${
-          tone === "primary" ? "text-app-primary-foreground opacity-75" : "text-app-muted-foreground"
+          tone === "primary" ? "text-primary-foreground opacity-75" : "text-muted-foreground"
         }`}
       >
         {label}
       </p>
-      <p className="mt-3 text-[30px] font-semibold leading-9 tabular-nums">{value}</p>
+      <p className="mt-3 text-3xl font-semibold tabular-nums">{value}</p>
       {delta ? (
         <p
           className={[
             "mt-2 text-xs font-semibold tabular-nums",
             tone === "primary"
-              ? "text-app-primary-foreground opacity-85"
+              ? "text-primary-foreground opacity-85"
               : deltaTone === "positive"
-                ? "text-app-success"
+                ? "text-success"
                 : deltaTone === "negative"
-                  ? "text-app-destructive"
-                  : "text-app-muted-foreground",
+                  ? "text-destructive"
+                  : "text-muted-foreground",
           ].join(" ")}
         >
           {delta}

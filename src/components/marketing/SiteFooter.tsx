@@ -1,12 +1,13 @@
 import { ArrowUpRight, MessageCircle, Send } from "lucide-react";
 import Link from "next/link";
 import { legalLinks, legalOperator, publicContacts } from "../../shared/legal/legal-config.ts";
+import styles from "./ImpulseLanding.module.css";
 
 export function SiteFooter() {
   const phoneHref = `tel:${legalOperator.phone.replace(/[^\d+]/g, "")}`;
 
   return (
-    <footer id="site-footer" className="impulse-landing border-t border-[var(--ch-border-subtle)] bg-[var(--ch-bg-deeper)] text-[var(--ch-white)]" role="contentinfo">
+    <footer id="site-footer" className={`${styles.landing} border-t border-[var(--ch-border-subtle)] bg-[var(--ch-bg-deeper)] text-[var(--ch-white)]`} role="contentinfo">
       <div className="mx-auto grid w-full max-w-[1360px] gap-10 px-5 py-14 sm:px-6 md:grid-cols-[1.15fr_0.85fr_0.8fr] lg:gap-16 lg:py-18">
         <div>
           <Link href="/" className="inline-flex items-center gap-3" aria-label="AMS IMPULSE — на главную">

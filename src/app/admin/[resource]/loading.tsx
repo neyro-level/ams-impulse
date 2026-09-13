@@ -9,12 +9,12 @@ export default function AdminResourceLoading() {
       </div>
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
         {Array.from({ length: 6 }, (_, index) => (
-          <Skeleton className="h-28 rounded-[var(--radius-panel)] border border-[var(--border)] bg-[var(--card)]" key={index} />
+          <Skeleton className="h-28 rounded-panel border border-border bg-card" key={index} />
         ))}
       </div>
-      <Skeleton className="h-14 rounded-[var(--radius-panel)] border border-[var(--border)] bg-[var(--card)]" />
-      <Skeleton className="h-20 rounded-[var(--radius-panel)] border border-[var(--border)] bg-[var(--card)]" />
-      <Skeleton className="h-80 rounded-[var(--radius-panel)] border border-[var(--border)] bg-[var(--card)]" />
+      <Skeleton className="h-14 rounded-panel border border-border bg-card" />
+      <Skeleton className="h-20 rounded-panel border border-border bg-card" />
+      <Skeleton className="h-80 rounded-panel border border-border bg-card" />
     </div>
   );
 }

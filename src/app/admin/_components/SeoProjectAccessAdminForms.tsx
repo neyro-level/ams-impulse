@@ -90,7 +90,7 @@ function AccessEditCard({ item }: { item: SeoProjectAccessListItem }) {
           </FormField>
           <div className="self-end"><SubmitRow busy={form.formState.isSubmitting} feedback={feedback} label="Сохранить" onRefresh={() => router.refresh()} pendingLabel="Сохраняем…" variant="outline" /></div>
         </form>
-        <form className="border-t border-[var(--border)] pt-4" onSubmit={remove}>
+        <form className="border-t border-border pt-4" onSubmit={remove}>
           <input type="hidden" {...removeForm.register("accessId")} />
           <input type="hidden" {...removeForm.register("organizationId")} />
           <input type="hidden" {...removeForm.register("version", { valueAsNumber: true })} />

@@ -1,0 +1,63 @@
+.action {
+  color: var(--color-sidebar-muted);
+}
+
+.action:hover {
+  background: var(--color-sidebar-surface-hover);
+  color: var(--color-sidebar-foreground);
+}
+
+.collapseWidget {
+  isolation: isolate;
+  border: 0;
+  background: transparent;
+  opacity: 0.68;
+  transition: opacity 140ms ease;
+}
+
+.collapseWidget::before,
+.collapseWidget::after {
+  position: absolute;
+  top: 9px;
+  left: 7px;
+  width: 18px;
+  height: 22px;
+  background: var(--color-sidebar-active-border);
+  content: "";
+  clip-path: polygon(100% 0, 0 50%, 100% 100%);
+  transition: background-color 140ms ease;
+}
+
+.collapseWidget::after {
+  z-index: 1;
+  top: 11px;
+  left: 10px;
+  width: 14px;
+  height: 18px;
+  background: color-mix(in srgb, var(--color-sidebar) 82%, transparent);
+}
+
+.collapseWidget[data-collapsed="true"]::before,
+.collapseWidget[data-collapsed="true"]::after {
+  clip-path: polygon(0 0, 100% 50%, 0 100%);
+}
+
+.collapseWidget:hover,
+.collapseWidget:focus-visible {
+  opacity: 1;
+}
+
+.collapseWidget:focus-visible {
+  outline: none;
+  box-shadow: none;
+}
+
+.collapseWidget:hover::before,
+.collapseWidget:focus-visible::before {
+  background: var(--color-sidebar-ring);
+}
+
+.collapseWidget:hover::after,
+.collapseWidget:focus-visible::after {
+  background: var(--color-sidebar-hover);
+}

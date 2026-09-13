@@ -46,24 +46,24 @@ function SourceFreshnessPanel({ snapshot, timezone }: { snapshot: SiteReportSnap
   );
 
   return (
-    <section className="rounded-[var(--radius-panel)] border border-[var(--border)] bg-[var(--card)] p-4 sm:p-5" aria-labelledby="source-freshness-title">
+    <section className="rounded-panel border border-border bg-card p-4 sm:p-5" aria-labelledby="source-freshness-title">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-wider text-app-primary">Состояние данных</p>
-          <h2 id="source-freshness-title" className="mt-1 text-lg font-semibold text-app-foreground">{freshnessLabels[snapshot.freshness]}</h2>
+          <p className="text-xs font-semibold uppercase tracking-wider text-primary">Состояние данных</p>
+          <h2 id="source-freshness-title" className="mt-1 text-lg font-semibold text-foreground">{freshnessLabels[snapshot.freshness]}</h2>
         </div>
-        <p className="text-xs text-app-muted-foreground">Отчёт обновлён {formatSourceTime(snapshot.generatedAt, timezone)} · {timezone}</p>
+        <p className="text-xs text-muted-foreground">Отчёт обновлён {formatSourceTime(snapshot.generatedAt, timezone)} · {timezone}</p>
       </div>
       <div className="mt-4 grid gap-3 md:grid-cols-3">
         {sources.map(([key, source]) => (
-          <div key={key} className="rounded-[var(--radius)] bg-[var(--muted)] p-3">
+          <div key={key} className="rounded bg-muted p-3">
             <div className="flex items-start justify-between gap-3">
-              <p className="text-sm font-semibold text-app-foreground">{sourceLabels[key]}</p>
-              <span className="text-[11px] font-semibold text-app-muted-foreground">{getSourceBusinessState(source.status).label}</span>
+              <p className="text-sm font-semibold text-foreground">{sourceLabels[key]}</p>
+              <span className="text-caption font-semibold text-muted-foreground">{getSourceBusinessState(source.status).label}</span>
             </div>
-            <p className="mt-2 text-xs text-app-secondary">Получено {formatSourceTime(source.fetchedAt, timezone)}</p>
-            <p className="mt-1 text-xs text-app-muted-foreground">{source.periodStart && source.periodEnd ? `${source.periodStart} — ${source.periodEnd}` : "Период не определён"}</p>
-            {source.status !== "success" ? <div className="mt-3 border-t border-[var(--border)] pt-3 text-xs leading-5"><p className="text-app-secondary">{getSourceBusinessState(source.status).meaning}</p>{getSourceBusinessState(source.status).action ? <p className="mt-2 font-medium text-app-foreground">Следующий шаг: {getSourceBusinessState(source.status).action}</p> : null}</div> : null}
+            <p className="mt-2 text-xs text-secondary-text">Получено {formatSourceTime(source.fetchedAt, timezone)}</p>
+            <p className="mt-1 text-xs text-muted-foreground">{source.periodStart && source.periodEnd ? `${source.periodStart} — ${source.periodEnd}` : "Период не определён"}</p>
+            {source.status !== "success" ? <div className="mt-3 border-t border-border pt-3 text-xs leading-5"><p className="text-secondary-text">{getSourceBusinessState(source.status).meaning}</p>{getSourceBusinessState(source.status).action ? <p className="mt-2 font-medium text-foreground">Следующий шаг: {getSourceBusinessState(source.status).action}</p> : null}</div> : null}
           </div>
         ))}
       </div>
@@ -89,10 +89,10 @@ function formatDelta(metric: ComparisonMetric | undefined, mode: "percent" | "po
 
 function factCard(label: string, value: string, note?: string) {
   return (
-    <div className="rounded-xl border border-[var(--border)] bg-[var(--muted)] p-4">
-      <p className="text-xs font-semibold uppercase tracking-wide text-app-muted-foreground">{label}</p>
-      <p className="mt-2 text-2xl font-semibold tabular-nums text-app-foreground">{value}</p>
-      {note ? <p className="mt-1 text-xs text-app-secondary">{note}</p> : null}
+    <div className="rounded-xl border border-border bg-muted p-4">
+      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{label}</p>
+      <p className="mt-2 text-2xl font-semibold tabular-nums text-foreground">{value}</p>
+      {note ? <p className="mt-1 text-xs text-secondary-text">{note}</p> : null}
     </div>
   );
 }
@@ -158,7 +158,7 @@ export function SiteReportView({ site, snapshot, mode, backHref, periodControl, 
       <PageHeader title={site.name} description={`Единый отчёт за ${periodLabel}. Обновлён ${new Date(snapshot.generatedAt).toLocaleString("ru-RU")}.`} backHref={backHref} />
       <div className="flex flex-wrap items-center justify-between gap-3">
         {periodControl}
-        <div className="flex items-center gap-2"><FreshnessIndicator freshness={snapshot.freshness} /><p className="text-xs text-app-muted-foreground">{mode === "live" ? "Рабочие данные" : "Демонстрационные данные"}</p></div>
+        <div className="flex items-center gap-2"><FreshnessIndicator freshness={snapshot.freshness} /><p className="text-xs text-muted-foreground">{mode === "live" ? "Рабочие данные" : "Демонстрационные данные"}</p></div>
       </div>
       <SourceFreshnessPanel snapshot={snapshot} timezone={site.timezone} />
 
@@ -172,10 +172,10 @@ export function SiteReportView({ site, snapshot, mode, backHref, periodControl, 
         <section className="space-y-4" aria-labelledby="ranking-title">
           <div className="flex flex-wrap items-end justify-between gap-3">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-wider text-app-primary">Поисковые запросы</p>
-              <h2 id="ranking-title" className="mt-1 text-2xl font-semibold text-app-foreground">Позиции утверждённых запросов</h2>
+              <p className="text-xs font-semibold uppercase tracking-wider text-primary">Поисковые запросы</p>
+              <h2 id="ranking-title" className="mt-1 text-2xl font-semibold text-foreground">Позиции утверждённых запросов</h2>
             </div>
-            <p className="text-xs text-app-muted-foreground">
+            <p className="text-xs text-muted-foreground">
               {ranking.source === "topvisor" && ranking.lastCapturedAt
                 ? `Последний съём Topvisor: ${ranking.lastCapturedAt}`
                 : `Первый замер · сравнение с ${ranking.baselineLabel}`}
@@ -219,8 +219,8 @@ export function SiteReportView({ site, snapshot, mode, backHref, periodControl, 
       {health ? (
         <section className="space-y-4" aria-labelledby="health-title">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-wider text-app-primary">Состояние сайта</p>
-            <h2 id="health-title" className="max-w-full break-words text-2xl font-semibold text-app-foreground">Индексация и техническое здоровье</h2>
+            <p className="text-xs font-semibold uppercase tracking-wider text-primary">Состояние сайта</p>
+            <h2 id="health-title" className="max-w-full break-words text-2xl font-semibold text-foreground">Индексация и техническое здоровье</h2>
           </div>
           <StatusBanner tone={healthTone} title={healthTitle} description={`${health.fatalCount + health.criticalCount} критичных проблем, ${health.possibleProblemCount} возможных проблем; ошибок сервера: ${health.http5xx}; ошибок карты сайта: ${health.sitemapErrors}.`} />
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
@@ -234,8 +234,8 @@ export function SiteReportView({ site, snapshot, mode, backHref, periodControl, 
 
       <section className="space-y-4" aria-labelledby="seo-title">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-wider text-app-primary">Результат продвижения</p>
-          <h2 id="seo-title" className="mt-1 text-2xl font-semibold text-app-foreground">Видимость в поиске Яндекса</h2>
+          <p className="text-xs font-semibold uppercase tracking-wider text-primary">Результат продвижения</p>
+          <h2 id="seo-title" className="mt-1 text-2xl font-semibold text-foreground">Видимость в поиске Яндекса</h2>
         </div>
         {webmaster ? (
           <>
@@ -252,8 +252,8 @@ export function SiteReportView({ site, snapshot, mode, backHref, periodControl, 
 
       <section className="space-y-4" aria-labelledby="traffic-title">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-wider text-app-primary">Трафик</p>
-          <h2 id="traffic-title" className="mt-1 text-2xl font-semibold text-app-foreground">Органические визиты и целевые действия</h2>
+          <p className="text-xs font-semibold uppercase tracking-wider text-primary">Трафик</p>
+          <h2 id="traffic-title" className="mt-1 text-2xl font-semibold text-foreground">Органические визиты и целевые действия</h2>
         </div>
         {metrica ? (
           <>
@@ -265,7 +265,7 @@ export function SiteReportView({ site, snapshot, mode, backHref, periodControl, 
             </div>
             <MetricTrendChart title="Органический трафик" subtitle="Как меняются визиты и целевые действия из поиска Яндекса." period={periodLabel} timezone={site.timezone} data={metrica.organicTrend} metricLabel="Визиты" secondaryMetricLabel="Целевые визиты" tertiaryMetricLabel="Конверсия" />
             <SectionCard title="Посадочные страницы" note="Основные входы из органического поиска">
-              <DataTable caption="Эффективность посадочных страниц" columns={["Страница", "Визиты", "Целевые визиты", "Конверсия", "Отказы"]} rows={metrica.landingPages.slice(0, 10).map((page) => ({ key: page.path, cells: [<span key="path" className="font-semibold text-app-foreground">{page.path}</span>, formatInteger(page.visits), formatInteger(page.targetVisits), formatPercent(page.conversionRate), formatPercent(page.bounceRate)] }))} />
+              <DataTable caption="Эффективность посадочных страниц" columns={["Страница", "Визиты", "Целевые визиты", "Конверсия", "Отказы"]} rows={metrica.landingPages.slice(0, 10).map((page) => ({ key: page.path, cells: [<span key="path" className="font-semibold text-foreground">{page.path}</span>, formatInteger(page.visits), formatInteger(page.targetVisits), formatPercent(page.conversionRate), formatPercent(page.bounceRate)] }))} />
             </SectionCard>
           </>
         ) : <StatePanel state="empty" title="Нет данных Метрики" description="Источник не подключён или временно недоступен." />}
@@ -274,12 +274,12 @@ export function SiteReportView({ site, snapshot, mode, backHref, periodControl, 
 
       <SectionCard title="Что делать дальше" note="Приоритеты по фактическим данным">
         <div className="grid gap-3 md:grid-cols-2">
-          <div className="rounded-xl bg-[var(--muted)] p-4"><p className="text-xs font-semibold uppercase text-app-muted-foreground">Главный риск</p><p className="mt-2 font-semibold">{topAlert ? readableInsight(topAlert.title) : "Критичных рисков не обнаружено"}</p>{topAlert ? <p className="mt-1 text-sm text-app-secondary">{readableInsight(topAlert.summary)}</p> : null}</div>
-          <div className="rounded-xl bg-[var(--muted)] p-4"><p className="text-xs font-semibold uppercase text-app-muted-foreground">Точка роста</p><p className="mt-2 font-semibold">{topOpportunity ? readableInsight(topOpportunity.title) : "Сохранить текущий курс"}</p>{topOpportunity ? <p className="mt-1 text-sm text-app-secondary">{readableInsight(topOpportunity.summary)}</p> : null}</div>
+          <div className="rounded-xl bg-muted p-4"><p className="text-xs font-semibold uppercase text-muted-foreground">Главный риск</p><p className="mt-2 font-semibold">{topAlert ? readableInsight(topAlert.title) : "Критичных рисков не обнаружено"}</p>{topAlert ? <p className="mt-1 text-sm text-secondary-text">{readableInsight(topAlert.summary)}</p> : null}</div>
+          <div className="rounded-xl bg-muted p-4"><p className="text-xs font-semibold uppercase text-muted-foreground">Точка роста</p><p className="mt-2 font-semibold">{topOpportunity ? readableInsight(topOpportunity.title) : "Сохранить текущий курс"}</p>{topOpportunity ? <p className="mt-1 text-sm text-secondary-text">{readableInsight(topOpportunity.summary)}</p> : null}</div>
         </div>
       </SectionCard>
 
-      <footer className="border-t border-[var(--border)] pt-5 text-xs leading-5 text-app-muted-foreground">
+      <footer className="border-t border-border pt-5 text-xs leading-5 text-muted-foreground">
         <p>Источники: Topvisor — точные позиции поисковых запросов; Яндекс.Вебмастер — спрос, страницы в поиске и найденные проблемы; Яндекс.Метрика — обезличенный трафик и целевые действия.</p>
         <p>Вебмастер показывает среднюю позицию за период, а не точную позицию в конкретный день. Клики и визиты считаются разными системами.</p>
       </footer>

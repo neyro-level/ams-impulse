@@ -39,34 +39,34 @@ export function ResearchRunProgress({ report }: { report: ResearchRunReport }) {
       </div>
       <div className="mt-5 overflow-x-auto">
         <table className="w-full min-w-[640px] text-left text-sm">
-          <thead className="border-b border-[var(--border)] text-app-muted-foreground"><tr><th className="px-3 py-2 font-medium">Запрос</th><th className="px-3 py-2 font-medium">Статус</th><th className="px-3 py-2 font-medium">Расчётная доля</th><th className="px-3 py-2 font-medium">Пояснение</th></tr></thead>
-          <tbody>{report.queries.map((query) => <tr key={query.query} className="border-b border-[var(--border)] last:border-0"><td className="px-3 py-3 font-medium text-app-foreground">{query.query}</td><td className="px-3 py-3"><StatusBadge label={label[query.status] ?? query.status} tone={tone[query.status] ?? "neutral"} /></td><td className="px-3 py-3">{query.allocatedCostKopecks === null ? "—" : rubles(query.allocatedCostKopecks)}</td><td className="max-w-sm px-3 py-3 text-app-secondary">{safeFailureReason(query.safeErrorCode) ?? (query.status === "SUCCEEDED" ? `${query.evidence.length} свидетельств` : "—")}</td></tr>)}</tbody>
+          <thead className="border-b border-border text-muted-foreground"><tr><th className="px-3 py-2 font-medium">Запрос</th><th className="px-3 py-2 font-medium">Статус</th><th className="px-3 py-2 font-medium">Расчётная доля</th><th className="px-3 py-2 font-medium">Пояснение</th></tr></thead>
+          <tbody>{report.queries.map((query) => <tr key={query.query} className="border-b border-border last:border-0"><td className="px-3 py-3 font-medium text-foreground">{query.query}</td><td className="px-3 py-3"><StatusBadge label={label[query.status] ?? query.status} tone={tone[query.status] ?? "neutral"} /></td><td className="px-3 py-3">{query.allocatedCostKopecks === null ? "—" : rubles(query.allocatedCostKopecks)}</td><td className="max-w-sm px-3 py-3 text-secondary-text">{safeFailureReason(query.safeErrorCode) ?? (query.status === "SUCCEEDED" ? `${query.evidence.length} свидетельств` : "—")}</td></tr>)}</tbody>
         </table>
       </div>
       <div className="mt-6 space-y-3">
-        <h3 className="text-sm font-semibold text-app-foreground">Свидетельства по запросам</h3>
+        <h3 className="text-sm font-semibold text-foreground">Свидетельства по запросам</h3>
         {report.queries.map((query) => (
-          <details key={`evidence-${query.query}`} className="rounded-[var(--radius)] border border-[var(--border)] px-4 py-3">
-            <summary className="cursor-pointer text-sm font-medium text-app-foreground">
+          <details key={`evidence-${query.query}`} className="rounded border border-border px-4 py-3">
+            <summary className="cursor-pointer text-sm font-medium text-foreground">
               {query.query} · {query.evidence.length} свидетельств
             </summary>
             {query.evidence.length ? (
               <ul className="mt-3 space-y-3">
                 {query.evidence.map((evidence, index) => {
                   const url = safeHttpUrl(evidence.url);
-                  return <li key={`${evidence.type}-${index}`} className="border-l-2 border-[var(--border)] pl-3 text-sm">
-                    <div className="flex flex-wrap items-center gap-2"><StatusBadge label={evidence.type} tone="neutral" />{url ? <a href={url} target="_blank" rel="noreferrer noopener" className="break-all text-app-link underline-offset-4 hover:underline">{evidence.title ?? url}</a> : <span className="text-app-foreground">{evidence.title ?? "Источник без публичной ссылки"}</span>}</div>
-                    {evidence.snippet ? <p className="mt-1 text-app-secondary">{evidence.snippet}</p> : null}
+                  return <li key={`${evidence.type}-${index}`} className="border-l-2 border-border pl-3 text-sm">
+                    <div className="flex flex-wrap items-center gap-2"><StatusBadge label={evidence.type} tone="neutral" />{url ? <a href={url} target="_blank" rel="noreferrer noopener" className="break-all text-link underline-offset-4 hover:underline">{evidence.title ?? url}</a> : <span className="text-foreground">{evidence.title ?? "Источник без публичной ссылки"}</span>}</div>
+                    {evidence.snippet ? <p className="mt-1 text-secondary-text">{evidence.snippet}</p> : null}
                   </li>;
                 })}
               </ul>
-            ) : <p className="mt-3 text-sm text-app-secondary">Свидетельства для этого запроса не сохранены.</p>}
+            ) : <p className="mt-3 text-sm text-secondary-text">Свидетельства для этого запроса не сохранены.</p>}
           </details>
         ))}
       </div>
       <div className="mt-6">
-        <h3 className="text-sm font-semibold text-app-foreground">Карта конкурентов</h3>
-        {report.competitors.length ? <div className="mt-3 overflow-x-auto"><table className="w-full min-w-[520px] text-left text-sm"><thead className="border-b border-[var(--border)] text-app-muted-foreground"><tr><th className="px-3 py-2 font-medium">Домен</th><th className="px-3 py-2 font-medium">Совпавшие запросы</th><th className="px-3 py-2 font-medium">Индекс видимости</th></tr></thead><tbody>{report.competitors.map((competitor) => <tr key={competitor.domain} className="border-b border-[var(--border)] last:border-0"><td className="px-3 py-3 font-medium text-app-foreground">{competitor.domain}</td><td className="px-3 py-3">{competitor.matchedQueryCount}</td><td className="px-3 py-3">{competitor.visibilityScore.toLocaleString("ru-RU", { maximumFractionDigits: 2 })}</td></tr>)}</tbody></table></div> : <p className="mt-3 text-sm text-app-secondary">Недостаточно сохранённых свидетельств для конкурентной проекции.</p>}
+        <h3 className="text-sm font-semibold text-foreground">Карта конкурентов</h3>
+        {report.competitors.length ? <div className="mt-3 overflow-x-auto"><table className="w-full min-w-[520px] text-left text-sm"><thead className="border-b border-border text-muted-foreground"><tr><th className="px-3 py-2 font-medium">Домен</th><th className="px-3 py-2 font-medium">Совпавшие запросы</th><th className="px-3 py-2 font-medium">Индекс видимости</th></tr></thead><tbody>{report.competitors.map((competitor) => <tr key={competitor.domain} className="border-b border-border last:border-0"><td className="px-3 py-3 font-medium text-foreground">{competitor.domain}</td><td className="px-3 py-3">{competitor.matchedQueryCount}</td><td className="px-3 py-3">{competitor.visibilityScore.toLocaleString("ru-RU", { maximumFractionDigits: 2 })}</td></tr>)}</tbody></table></div> : <p className="mt-3 text-sm text-secondary-text">Недостаточно сохранённых свидетельств для конкурентной проекции.</p>}
       </div>
     </SectionCard>
   );

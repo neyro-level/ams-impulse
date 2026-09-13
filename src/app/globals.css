@@ -7,6 +7,122 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary-hover: var(--primary-hover);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-destructive-hover: var(--destructive-hover);
+  --color-destructive-soft: var(--destructive-soft);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-ring-soft: var(--ring-soft);
+  --color-secondary-text: var(--text-secondary);
+  --color-link: var(--link);
+  --color-overlay: var(--overlay);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-muted: var(--sidebar-muted);
+  --color-sidebar-hover: var(--sidebar-hover);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-surface: var(--sidebar-surface);
+  --color-sidebar-surface-hover: var(--sidebar-surface-hover);
+  --color-sidebar-active: var(--sidebar-active);
+  --color-sidebar-active-border: var(--sidebar-active-border);
+  --color-sidebar-project-accent: var(--sidebar-project-accent);
+  --color-sidebar-group-border: var(--sidebar-group-border);
+  --color-success: var(--success);
+  --color-success-soft: var(--success-soft);
+  --color-warning: var(--warning);
+  --color-warning-soft: var(--warning-soft);
+  --color-info: var(--info);
+  --color-info-soft: var(--info-soft);
+  --color-status-neutral: var(--status-neutral);
+  --color-status-neutral-soft: var(--status-neutral-soft);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+}
+
+@theme {
+  --radius-sm: 10px;
+  --radius-panel: 14px;
+  --radius-card: 18px;
+  --shadow-surface: 0 1px 2px rgb(16 32 47 / 4%);
+  --shadow-overlay: 0 24px 64px rgb(16 32 47 / 16%);
+  --text-h1: 1.5rem;
+  --text-h1--line-height: 1.875rem;
+  --text-h1--letter-spacing: -0.02em;
+  --text-h2: 1.25rem;
+  --text-h2--line-height: 1.625rem;
+  --text-h2--letter-spacing: -0.015em;
+  --text-h3: 1rem;
+  --text-h3--line-height: 1.375rem;
+  --text-h3--letter-spacing: -0.01em;
+  --text-h4: 0.875rem;
+  --text-h4--line-height: 1.25rem;
+  --text-body-lg: 1rem;
+  --text-body-lg--line-height: 1.5rem;
+  --text-body: 0.875rem;
+  --text-body--line-height: 1.375rem;
+  --text-body-sm: 0.8125rem;
+  --text-body-sm--line-height: 1.25rem;
+  --text-label: 0.8125rem;
+  --text-label--line-height: 1.125rem;
+  --text-caption: 0.75rem;
+  --text-caption--line-height: 1rem;
+  --text-brand-mark: 0.625rem;
+  --text-brand-mark--line-height: 1rem;
+  --text-brand-mark--letter-spacing: 0.12em;
+  --text-brand-name: 0.8125rem;
+  --text-brand-name--line-height: 1rem;
+  --text-brand-name--letter-spacing: 0.12em;
+  --text-eyebrow: 0.6875rem;
+  --text-eyebrow--line-height: 1rem;
+  --text-eyebrow--letter-spacing: 0.14em;
+  --text-public-display: clamp(2.75rem, 6.2vw, 5.25rem);
+  --text-public-display--line-height: 0.98;
+  --text-public-display--letter-spacing: -0.045em;
+  --text-public-heading: clamp(2.125rem, 4vw, 3.5rem);
+  --text-public-heading--line-height: 1.02;
+  --text-public-heading--letter-spacing: -0.04em;
+  --text-public-label: 0.6875rem;
+  --text-public-label--line-height: 1rem;
+  --text-public-label--letter-spacing: 0.18em;
+  --container-narrow: 48rem;
+  --container-site: 85rem;
+  --container-wide: 90rem;
+  --spacing-container: 1.25rem;
+  --spacing-container-wide: 1.5rem;
+  --spacing-section-sm: 2rem;
+  --spacing-section-md: 3rem;
+  --spacing-section-lg: 5rem;
+  --spacing-section-hero: 7rem;
+}
+
 @font-face {
   font-family: "PT Root UI";
   src: url("/fonts/pt-root-ui/PT-Root-UI_VF.woff2") format("woff2");
@@ -24,6 +140,7 @@
   --popover-foreground: #020617;
   --primary: #101720;
   --primary-foreground: #ffffff;
+  --primary-hover: #27313d;
   --secondary: #f8fafc;
   --secondary-foreground: #020617;
   --muted: #f8fafc;
@@ -32,10 +149,12 @@
   --accent-foreground: #10202f;
   --destructive: #aa3e3e;
   --destructive-foreground: #ffffff;
+  --destructive-hover: #8e3333;
   --destructive-soft: #fbecec;
   --border: #e2e8f0;
   --input: #cbd5e1;
   --ring: #5f7fae;
+  --ring-soft: rgb(95 127 174 / 20%);
   --text-secondary: #475569;
   --link: #3e5d86;
   --sidebar: #101720;
@@ -68,10 +187,6 @@
   --chart-4: #8d5c10;
   --chart-5: #8a5fa8;
   --radius: 10px;
-  --radius-panel: 14px;
-  --radius-card: 18px;
-  --shadow-surface: 0 1px 2px rgb(16 32 47 / 4%);
-  --shadow-overlay: 0 24px 64px rgb(16 32 47 / 16%);
   --overlay: rgb(0 0 0 / 70%);
 }
 
@@ -153,92 +268,6 @@ body {
   text-rendering: optimizeLegibility;
 }
 
-/* Stable semantic text utilities for Tailwind 4 CSS-variable colors. */
-.text-app-background { color: var(--background); }
-.text-app-border { color: var(--border); }
-.text-app-card-foreground { color: var(--card-foreground); }
-.text-app-destructive { color: var(--destructive); }
-.text-app-destructive-foreground { color: var(--destructive-foreground); }
-.text-app-foreground { color: var(--foreground); }
-.text-app-info { color: var(--info); }
-.text-app-link { color: var(--link); }
-.text-app-muted-foreground { color: var(--muted-foreground); }
-.text-app-popover-foreground { color: var(--popover-foreground); }
-.text-app-primary { color: var(--primary); }
-.text-app-primary-foreground { color: var(--primary-foreground); }
-.text-app-secondary-foreground { color: var(--secondary-foreground); }
-.text-app-sidebar-foreground { color: var(--sidebar-foreground); }
-.text-app-sidebar-muted { color: var(--sidebar-muted); }
-.text-app-status-neutral { color: var(--status-neutral); }
-.text-app-success { color: var(--success); }
-.text-app-secondary { color: var(--text-secondary); }
-.text-app-warning { color: var(--warning); }
-
-.sidebar-action { color: var(--sidebar-muted); }
-.sidebar-action:hover {
-  background: var(--sidebar-surface-hover);
-  color: var(--sidebar-foreground);
-}
-
-.sidebar-collapse-widget {
-  isolation: isolate;
-  border: 0;
-  background: transparent;
-  opacity: 0.68;
-  transition: opacity 140ms ease;
-}
-
-.sidebar-collapse-widget::before,
-.sidebar-collapse-widget::after {
-  position: absolute;
-  top: 9px;
-  left: 7px;
-  width: 18px;
-  height: 22px;
-  background: var(--sidebar-active-border);
-  content: "";
-  clip-path: polygon(100% 0, 0 50%, 100% 100%);
-  transition: background-color 140ms ease;
-}
-
-.sidebar-collapse-widget::after {
-  z-index: 1;
-  top: 11px;
-  left: 10px;
-  width: 14px;
-  height: 18px;
-  background: color-mix(in srgb, var(--sidebar) 82%, transparent);
-}
-
-.sidebar-collapse-widget[data-collapsed="true"]::before,
-.sidebar-collapse-widget[data-collapsed="true"]::after {
-  clip-path: polygon(0 0, 100% 50%, 0 100%);
-}
-
-.sidebar-collapse-widget:hover,
-.sidebar-collapse-widget:focus-visible {
-  opacity: 1;
-}
-
-.sidebar-collapse-widget:focus-visible {
-  outline: none;
-  box-shadow: none;
-}
-
-.sidebar-collapse-widget:hover::before,
-.sidebar-collapse-widget:focus-visible::before {
-  background: var(--sidebar-ring);
-}
-
-.sidebar-collapse-widget:hover::after,
-.sidebar-collapse-widget:focus-visible::after {
-  background: var(--sidebar-hover);
-}
-
-.impulse-landing {
-  font-family: "Manrope", "PT Root UI", "Segoe UI", ui-sans-serif, system-ui, sans-serif;
-}
-
 a {
   color: inherit;
   text-decoration: none;
@@ -270,4 +299,15 @@ button {
   clip: rect(0, 0, 0, 0);
   white-space: nowrap;
   border: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }

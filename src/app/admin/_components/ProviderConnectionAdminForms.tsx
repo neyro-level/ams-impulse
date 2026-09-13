@@ -127,8 +127,8 @@ function ProviderConnectionEditCard({ item }: { item: ProviderConnectionListItem
 
   return (
     <SectionCard title={`${item.siteName} · ${providerLabels[item.provider]}`} description={item.projectName}>
-      {item.provider === "YANDEX_METRIKA" && item.status === "ACTION_REQUIRED" ? <div className="mb-4 grid gap-3 rounded-[var(--radius-panel)] border border-[var(--warning)]/40 bg-[var(--warning)]/10 p-4">
-        <p className="text-sm font-semibold text-app-foreground">Подтвердите две цели Метрики</p>
+      {item.provider === "YANDEX_METRIKA" && item.status === "ACTION_REQUIRED" ? <div className="mb-4 grid gap-3 rounded-panel border border-warning/40 bg-warning/10 p-4">
+        <p className="text-sm font-semibold text-foreground">Подтвердите две цели Метрики</p>
         <FormField label="Основная заявка" required><SelectInput value={leadGoalId} onChange={(event) => setLeadGoalId(event.target.value)} options={[{ value: "", label: "Выберите цель" }, ...leadCandidates.map((goal) => ({ value: goal.goalId, label: goal.name }))]} /></FormField>
         <FormField label="Раскрытие телефона" required><SelectInput value={phoneGoalId} onChange={(event) => setPhoneGoalId(event.target.value)} options={[{ value: "", label: "Выберите цель" }, ...phoneCandidates.map((goal) => ({ value: goal.goalId, label: goal.name }))]} /></FormField>
         <Button disabled={confirmingGoals || !leadGoalId || !phoneGoalId || leadGoalId === phoneGoalId} onClick={confirmGoals} type="button">{confirmingGoals ? "Подтверждаем…" : "Подтвердить цели"}</Button>
@@ -142,7 +142,7 @@ function ProviderConnectionEditCard({ item }: { item: ProviderConnectionListItem
         <FormField error={form.formState.errors.settingsJsonText?.message} helper="Служебные параметры без паролей и секретных ключей." label="Дополнительные настройки" required>
           <AreaInput rows={6} {...form.register("settingsJsonText")} />
         </FormField>
-        <label className="flex min-h-11 items-center gap-3 rounded-[var(--radius)] border border-[var(--border)] px-3 text-sm font-medium text-app-foreground">
+        <label className="flex min-h-11 items-center gap-3 rounded border border-border px-3 text-sm font-medium text-foreground">
           <Controller control={form.control} name="enabled" render={({ field }) => <Checkbox checked={field.value} onCheckedChange={field.onChange} />} />
           Источник включён
         </label>
@@ -203,7 +203,7 @@ export function ProviderConnectionsAdminForms({ items, options }: { items: Provi
           <FormField error={form.formState.errors.externalId?.message} label="Номер в источнике">
             <TextInput {...form.register("externalId")} />
           </FormField>
-          <label className="flex min-h-11 items-center gap-3 rounded-[var(--radius)] border border-[var(--border)] px-3 text-sm font-medium text-app-foreground xl:self-end">
+          <label className="flex min-h-11 items-center gap-3 rounded border border-border px-3 text-sm font-medium text-foreground xl:self-end">
             <Controller control={form.control} name="enabled" render={({ field }) => <Checkbox checked={field.value} onCheckedChange={field.onChange} />} />
             Источник включён
           </label>

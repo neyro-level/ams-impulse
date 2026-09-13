@@ -19,9 +19,9 @@ export function AdminDataTable<TData extends { id: string }>({ ariaLabel, column
   return (
     <section aria-label={ariaLabel} className="space-y-4">
       {toolbar}
-      <div className="hidden overflow-hidden rounded-[var(--radius-card)] border border-[var(--border)] bg-[var(--card)] md:block">
+      <div className="hidden overflow-hidden rounded-card border border-border bg-card md:block">
         <Table className="text-left" style={{ minWidth }}>
-          <TableHeader className="sticky top-0 z-10 bg-[var(--muted)]">
+          <TableHeader className="sticky top-0 z-10 bg-muted">
             {table.getHeaderGroups().map((group) => <TableRow key={group.id}>{group.headers.map((header) => <TableHead key={header.id} scope="col">{header.isPlaceholder ? null : <table.FlexRender header={header} />}</TableHead>)}</TableRow>)}
           </TableHeader>
           <TableBody>

@@ -33,15 +33,15 @@ export function MobileDrawer({ sections, currentPath }: MobileDrawerProps) {
       <Sheet open={open} onOpenChange={setOpen}>
         <SheetContent
           id="mobile-report-nav"
-          className="left-0 top-0 flex h-dvh w-[min(86vw,320px)] translate-x-0 translate-y-0 flex-col rounded-none border-r border-[var(--sidebar-border)] bg-[var(--sidebar)] p-3 text-app-sidebar-foreground data-ending-style:-translate-x-full data-starting-style:-translate-x-full lg:hidden"
+          className="left-0 top-0 flex h-dvh w-[min(86vw,320px)] translate-x-0 translate-y-0 flex-col rounded-none border-r border-sidebar-border bg-sidebar p-3 text-sidebar-foreground data-ending-style:-translate-x-full data-starting-style:-translate-x-full lg:hidden"
         >
-          <SheetHeader className="mb-4 flex flex-row items-center gap-2.5 rounded-[var(--radius-panel)] border border-[var(--sidebar-border)] bg-[var(--sidebar-surface)] p-2 pr-12">
-            <span className="grid size-10 shrink-0 place-items-center rounded-[var(--radius)] bg-[var(--sidebar-ring)] text-[10px] font-bold tracking-[0.12em] text-app-sidebar-foreground">АМС</span>
-            <SheetTitle className="text-[13px] font-semibold tracking-[0.12em] text-app-sidebar-foreground">ИМПУЛЬС</SheetTitle>
+          <SheetHeader className="mb-4 flex flex-row items-center gap-2.5 rounded-panel border border-sidebar-border bg-sidebar-surface p-2 pr-12">
+            <span className="grid size-10 shrink-0 place-items-center rounded bg-sidebar-ring text-brand-mark font-bold text-sidebar-foreground">АМС</span>
+            <SheetTitle className="text-brand-name font-semibold text-sidebar-foreground">ИМПУЛЬС</SheetTitle>
             <SheetDescription className="sr-only">Навигация по отчётам и разделам кабинета</SheetDescription>
           </SheetHeader>
           <div className="min-h-0 flex-1 overflow-y-auto"><ShellNav sections={sections} currentPath={currentPath} onNavigate={() => setOpen(false)} /></div>
-          <div className="border-t border-[var(--sidebar-border)] pt-3"><InstallAppButton /></div>
+          <div className="border-t border-sidebar-border pt-3"><InstallAppButton /></div>
         </SheetContent>
       </Sheet>
     </>

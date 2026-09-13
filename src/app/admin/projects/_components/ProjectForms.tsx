@@ -54,7 +54,7 @@ function FeedbackMessage({ feedback, onRefresh }: { feedback: Feedback; onRefres
   if (!feedback) return null;
   return (
     <div
-      className={feedback.kind === "success" ? "text-sm font-medium text-app-success" : "text-sm font-medium text-app-destructive"}
+      className={feedback.kind === "success" ? "text-sm font-medium text-success" : "text-sm font-medium text-destructive"}
       role={feedback.kind === "success" ? "status" : "alert"}
     >
       <span>{feedback.message}</span>
@@ -103,44 +103,44 @@ export function ProjectCreateForm({ options }: { options: ProjectFormOptions }) 
   });
 
   return (
-    <Accordion className="rounded-[var(--radius-card)] border border-[var(--border)] bg-[var(--card)]">
+    <Accordion className="rounded-card border border-border bg-card">
       <AccordionItem value="create-project">
       <AccordionTrigger className="px-5">
         Создать проект
       </AccordionTrigger>
       <AccordionContent className="p-0">
-      <form className="grid gap-4 border-t border-[var(--border)] p-5 sm:grid-cols-2 lg:grid-cols-3" onSubmit={submit}>
+      <form className="grid gap-4 border-t border-border p-5 sm:grid-cols-2 lg:grid-cols-3" onSubmit={submit}>
         <label className="space-y-1.5">
-          <span className="block text-sm font-medium text-app-foreground">Организация</span>
+          <span className="block text-sm font-medium text-foreground">Организация</span>
           <NativeSelect {...register("organizationId")}>
             {options.organizations.map((option) => <NativeSelectOption key={option.id} value={option.id}>{option.name}</NativeSelectOption>)}
           </NativeSelect>
-          {errors.organizationId ? <span className="text-xs text-app-destructive">{errors.organizationId.message}</span> : null}
+          {errors.organizationId ? <span className="text-xs text-destructive">{errors.organizationId.message}</span> : null}
         </label>
         <label className="space-y-1.5">
-          <span className="block text-sm font-medium text-app-foreground">Название</span>
+          <span className="block text-sm font-medium text-foreground">Название</span>
           <Input {...register("name")} />
-          {errors.name ? <span className="text-xs text-app-destructive">{errors.name.message}</span> : null}
+          {errors.name ? <span className="text-xs text-destructive">{errors.name.message}</span> : null}
         </label>
         <label className="space-y-1.5">
-          <span className="block text-sm font-medium text-app-foreground">Адрес в кабинете</span>
+          <span className="block text-sm font-medium text-foreground">Адрес в кабинете</span>
           <Input placeholder="project-name" {...register("slug")} />
-          {errors.slug ? <span className="text-xs text-app-destructive">{errors.slug.message}</span> : null}
+          {errors.slug ? <span className="text-xs text-destructive">{errors.slug.message}</span> : null}
         </label>
         <label className="space-y-1.5">
-          <span className="block text-sm font-medium text-app-foreground">Статус</span>
+          <span className="block text-sm font-medium text-foreground">Статус</span>
           <NativeSelect {...register("status")}>
             {PROJECT_STATUSES.map((status) => <NativeSelectOption key={status} value={status}>{statusLabels[status]}</NativeSelectOption>)}
           </NativeSelect>
         </label>
         <label className="space-y-1.5">
-          <span className="block text-sm font-medium text-app-foreground">Правила оценки</span>
+          <span className="block text-sm font-medium text-foreground">Правила оценки</span>
           <NativeSelect {...register("thresholdProfileId")}>
             {options.thresholdProfiles.map((option) => <NativeSelectOption key={option.id} value={option.id}>{option.label}</NativeSelectOption>)}
           </NativeSelect>
         </label>
         <label className="space-y-1.5">
-          <span className="block text-sm font-medium text-app-foreground">Группы запросов</span>
+          <span className="block text-sm font-medium text-foreground">Группы запросов</span>
           <NativeSelect {...register("clusterProfileId")}>
             {options.clusterProfiles.map((option) => <NativeSelectOption key={option.id} value={option.id}>{option.label}</NativeSelectOption>)}
           </NativeSelect>
@@ -209,7 +209,7 @@ export function ProjectRowActions({ project, options }: { project: ProjectListIt
     <div className="space-y-3">
       <form className="flex flex-wrap items-end gap-2" onSubmit={submitStatus}>
         <label className="min-w-40 space-y-1">
-          <span className="block text-xs font-medium text-app-secondary">Статус</span>
+          <span className="block text-xs font-medium text-secondary-text">Статус</span>
           <NativeSelect {...statusForm.register("status")}>
             {PROJECT_STATUSES.map((status) => <NativeSelectOption key={status} value={status}>{statusLabels[status]}</NativeSelectOption>)}
           </NativeSelect>
@@ -219,26 +219,26 @@ export function ProjectRowActions({ project, options }: { project: ProjectListIt
         </Button>
         <FeedbackMessage feedback={statusFeedback} onRefresh={() => router.refresh()} />
       </form>
-      <Accordion className="rounded-[var(--radius-panel)] border border-[var(--border)] bg-[var(--muted)]/60">
+      <Accordion className="rounded-panel border border-border bg-muted/60">
         <AccordionItem value={project.id}>
-        <AccordionTrigger className="px-3 font-medium text-app-secondary">
+        <AccordionTrigger className="px-3 font-medium text-secondary-text">
           Настройки
         </AccordionTrigger>
         <AccordionContent className="p-0">
-        <form className="grid gap-3 border-t border-[var(--border)] p-3" onSubmit={submitSettings}>
+        <form className="grid gap-3 border-t border-border p-3" onSubmit={submitSettings}>
           <label className="space-y-1">
-            <span className="block text-xs font-medium text-app-secondary">Название</span>
+            <span className="block text-xs font-medium text-secondary-text">Название</span>
             <Input {...settingsForm.register("name")} />
-            {settingsForm.formState.errors.name ? <span className="text-xs text-app-destructive">{settingsForm.formState.errors.name.message}</span> : null}
+            {settingsForm.formState.errors.name ? <span className="text-xs text-destructive">{settingsForm.formState.errors.name.message}</span> : null}
           </label>
           <label className="space-y-1">
-            <span className="block text-xs font-medium text-app-secondary">Правила оценки</span>
+            <span className="block text-xs font-medium text-secondary-text">Правила оценки</span>
             <NativeSelect {...settingsForm.register("thresholdProfileId")}>
               {options.thresholdProfiles.map((option) => <NativeSelectOption key={option.id} value={option.id}>{option.label}</NativeSelectOption>)}
             </NativeSelect>
           </label>
           <label className="space-y-1">
-            <span className="block text-xs font-medium text-app-secondary">Группы запросов</span>
+            <span className="block text-xs font-medium text-secondary-text">Группы запросов</span>
             <NativeSelect {...settingsForm.register("clusterProfileId")}>
               {options.clusterProfiles.map((option) => <NativeSelectOption key={option.id} value={option.id}>{option.label}</NativeSelectOption>)}
             </NativeSelect>

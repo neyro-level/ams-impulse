@@ -94,11 +94,11 @@ function Filters({ query, resource }: { query: PlatformAdminPageQuery; resource:
   return (
     <FilterBar className="sm:grid-cols-[minmax(0,1fr)_180px_160px_auto]" method="get">
       <label className="space-y-1.5">
-        <span className="block text-sm font-medium text-app-foreground">Поиск</span>
+        <span className="block text-sm font-medium text-foreground">Поиск</span>
         <Input defaultValue={query.search} name="q" placeholder="Название или адрес" />
       </label>
       <label className="space-y-1.5">
-        <span className="block text-sm font-medium text-app-foreground">Сортировка</span>
+        <span className="block text-sm font-medium text-foreground">Сортировка</span>
         <NativeSelect defaultValue={query.sort} name="sort">
           <NativeSelectOption value="updatedAt">Обновлено</NativeSelectOption>
           <NativeSelectOption value="createdAt">Создано</NativeSelectOption>
@@ -107,7 +107,7 @@ function Filters({ query, resource }: { query: PlatformAdminPageQuery; resource:
         </NativeSelect>
       </label>
       <label className="space-y-1.5">
-        <span className="block text-sm font-medium text-app-foreground">Направление</span>
+        <span className="block text-sm font-medium text-foreground">Направление</span>
         <NativeSelect defaultValue={query.direction} name="direction">
           <NativeSelectOption value="desc">По убыванию</NativeSelectOption>
           <NativeSelectOption value="asc">По возрастанию</NativeSelectOption>
@@ -116,7 +116,7 @@ function Filters({ query, resource }: { query: PlatformAdminPageQuery; resource:
       <div className="flex items-end gap-2">
         <Button type="submit">Применить</Button>
         {query.search || query.sort !== "updatedAt" || query.direction !== "desc" || query.page > 1 ? (
-          <Link className="inline-flex min-h-11 items-center px-2 text-sm font-semibold text-app-muted-foreground hover:text-app-foreground" href={`/admin/${resource}/`}>
+          <Link className="inline-flex min-h-11 items-center px-2 text-sm font-semibold text-muted-foreground hover:text-foreground" href={`/admin/${resource}/`}>
             Сбросить
           </Link>
         ) : null}
@@ -393,11 +393,11 @@ export default async function AdminResourcePageRoute({
       <>
         <div className="space-y-6">
           <PageHeader title={definition.label} description={definition.description} />
-          <section className="rounded-[var(--radius-panel)] border border-[var(--border)] bg-[var(--card)] p-5">
-            <p className="text-sm font-semibold text-app-foreground">
+          <section className="rounded-panel border border-border bg-card p-5">
+            <p className="text-sm font-semibold text-foreground">
               Требуют внимания: {result.incidentCount}
             </p>
-            <p className="mt-1 text-sm text-app-muted-foreground">
+            <p className="mt-1 text-sm text-muted-foreground">
               Открывайте запись по correlation ID в безопасных логах; raw payload и секреты здесь не показываются.
             </p>
           </section>

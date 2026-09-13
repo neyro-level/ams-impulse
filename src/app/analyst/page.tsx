@@ -44,10 +44,10 @@ function pageHref(raw: Record<string, string>, page: number) {
 
 function ProjectStatus({ project }: { project: ProjectSummary }) {
   const tone = project.status === "DISABLED"
-    ? "bg-[var(--status-neutral-soft)] text-app-status-neutral"
+    ? "bg-status-neutral-soft text-status-neutral"
     : project.issueCount > 0
-      ? "bg-[var(--warning-soft)] text-app-warning"
-      : "bg-[var(--success-soft)] text-app-success";
+      ? "bg-warning-soft text-warning"
+      : "bg-success-soft text-success";
   return <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${tone}`}>{statusLabels[project.status]}</span>;
 }
 
@@ -88,7 +88,7 @@ export default async function AllProjectsPage({ searchParams }: { searchParams: 
     <NativeSelect name="freshness" defaultValue={freshness ?? "all"} aria-label="Актуальность отчёта"><NativeSelectOption value="all">Любая актуальность</NativeSelectOption><NativeSelectOption value="fresh">Актуально</NativeSelectOption><NativeSelectOption value="partial">Частично</NativeSelectOption><NativeSelectOption value="stale">Устарело</NativeSelectOption><NativeSelectOption value="unavailable">Нет отчёта</NativeSelectOption></NativeSelect>
     <NativeSelect name="sort" defaultValue={sort} aria-label="Сортировка"><NativeSelectOption value="issues">Сначала проблемы</NativeSelectOption><NativeSelectOption value="name">По названию</NativeSelectOption><NativeSelectOption value="freshness">По актуальности</NativeSelectOption></NativeSelect>
     <Button type="submit">Применить</Button>
-    <Link href="/analyst/" className="inline-flex min-h-11 items-center justify-center rounded-[var(--radius)] border border-[var(--input)] px-4 text-sm font-semibold text-app-foreground">Сбросить</Link>
+    <Link href="/analyst/" className="inline-flex min-h-11 items-center justify-center rounded border border-input px-4 text-sm font-semibold text-foreground">Сбросить</Link>
   </FilterBar>;
 
   return (
@@ -100,35 +100,35 @@ export default async function AllProjectsPage({ searchParams }: { searchParams: 
 
       {projects.length > 0 ? (
         <>
-          <div className="hidden rounded-[var(--radius-panel)] border border-[var(--border)] bg-[var(--card)] md:block">
+          <div className="hidden rounded-panel border border-border bg-card md:block">
             <Table>
               <TableCaption className="sr-only">Проекты, доступные аналитику</TableCaption>
               <TableHeader><TableRow><TableHead>Проект</TableHead><TableHead>Статус</TableHead><TableHead>Актуальность</TableHead><TableHead>Сайты</TableHead><TableHead>Проблемы</TableHead><TableHead className="text-right">Действие</TableHead></TableRow></TableHeader>
               <TableBody>{projects.map((project) => <TableRow key={project.projectId}>
-                <TableCell><p className="font-semibold text-app-foreground">{project.name}</p><p className="text-xs text-app-muted-foreground">{project.projectSlug}</p></TableCell>
+                <TableCell><p className="font-semibold text-foreground">{project.name}</p><p className="text-xs text-muted-foreground">{project.projectSlug}</p></TableCell>
                 <TableCell><ProjectStatus project={project} /></TableCell>
-                <TableCell><p className="font-medium text-app-foreground">{freshnessLabels[project.freshness]}</p><p className="text-xs text-app-muted-foreground">{formatDate(project.latestReportAt)}</p></TableCell>
+                <TableCell><p className="font-medium text-foreground">{freshnessLabels[project.freshness]}</p><p className="text-xs text-muted-foreground">{formatDate(project.latestReportAt)}</p></TableCell>
                 <TableCell>{project.readySites} из {project.totalSites}</TableCell>
-                <TableCell><span className={project.issueCount > 0 ? "font-semibold text-app-warning" : "text-app-secondary"}>{project.issueCount}</span></TableCell>
-                <TableCell className="text-right"><Link href={`/c/${project.projectSlug}/`} className="inline-flex min-h-10 items-center font-semibold text-app-primary">Открыть</Link></TableCell>
+                <TableCell><span className={project.issueCount > 0 ? "font-semibold text-warning" : "text-secondary-text"}>{project.issueCount}</span></TableCell>
+                <TableCell className="text-right"><Link href={`/c/${project.projectSlug}/`} className="inline-flex min-h-10 items-center font-semibold text-primary">Открыть</Link></TableCell>
               </TableRow>)}</TableBody>
             </Table>
           </div>
 
           <div className="grid gap-3 md:hidden">
-            {projects.map((project) => <article key={project.projectId} className="rounded-[var(--radius-card)] border border-[var(--border)] bg-[var(--card)] p-4">
-              <div className="flex items-start justify-between gap-3"><div><h2 className="font-semibold text-app-foreground">{project.name}</h2><p className="text-xs text-app-muted-foreground">{project.projectSlug}</p></div><ProjectStatus project={project} /></div>
-              <dl className="mt-4 grid grid-cols-2 gap-3 text-sm"><div><dt className="text-app-muted-foreground">Актуальность</dt><dd className="mt-1 font-medium text-app-foreground">{freshnessLabels[project.freshness]}</dd></div><div><dt className="text-app-muted-foreground">Сайты готовы</dt><dd className="mt-1 font-medium text-app-foreground">{project.readySites} из {project.totalSites}</dd></div><div><dt className="text-app-muted-foreground">Последний отчёт</dt><dd className="mt-1 text-app-foreground">{formatDate(project.latestReportAt)}</dd></div><div><dt className="text-app-muted-foreground">Проблемы</dt><dd className="mt-1 font-medium text-app-foreground">{project.issueCount}</dd></div></dl>
-              <Link href={`/c/${project.projectSlug}/`} className="mt-4 inline-flex min-h-11 w-full items-center justify-center rounded-[var(--radius)] bg-[var(--primary)] px-4 text-sm font-semibold text-app-primary-foreground">Открыть проект</Link>
+            {projects.map((project) => <article key={project.projectId} className="rounded-card border border-border bg-card p-4">
+              <div className="flex items-start justify-between gap-3"><div><h2 className="font-semibold text-foreground">{project.name}</h2><p className="text-xs text-muted-foreground">{project.projectSlug}</p></div><ProjectStatus project={project} /></div>
+              <dl className="mt-4 grid grid-cols-2 gap-3 text-sm"><div><dt className="text-muted-foreground">Актуальность</dt><dd className="mt-1 font-medium text-foreground">{freshnessLabels[project.freshness]}</dd></div><div><dt className="text-muted-foreground">Сайты готовы</dt><dd className="mt-1 font-medium text-foreground">{project.readySites} из {project.totalSites}</dd></div><div><dt className="text-muted-foreground">Последний отчёт</dt><dd className="mt-1 text-foreground">{formatDate(project.latestReportAt)}</dd></div><div><dt className="text-muted-foreground">Проблемы</dt><dd className="mt-1 font-medium text-foreground">{project.issueCount}</dd></div></dl>
+              <Link href={`/c/${project.projectSlug}/`} className="mt-4 inline-flex min-h-11 w-full items-center justify-center rounded bg-primary px-4 text-sm font-semibold text-primary-foreground">Открыть проект</Link>
             </article>)}
           </div>
           <Pagination page={page} pageCount={pageCount} previousHref={pageHref(current, Math.max(1, page - 1))} nextHref={pageHref(current, Math.min(pageCount, page + 1))} />
         </>
       ) : (
-        <div className="rounded-[var(--radius-panel)] border border-dashed border-[var(--border)] bg-[var(--card)] p-8 text-center">
-          <h2 className="font-semibold text-app-foreground">Проекты не найдены</h2>
-          <p className="mt-2 text-sm text-app-secondary">Измените фильтры или сбросьте поиск.</p>
-          <Link href="/analyst/" className="mt-4 inline-flex min-h-11 items-center font-semibold text-app-primary">Показать все проекты</Link>
+        <div className="rounded-panel border border-dashed border-border bg-card p-8 text-center">
+          <h2 className="font-semibold text-foreground">Проекты не найдены</h2>
+          <p className="mt-2 text-sm text-secondary-text">Измените фильтры или сбросьте поиск.</p>
+          <Link href="/analyst/" className="mt-4 inline-flex min-h-11 items-center font-semibold text-primary">Показать все проекты</Link>
         </div>
       )}
     </div>

@@ -54,11 +54,11 @@ export function ResearchActionState({ state, cleanHref }: { state: ResearchUiSta
     <section
       role="status"
       aria-live="polite"
-      className={`rounded-[var(--radius-panel)] border p-4 ${destructive ? "border-[var(--destructive)]/25 bg-[var(--destructive-soft)]" : "border-[var(--warning)]/25 bg-[var(--warning-soft)]"}`}
+      className={`rounded-panel border p-4 ${destructive ? "border-destructive/25 bg-destructive-soft" : "border-warning/25 bg-warning-soft"}`}
     >
-      <h2 className={`font-semibold ${destructive ? "text-app-destructive" : "text-app-warning"}`}>{item.title}</h2>
-      <p className="mt-1 text-sm text-app-secondary">{item.description}</p>
-      <Link href={cleanHref} className="mt-3 inline-flex min-h-10 items-center text-sm font-semibold text-app-primary">{item.action}</Link>
+      <h2 className={`font-semibold ${destructive ? "text-destructive" : "text-warning"}`}>{item.title}</h2>
+      <p className="mt-1 text-sm text-secondary-text">{item.description}</p>
+      <Link href={cleanHref} className="mt-3 inline-flex min-h-10 items-center text-sm font-semibold text-primary">{item.action}</Link>
     </section>
   );
 }

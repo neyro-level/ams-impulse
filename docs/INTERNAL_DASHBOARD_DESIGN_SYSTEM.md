@@ -4,6 +4,8 @@ Canonical UI contract for private AMS IMPULSE routes: `/dashboard/*`, `/analyst/
 
 Architecture/security boundaries are defined by `ARCHITECTURE.md` and `SECURITY.md`. This file owns visual and interaction rules only.
 
+The implementation baseline is **AMS UI Core 5.0**. Project identity stays in this document; the global constitution defines the shared quality floor.
+
 ## Character
 
 Private UI is a calm operational workspace: dense, readable, restrained, fast to scan. It is not a marketing page and does not use hero layouts, decorative gradients, glow or oversized editorial type.
@@ -39,7 +41,7 @@ Core palette:
 | Surface | `#FFFFFF` |
 | Main text | `#10202F` |
 
-Reusable UI must use semantic variables, not raw product aliases or business CSS in `globals.css`.
+`src/app/globals.css` owns only Tailwind imports, `@theme` roles, theme scopes and true document-wide behavior. Reusable UI consumes generated semantic utilities such as `bg-card`, `text-secondary-text`, `border-border`, `rounded-panel` and `shadow-surface`; arbitrary `var(...)` color/radius utilities and business selectors are forbidden.
 
 ## Typography And Geometry
 
@@ -54,6 +56,10 @@ Reusable UI must use semantic variables, not raw product aliases or business CSS
 - Spacing scale: `4, 8, 12, 16, 20, 24, 32, 40px`.
 
 Text must wrap/truncate intentionally and never overflow its control or card.
+
+Canonical typography utilities are `text-h1`, `text-h2`, `text-h3`, `text-h4`, `text-body-lg`, `text-body`, `text-body-sm`, `text-label` and `text-caption`. Shell wordmark and navigation markers use their named roles rather than local pixel values.
+
+Page composition uses project-owned `Container`, `Section` and `SectionHeader`. `AppShell` owns the single private `<main>` landmark and the common container; route pages must not create a nested `<main>`. `PageHeader` remains the compatibility facade over `SectionHeader`.
 
 ## Shell
 
@@ -74,6 +80,8 @@ Mobile:
 - install command is available in the drawer when the browser supports PWA installation;
 
 Project navigation opens project page by title; a separate affordance expands sites. Active project/site uses restrained marker, not glow/shadow.
+
+The private product is light-only. Tailwind dark mode is class-based via `.dark`, but application code does not install that class and private route/components do not use `dark:` variants. Generic primitives may keep portable dark variants when required.
 
 ## Tables
 

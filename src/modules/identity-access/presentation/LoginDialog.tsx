@@ -12,6 +12,7 @@ import {
   DialogTitle,
 } from "../../../components/ui/dialog.tsx";
 import { Input } from "../../../components/ui/input.tsx";
+import landingStyles from "../../../components/marketing/ImpulseLanding.module.css";
 import { authClient } from "../../../platform/auth/client.ts";
 
 type LoginDialogProps = {
@@ -105,7 +106,7 @@ export function LoginDialog({ initialOpen = false, oauthLoginRequested = false }
 
       <Dialog open={open} onOpenChange={handleOpenChange}>
         <DialogContent
-          className="theme-public impulse-landing rounded-none border-[var(--ch-border-control)] bg-[var(--ch-bg-deeper)] p-7 text-[var(--ch-white)] shadow-[var(--ch-overlay-shadow)] sm:p-10"
+          className={`theme-public ${landingStyles.landing} rounded-none border-[var(--ch-border-control)] bg-[var(--ch-bg-deeper)] p-7 text-[var(--ch-white)] shadow-[var(--ch-overlay-shadow)] sm:p-10`}
           showCloseButton={!pending}
         >
           <DialogHeader>

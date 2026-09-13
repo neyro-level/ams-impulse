@@ -10,7 +10,7 @@ export function WorkspacePicker({ options, organizationId, projectId }: { option
   const [selectedOrganizationId, setSelectedOrganizationId] = useState(organizationId);
   const projects = options.filter((item) => item.organizationId === selectedOrganizationId);
   const selectedProjectId = projects.some((item) => item.id === projectId) ? projectId : projects[0]?.id;
-  return <form className="grid gap-3 border-b border-[var(--border)] pb-5 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]">
+  return <form className="grid gap-3 border-b border-border pb-5 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]">
     <NativeSelect name="organizationId" value={selectedOrganizationId} onChange={(event) => setSelectedOrganizationId(event.target.value)} aria-label="Организация">
       {[...new Map(options.map((item) => [item.organizationId, item])).values()].map((item) => <NativeSelectOption key={item.organizationId} value={item.organizationId}>{item.organizationName}</NativeSelectOption>)}
     </NativeSelect>

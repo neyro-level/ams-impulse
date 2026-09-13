@@ -12,6 +12,8 @@ import { ShellNav } from "./ShellNav.tsx";
 import { NotificationCenter } from "../notifications/NotificationCenter.tsx";
 import type { NotificationListResult } from "../../modules/notifications/index.ts";
 import { InstallAppButton } from "../pwa/InstallAppButton.tsx";
+import { Container } from "../layout/Container.tsx";
+import styles from "./SidebarControls.module.css";
 
 type AppShellProps = {
   sections: NavigationSection[];
@@ -44,18 +46,18 @@ export function AppShell({ sections, accountLabel, notificationSummary, children
   }
 
   return (
-    <div className="theme-app admin-root min-h-screen bg-[var(--background)] text-app-foreground" data-shell-theme="impulse">
+    <div className="theme-app admin-root min-h-screen bg-background text-foreground" data-shell-theme="impulse">
       <aside className={`fixed inset-y-0 left-0 z-40 hidden transition-[width] duration-200 motion-reduce:transition-none lg:block ${collapsed ? "w-[76px]" : "w-[232px]"}`}>
-        <div className="relative flex h-full flex-col border-r border-[var(--sidebar-border)] bg-[var(--sidebar)] text-app-sidebar-foreground">
+        <div className="relative flex h-full flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground">
           <Tooltip>
-            <TooltipTrigger render={<Button type="button" variant="ghost" size="icon" className="sidebar-collapse-widget absolute -right-4 top-3 z-10 h-10 min-h-10 w-8 p-0 focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0" data-collapsed={collapsed ? "true" : "false"} aria-label={collapsed ? "Развернуть боковое меню" : "Свернуть боковое меню"} aria-pressed={collapsed} onClick={() => setCollapsed((value) => !value)} />} />
+            <TooltipTrigger render={<Button type="button" variant="ghost" size="icon" className={`${styles.collapseWidget} absolute -right-4 top-3 z-10 h-10 min-h-10 w-8 p-0 focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0`} data-collapsed={collapsed ? "true" : "false"} aria-label={collapsed ? "Развернуть боковое меню" : "Свернуть боковое меню"} aria-pressed={collapsed} onClick={() => setCollapsed((value) => !value)} />} />
             <TooltipContent>{collapsed ? "Развернуть меню" : "Свернуть меню"}</TooltipContent>
           </Tooltip>
 
           <div className={`flex h-16 items-center px-2.5 ${collapsed ? "justify-center" : ""}`}>
-            <div className={`flex min-w-0 items-center rounded-[var(--radius-panel)] border border-[var(--sidebar-border)] bg-[var(--sidebar-surface)] p-1.5 ${collapsed ? "justify-center" : "flex-1 gap-2.5"}`}>
-              <span className="grid size-10 shrink-0 place-items-center rounded-[var(--radius)] bg-[var(--sidebar-ring)] text-[10px] font-bold tracking-[0.12em] text-app-sidebar-foreground">АМС</span>
-              {collapsed ? null : <span className="truncate text-[13px] font-semibold tracking-[0.12em] text-app-sidebar-foreground">ИМПУЛЬС</span>}
+            <div className={`flex min-w-0 items-center rounded-panel border border-sidebar-border bg-sidebar-surface p-1.5 ${collapsed ? "justify-center" : "flex-1 gap-2.5"}`}>
+              <span className="grid size-10 shrink-0 place-items-center rounded bg-sidebar-ring text-brand-mark font-bold text-sidebar-foreground">АМС</span>
+              {collapsed ? null : <span className="truncate text-brand-name font-semibold text-sidebar-foreground">ИМПУЛЬС</span>}
             </div>
           </div>
 
@@ -63,12 +65,12 @@ export function AppShell({ sections, accountLabel, notificationSummary, children
             <ShellNav sections={sections} currentPath={pathname} collapsed={collapsed} />
           </div>
 
-          <div className="border-t border-[var(--sidebar-border)] p-2">
+          <div className="border-t border-sidebar-border p-2">
             <div className="mb-1"><InstallAppButton collapsed={collapsed} /></div>
-            <div className={`flex min-h-10 items-center gap-1 rounded-[var(--radius)] bg-[var(--sidebar-surface)] ${collapsed ? "flex-col py-1.5" : "px-2"}`}>
-              <p className={collapsed ? "sr-only" : "min-w-0 flex-1 truncate text-xs font-medium text-app-sidebar-foreground"}>{accountLabel}</p>
+            <div className={`flex min-h-10 items-center gap-1 rounded bg-sidebar-surface ${collapsed ? "flex-col py-1.5" : "px-2"}`}>
+              <p className={collapsed ? "sr-only" : "min-w-0 flex-1 truncate text-xs font-medium text-sidebar-foreground"}>{accountLabel}</p>
               {notificationSummary ? <NotificationCenter initialSummary={notificationSummary} surface="sidebar" /> : null}
-              <Button type="button" variant="ghost" size="icon" className="sidebar-action size-8 min-h-8" onClick={signOut} disabled={signingOut} aria-label="Выйти из кабинета">
+              <Button type="button" variant="ghost" size="icon" className={`${styles.action} size-8 min-h-8`} onClick={signOut} disabled={signingOut} aria-label="Выйти из кабинета">
                 <LogOut className="size-3.5" aria-hidden />
               </Button>
             </div>
@@ -77,16 +79,16 @@ export function AppShell({ sections, accountLabel, notificationSummary, children
       </aside>
 
       <div className={`min-h-screen min-w-0 overflow-x-hidden transition-[padding] duration-200 motion-reduce:transition-none ${collapsed ? "lg:pl-[76px]" : "lg:pl-[232px]"}`}>
-        <header className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b border-[var(--border)] bg-[var(--card)]/95 px-4 backdrop-blur sm:px-6 lg:hidden">
+        <header className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b border-border bg-card/95 px-4 backdrop-blur sm:px-6 lg:hidden">
           <MobileDrawer sections={sections} currentPath={pathname} />
           <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-semibold text-app-foreground">{activeLabel ?? "АМС ИМПУЛЬС"}</p>
+            <p className="truncate text-sm font-semibold text-foreground">{activeLabel ?? "АМС ИМПУЛЬС"}</p>
           </div>
           {notificationSummary ? <NotificationCenter initialSummary={notificationSummary} /> : null}
           <Button type="button" variant="ghost" size="icon" className="lg:hidden" onClick={signOut} disabled={signingOut} aria-label="Выйти из кабинета"><LogOut aria-hidden /></Button>
         </header>
 
-        <main className="min-w-0 w-full overflow-x-hidden px-4 py-6 sm:px-6 lg:px-8 lg:py-8">{children}</main>
+        <Container as="main" size="wide" className="min-w-0 overflow-x-hidden py-section-sm lg:py-section-md">{children}</Container>
       </div>
     </div>
   );

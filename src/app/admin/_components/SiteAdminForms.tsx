@@ -84,7 +84,7 @@ function SiteEditCard({ item }: { item: SiteListItem }) {
         <FormField error={form.formState.errors.timezone?.message} label="Часовой пояс" required>
           <TextInput {...form.register("timezone")} />
         </FormField>
-        <label className="flex min-h-11 items-center gap-3 rounded-[var(--radius)] border border-[var(--border)] px-3 text-sm font-medium text-app-foreground sm:col-span-2">
+        <label className="flex min-h-11 items-center gap-3 rounded border border-border px-3 text-sm font-medium text-foreground sm:col-span-2">
           <Controller control={form.control} name="enabled" render={({ field }) => <Checkbox checked={field.value} onCheckedChange={field.onChange} />} />
           Сбор данных включён
         </label>
@@ -139,7 +139,7 @@ export function SitesAdminForms({ items, options }: { items: SiteListItem[]; opt
           <FormField error={form.formState.errors.timezone?.message} label="Часовой пояс" required>
             <TextInput {...form.register("timezone")} />
           </FormField>
-          <label className="flex min-h-11 items-center gap-3 rounded-[var(--radius)] border border-[var(--border)] px-3 text-sm font-medium text-app-foreground xl:self-end">
+          <label className="flex min-h-11 items-center gap-3 rounded border border-border px-3 text-sm font-medium text-foreground xl:self-end">
             <Controller control={form.control} name="enabled" render={({ field }) => <Checkbox checked={field.value} onCheckedChange={field.onChange} />} />
             Сбор данных включён
           </label>
