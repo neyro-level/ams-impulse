@@ -1,4 +1,5 @@
 import { cp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { createReadStream } from "node:fs";
 import { createHash } from "node:crypto";
 import { execFileSync, spawnSync } from "node:child_process";
 import path from "node:path";
@@ -154,8 +155,11 @@ if (tarResult.status !== 0) {
   throw new Error(`tar failed: ${tarResult.stderr || tarResult.stdout}`);
 }
 
-const artifactBytes = await readFile(artifactPath);
-const artifactSha256 = createHash("sha256").update(artifactBytes).digest("hex");
+const artifactHash = createHash("sha256");
+for await (const chunk of createReadStream(artifactPath)) {
+  artifactHash.update(chunk);
+}
+const artifactSha256 = artifactHash.digest("hex");
 await writeFile(`${artifactPath}.sha256`, `${artifactSha256}  ${artifactName}\n`, "utf8");
 await rm(stagingDir, { recursive: true, force: true });
 

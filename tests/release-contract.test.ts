@@ -82,6 +82,14 @@ describe("production configuration boundary", () => {
     expect(build).toContain("buildTimestamp");
   });
 
+  it("hashes the release artifact as a stream without loading it entirely into memory", () => {
+    const build = readFileSync("scripts/build-release.mjs", "utf8");
+
+    expect(build).toContain('createReadStream(artifactPath)');
+    expect(build).toContain('for await (const chunk');
+    expect(build).not.toContain('readFile(artifactPath)');
+  });
+
   it("verifies archived image configs before accepting engine-normalized runtime IDs", () => {
     const deployScript = readFileSync("scripts/deploy-production.mjs", "utf8");
 
