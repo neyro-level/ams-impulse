@@ -12,7 +12,7 @@ Profile: `TENANCY = multi-tenant`, `ASYNC = outbox-plus-queue`, `DATA = pii`, `D
 - `DEPLOYED` - наличие в production подтверждено release record + live proof точного SHA.
 - `PLANNED` - утверждено, но business runtime ещё не реализован.
 
-SEO Монитор, модульное ядро, Инструменты и Исследования относятся к `IMPLEMENTED` и `DEPLOYED`. АМС Лиды и остальные внутренние инструменты относятся к `PLANNED`. Точный production SHA, digest образа и число миграций принадлежат root-only release proof и live health response; они намеренно не зашиваются в этот документ, потому что следующий документационный commit сразу сделал бы такое значение устаревшим.
+SEO Монитор, модульное ядро, Инструменты и Исследования относятся к `IMPLEMENTED` и `DEPLOYED`. АМС Лиды, Разбор сайтов и остальные внутренние инструменты относятся к `PLANNED`. Точный production SHA, digest образа и число миграций принадлежат root-only release proof и live health response; они намеренно не зашиваются в этот документ, потому что следующий документационный commit сразу сделал бы такое значение устаревшим.
 
 ## System Context
 
@@ -61,6 +61,7 @@ Version-sensitive changes require exact installed-version evidence; this documen
 | `reporting` | `SiteReportSnapshot`, director analytics and report reads | `index.ts`, `server.ts`, `worker.ts` |
 | `tools-workspace` | Tools organizations, projects and grants | `index.ts`, `server.ts` |
 | `research` | Research lifecycle, XMLRiver execution, exports and MCP | `index.ts`, `server.ts`, `worker.ts` |
+| `site-intelligence` (`PLANNED`) | bounded collection, normalization and comparison of public sites | planned `index.ts`, `server.ts`, `worker.ts` |
 | `notifications` | browser-safe lifecycle notifications | `index.ts`, `server.ts`, `actions.ts` |
 | `platform-operations` | audit, idempotency, outbox, queue, readiness and retention | `index.ts`, `server.ts`, `worker.ts` |
 | `platform-admin` | protected composition of module-owned admin workflows | `index.ts`, `server.ts` |
@@ -90,6 +91,7 @@ Every platform command emits one PII-free `command_finished` event with command 
 Владеет Tools organizations/projects and project grants. Подмодули используют `ToolsProject` через публичный facade:
 
 - `research`;
+- `site-intelligence` — запланирован как «Разбор сайтов» по [`modules/MODULE_SITE_INTELLIGENCE.md`](modules/MODULE_SITE_INTELLIGENCE.md);
 - `contracts`;
 - `invoices`;
 - `presentations`;

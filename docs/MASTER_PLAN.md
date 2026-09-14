@@ -13,12 +13,13 @@
 
 ## Следующие Продуктовые Эпики
 
-1. Договоры.
-2. Счета.
-3. Презентации.
-4. Клон сайтов.
-5. АМС Лиды.
-6. Внутренний AI-агент поверх Research application contract.
+1. Разбор сайтов — выполнить Epics `SI-01..SI-08` по [`modules/MODULE_SITE_INTELLIGENCE.md`](modules/MODULE_SITE_INTELLIGENCE.md); proxy/managed fallback остаётся отдельным post-MVP `LATER-SI-09`.
+2. Договоры.
+3. Счета.
+4. Презентации.
+5. Клон сайтов.
+6. АМС Лиды.
+7. Внутренний AI-агент поверх Research application contract.
 
 Каждый пункт - отдельная ветка, PR, review и risk-based gate.
 
