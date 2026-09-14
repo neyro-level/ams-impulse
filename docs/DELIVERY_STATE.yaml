@@ -1,7 +1,7 @@
 schemaVersion: 1
 program: audit-2026-09-remediation
-currentWave: planning
-currentEpic: EPIC-AUD-00
+currentWave: runtime-release
+currentEpic: EPIC-AUD-01
 source:
   backlog: docs/MASTER_PLAN.md#now--независимый-аудит-репозитория
   architecture: docs/ARCHITECTURE.md#runtime-and-delivery
@@ -9,8 +9,8 @@ dependencies:
   complete: []
   blocked: []
 delivery:
-  branch: codex/large-task-2026-09-14
+  branch: codex/aud-01-database-runtime-contract
   pullRequest: null
   headSha: null
   proof: pending
-nextAction: publish-plan-pr
+nextAction: implement-and-prove-runtime-contract

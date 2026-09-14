@@ -151,11 +151,26 @@ describe("production configuration boundary", () => {
     const compose = readFileSync("docker-compose.production.yml", "utf8");
     const ci = readFileSync(".sourcecraft/ci.yaml", "utf8");
     const verifier = readFileSync("scripts/verify-datetime-contract.mjs", "utf8");
+    const runtimeVerifier = readFileSync("src/platform/database/prisma/runtime-contract.ts", "utf8");
+    const liveProof = readFileSync("ops/release/live-proof.sh", "utf8");
+    const packageJson = JSON.parse(readFileSync("package.json", "utf8")) as {
+      scripts: Record<string, string>;
+    };
 
     expect(compose.match(/PGOPTIONS: -c TimeZone=UTC/g)).toHaveLength(5);
+    expect(compose.match(/statement_timeout=900000/g)).toHaveLength(1);
+    expect(compose.match(/lock_timeout=10000/g)).toHaveLength(1);
+    expect(compose.match(/idle_in_transaction_session_timeout=60000/g)).toHaveLength(1);
+    expect(compose).not.toContain("statement_timeout=60000");
+    expect(compose).not.toContain("lock_timeout=5000");
     expect(ci.match(/PGOPTIONS: -c TimeZone=UTC/g)).toHaveLength(3);
     expect(verifier).toContain('client.query("SHOW TimeZone")');
     expect(verifier).toContain('sessionTimezone !== "UTC"');
+    expect(runtimeVerifier).toContain("current_setting('statement_timeout')");
+    expect(runtimeVerifier).toContain("current_setting('lock_timeout')");
+    expect(runtimeVerifier).toContain("current_setting('idle_in_transaction_session_timeout')");
+    expect(liveProof).toContain("verify-database-runtime");
+    expect(packageJson.scripts["verify:release"]).toContain("verify:database-runtime");
   });
 
   it("deploys migrations without importing operator configuration", () => {

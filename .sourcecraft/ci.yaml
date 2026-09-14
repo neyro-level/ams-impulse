@@ -72,6 +72,8 @@ workflows:
           TEST_DATABASE_SSLMODE: disable
           TEST_RUNTIME_DATABASE_USER: ams_web
           TEST_RUNTIME_DATABASE_PASSWORD: seo_monitor_test
+          TEST_WORKER_DATABASE_USER: ams_worker
+          TEST_WORKER_DATABASE_PASSWORD: seo_monitor_test
           DATABASE_HOST: 127.0.0.1
           DATABASE_PORT: "5432"
           DATABASE_USER: seo_monitor_test
@@ -116,6 +118,8 @@ workflows:
           TEST_DATABASE_SSLMODE: disable
           TEST_RUNTIME_DATABASE_USER: ams_web
           TEST_RUNTIME_DATABASE_PASSWORD: seo_monitor_test
+          TEST_WORKER_DATABASE_USER: ams_worker
+          TEST_WORKER_DATABASE_PASSWORD: seo_monitor_test
           DATABASE_HOST: 127.0.0.1
           DATABASE_PORT: "5432"
           DATABASE_USER: seo_monitor_test
@@ -160,6 +164,8 @@ workflows:
           TEST_DATABASE_SSLMODE: disable
           TEST_RUNTIME_DATABASE_USER: ams_web
           TEST_RUNTIME_DATABASE_PASSWORD: seo_monitor_test
+          TEST_WORKER_DATABASE_USER: ams_worker
+          TEST_WORKER_DATABASE_PASSWORD: seo_monitor_test
           DATABASE_HOST: 127.0.0.1
           DATABASE_PORT: "5432"
           DATABASE_USER: seo_monitor_test

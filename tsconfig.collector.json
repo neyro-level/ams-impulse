@@ -19,6 +19,7 @@
   "include": [
     "collector/**/*.ts",
     "scripts/auth-admin.ts",
+    "scripts/verify-database-runtime-contract.ts",
     "src/application/**/*.ts",
     "src/infrastructure/**/*.ts",
     "src/shared/**/*.ts",

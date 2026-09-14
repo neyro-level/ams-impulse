@@ -35,6 +35,7 @@ export default defineConfig({
       "tests/research-concurrency.integration.test.ts",
       "tests/research-audit-safety.integration.test.ts",
       "tests/operational-admin.integration.test.ts",
+      "tests/database-runtime-contract.integration.test.ts",
     ],
   },
 });

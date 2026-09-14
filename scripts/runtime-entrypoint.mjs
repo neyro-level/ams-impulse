@@ -34,6 +34,7 @@ switch (mode) {
   case "topvisor-checks": await run([workerMain, "topvisor-checks"]); break;
   case "competitors-sync": await run([workerMain, "competitors-sync"]); break;
   case "auth-admin": await run([authAdminMain, ...args]); break;
+  case "verify-database-runtime": await run(["dist-collector/scripts/verify-database-runtime-contract.js"]); break;
   case "project-sync": {
     if (!args[0]) throw new Error("Usage: runtime-entrypoint project-sync <project-slug> [trigger]");
     await run([workerMain, "project-sync", args[0], args[1] ?? "manual"]);

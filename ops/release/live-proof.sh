@@ -50,6 +50,9 @@ RESEARCH_WORKER_CONTAINER_ID="$(docker compose -f "$COMPOSE_FILE" ps -q research
 [ "$(docker inspect --format '{{.Image}}' "$WORKER_CONTAINER_ID")" = "$IMAGE_DIGEST" ] || { echo "live_proof_worker_digest_mismatch=true" >&2; exit 1; }
 [ "$(docker inspect --format '{{.Image}}' "$RESEARCH_WORKER_CONTAINER_ID")" = "$IMAGE_DIGEST" ] || { echo "live_proof_research_worker_digest_mismatch=true" >&2; exit 1; }
 
+docker exec "$WEB_CONTAINER_ID" node scripts/runtime-entrypoint.mjs verify-database-runtime
+docker exec "$WORKER_CONTAINER_ID" node scripts/runtime-entrypoint.mjs verify-database-runtime
+
 curl --fail --silent --show-error --max-time 15 "$LOOPBACK_ORIGIN/api/health/live" > "$LIVE_JSON"
 READINESS_CONFIRMED=false
 for _attempt in $(seq 1 30); do

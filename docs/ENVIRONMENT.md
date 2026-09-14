@@ -105,8 +105,14 @@ Tests:
 - `TEST_DATABASE_PASSWORD`
 - `TEST_DATABASE_NAME`
 - `TEST_DATABASE_SSLMODE`
+- `TEST_RUNTIME_DATABASE_USER`
+- `TEST_RUNTIME_DATABASE_PASSWORD`
+- `TEST_WORKER_DATABASE_USER`
+- `TEST_WORKER_DATABASE_PASSWORD`
 
-Test database name must end with `_test`; test identity must be dedicated and different from local/production identity.
+Test database name must end with `_test`; owner, web and worker identities must
+be dedicated test roles and different from local/production identities. Runtime
+role variables exist only to prove real PostgreSQL session settings and grants.
 
 ## Backup/Restore Variables
 

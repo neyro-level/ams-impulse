@@ -268,7 +268,12 @@ statement/transaction limits and a 5-second lock wait; migrator allows up to 15
 minutes but waits at most 10 seconds for a lock. Every profile sets
 `application_name`, a 5-second connection timeout and an idle-in-transaction
 timeout. Prisma interactive transactions inherit profile-specific `maxWait` and
-`timeout`; the migration CLI receives the equivalent PostgreSQL `PGOPTIONS`.
+`timeout`. Compose задаёт web/worker только `TimeZone=UTC`: timeout-параметры
+принадлежат `pool-config.ts` и не дублируются в `PGOPTIONS`. Release proof
+подключается из фактических web/worker containers и fail-closed сверяет
+`application_name`, `TimeZone`, `statement_timeout`, `lock_timeout` и
+`idle_in_transaction_session_timeout`; migration CLI получает отдельный
+расширенный `PGOPTIONS`.
 
 The OCI build has separate dependency boundaries: build dependencies compile the
 application, production dependencies feed the web/worker runtime, and a distinct

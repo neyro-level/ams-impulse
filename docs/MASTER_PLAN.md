@@ -8,7 +8,7 @@
 
 ### EPIC-AUD-01 — Production Database Runtime Contract
 
-- Status: `READY`
+- Status: `IN PROGRESS`
 - Priority: `P0`
 - Wave: `runtime-release`
 

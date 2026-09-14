@@ -14,6 +14,8 @@ await import("./verify-test-database-env.mjs");
 
 process.env.TEST_RUNTIME_DATABASE_USER ??= "ams_web";
 process.env.TEST_RUNTIME_DATABASE_PASSWORD ??= process.env.TEST_DATABASE_PASSWORD;
+process.env.TEST_WORKER_DATABASE_USER ??= "ams_worker";
+process.env.TEST_WORKER_DATABASE_PASSWORD ??= process.env.TEST_DATABASE_PASSWORD;
 
 const databaseUrl = new URL("postgresql://localhost");
 databaseUrl.username = process.env.TEST_DATABASE_USER;
