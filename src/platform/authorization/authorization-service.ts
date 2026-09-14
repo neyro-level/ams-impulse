@@ -21,7 +21,7 @@ const ROLE_PERMISSIONS: Record<ProductCode, Record<ProductRole, readonly Product
     ANALYST: ["leads:project:read", "leads:project:operate"],
   },
   tools: {
-    VIEWER: ["tools:project:read", "research:export"],
+    VIEWER: ["tools:project:read"],
     OPERATOR: ["tools:project:read", "research:create", "research:update", "research:estimate", "research:run", "research:export"],
     ANALYST: ["tools:project:read", "research:create", "research:update", "research:estimate", "research:run", "research:export"],
   },

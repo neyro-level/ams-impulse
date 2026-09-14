@@ -12,6 +12,9 @@ const grants: Record<string, ProductProjectGrant[]> = {
   analyst: [
     { product: "tools", organizationId: "tools-org", projectId: "tools-project", role: "ANALYST" },
   ],
+  toolsViewer: [
+    { product: "tools", organizationId: "tools-org", projectId: "tools-project", role: "VIEWER" },
+  ],
   client: [
     { product: "seo-monitor", organizationId: "seo-org", projectId: "seo-a", role: "VIEWER" },
     { product: "leads", organizationId: "leads-org", projectId: "leads-a", role: "OPERATOR" },
@@ -72,6 +75,25 @@ describe("AuthorizationService", () => {
       projectId: "tools-project",
     })).resolves.toEqual({ allowed: true, role: "ANALYST" });
     await expect(service.listAccessibleProjectIds(analyst, "seo-monitor")).resolves.toEqual([]);
+  });
+
+  it("keeps Tools VIEWER read-only while allowing export to an Analyst", async () => {
+    const viewer = createTenantUserPrincipal({ userId: "toolsViewer", organizationId: "tools-org" });
+    await expect(service.authorize(viewer, "tools:project:read", {
+      product: "tools",
+      organizationId: "tools-org",
+      projectId: "tools-project",
+    })).resolves.toEqual({ allowed: true, role: "VIEWER" });
+    await expect(service.authorize(viewer, "research:export", {
+      product: "tools",
+      organizationId: "tools-org",
+      projectId: "tools-project",
+    })).resolves.toEqual({ allowed: false, code: "ACCESS_DENIED" });
+    await expect(service.authorize(createPlatformAnalystPrincipal("analyst"), "research:export", {
+      product: "tools",
+      organizationId: "tools-org",
+      projectId: "tools-project",
+    })).resolves.toEqual({ allowed: true, role: "ANALYST" });
   });
 
   it("keeps the only global bypass on Platform Admin", async () => {

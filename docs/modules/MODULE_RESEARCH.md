@@ -63,7 +63,7 @@ Worker публикует идемпотентные platform-team уведом�
 
 ## Права
 
-- `VIEWER`: чтение проекта и export завершённого результата.
+- `VIEWER`: только чтение проекта и уже доступных browser-safe результатов; создание CSV/S3 export запрещено.
 - `OPERATOR`: чтение, создание, изменение, estimate, run, export.
 - `ANALYST`: те же действия внутри явно назначенного проекта.
 - `PLATFORM_ADMIN`: global access.
