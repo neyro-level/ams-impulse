@@ -85,9 +85,7 @@ export function getPrincipalPermissions(principal: PrincipalContext): readonly P
     case "platform-analyst":
       return PLATFORM_ANALYST_PERMISSIONS;
     case "identity-user":
-      return principal.systemRole === "ANALYST"
-        ? PLATFORM_ANALYST_PERMISSIONS
-        : ["project:read:organization", "report:read:organization"];
+      return ["project:read:organization", "report:read:organization"];
     case "tenant-user":
       return TENANT_PERMISSIONS[principal.role];
     case "api-client":

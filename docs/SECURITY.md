@@ -40,6 +40,14 @@ System roles:
 - `ANALYST` - internal identity, explicit grants required;
 - `CLIENT` - customer identity, explicit grants required.
 
+The Better Auth principal factory never converts `systemRole = ANALYST` into a
+global platform principal. An identity Analyst receives only project-scoped access
+resolved from fresh product grants. The explicit `platform-analyst` principal is
+reserved for trusted server composition and is not produced from a user database row.
+Before a release that closes legacy aggregate Analyst access, production is checked
+for Analysts without grants. They remain denied by default; no grant is created
+automatically or inferred from the system role.
+
 `PrincipalContext` contains identity/system role/correlation ID. Browser, URL, form, cookie, token claim or first membership never chooses tenant scope.
 
 Public signup, user-created organizations, self-service role editing and arbitrary custom roles are disabled.

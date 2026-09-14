@@ -6,6 +6,7 @@ import {
   isTenantPrincipal,
   type PlatformAdminPrincipal,
   type PlatformAnalystPrincipal,
+  type PrincipalContext,
   type TenantUserPrincipal,
 } from "../src/platform/authorization/principal.ts";
 import {
@@ -35,6 +36,25 @@ const viewer: TenantUserPrincipal = {
   role: "VIEWER",
   correlationId,
 };
+const identityAnalyst: PrincipalContext = {
+  kind: "identity-user",
+  userId: "identity-analyst-1",
+  systemRole: "ANALYST",
+  correlationId,
+};
+const apiClient: PrincipalContext = {
+  kind: "api-client",
+  apiClientId: "api-client-1",
+  organizationId: "organization-a",
+  correlationId,
+};
+const job: PrincipalContext = {
+  kind: "job",
+  jobName: "project-sync",
+  organizationId: "organization-a",
+  projectId: "project-a",
+  correlationId,
+};
 
 describe("PrincipalContext", () => {
   it("separates platform principals from tenant principals", () => {
@@ -54,6 +74,24 @@ describe("PrincipalContext", () => {
       "project:read:organization",
       "report:read:organization",
     ]);
+  });
+
+  it("keeps global permissions restricted to explicit platform principals", () => {
+    const expectedByKind = new Map<PrincipalContext["kind"], readonly string[]>([
+      ["platform-admin", getPrincipalPermissions(admin)],
+      ["platform-analyst", ["project:read:any", "report:read:any", "sync:read:any", "sync:run:any"]],
+      ["identity-user", ["project:read:organization", "report:read:organization"]],
+      ["tenant-user", ["project:read:organization", "report:read:organization"]],
+      ["api-client", []],
+      ["job", []],
+    ]);
+    const principals = [admin, analyst, identityAnalyst, viewer, apiClient, job];
+
+    for (const principal of principals) {
+      expect(getPrincipalPermissions(principal)).toEqual(expectedByKind.get(principal.kind));
+    }
+    expect(hasPermission(identityAnalyst, "project:read:any")).toBe(false);
+    expect(hasPermission(identityAnalyst, "sync:run:any")).toBe(false);
   });
 
   it("requires the exact principal type at privileged boundaries", () => {

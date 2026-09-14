@@ -203,8 +203,10 @@ authTestDescription("authorization matrix", () => {
       data: { disabledAt: new Date() },
     });
 
+    await prisma.seoProjectAccess.deleteMany({
+      where: { membership: { userId: analystUserId } },
+    });
     await grantSeoProjects(analystUserId, alphaOrganization.id, "ANALYST");
-    await grantSeoProjects(analystUserId, westOrganization.id, "ANALYST");
     await grantSeoProjects(alphaViewerId, alphaOrganization.id, "VIEWER");
     await grantSeoProjects(westViewerId, westOrganization.id, "VIEWER");
 
@@ -246,10 +248,12 @@ authTestDescription("authorization matrix", () => {
     expect(await projectService!.getProjectAccessForUser(platformAdminUser!, "beta")).not.toBeNull();
   });
 
-  it("allows analyst to read every project", async () => {
+  it("allows analyst only explicitly granted projects", async () => {
     expect(analystUser).not.toBeNull();
     expect(await projectService!.getProjectAccessForUser(analystUser!, "alpha")).not.toBeNull();
-    expect(await projectService!.getProjectAccessForUser(analystUser!, "beta")).not.toBeNull();
+    expect(await projectService!.getProjectAccessForUser(analystUser!, "beta")).toBeNull();
+    expect(hasPermission(analystUser!, "project:read:any")).toBe(false);
+    expect(hasPermission(analystUser!, "sync:run:any")).toBe(false);
   });
 
   it("loads current memberships and validates active organization", () => {
