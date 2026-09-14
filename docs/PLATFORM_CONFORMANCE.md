@@ -56,6 +56,7 @@ DELIVERY_PROFILE = CRITICAL
 | Tenant isolation | PostgreSQL integration | `tests/tenant-ownership.integration.test.ts`, `tests/tenant-constraints.integration.test.ts`, `tests/research-isolation.integration.test.ts` | IMPLEMENTED |
 | Project isolation inside one organization | PostgreSQL integration across query, mutation, MCP and download | `tests/research-isolation.integration.test.ts` | IMPLEMENTED |
 | RLS missing-context deny | PostgreSQL integration under real runtime roles | `tests/principal.integration.test.ts`, `tests/research-rls.integration.test.ts` | IMPLEMENTED |
+| Platform helper privilege isolation | Immutable migration + PostgreSQL ACL integration | `tests/rls-migration.test.ts`, `tests/platform-schema-privileges.integration.test.ts`, `ops/postgres/roles.sql` | IMPLEMENTED |
 | Platform Admin MFA | PostgreSQL integration + recovery contract | `tests/principal.integration.test.ts`, `tests/platform-admin-recovery.test.ts`, auth E2E | IMPLEMENTED |
 | Research budget concurrency | PostgreSQL integration with parallel transactions | `tests/research-concurrency.integration.test.ts` | IMPLEMENTED |
 | Command idempotency | Unit + PostgreSQL integration | `tests/reliability.integration.test.ts`, `tests/research-concurrency.integration.test.ts` | IMPLEMENTED |

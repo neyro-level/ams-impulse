@@ -18,6 +18,13 @@ const staleScopeGrantMigration = readFileSync(
   ),
   "utf8",
 );
+const platformSchemaHardeningMigration = readFileSync(
+  new URL(
+    "../prisma/migrations/20260914212000_revoke_platform_public_usage/migration.sql",
+    import.meta.url,
+  ),
+  "utf8",
+);
 
 describe("PostgreSQL RLS foundation", () => {
   it("creates every approved product schema", () => {
@@ -40,6 +47,18 @@ describe("PostgreSQL RLS foundation", () => {
     expect(roles).toContain("managed runtime roles must not inherit membership from another role");
     expect(roles).toContain("managed runtime roles must not own schemas or relations");
     expect(roles).not.toContain("CREATE ROLE");
+  });
+
+  it("removes implicit platform schema usage and preserves explicit runtime grants", () => {
+    expect(platformSchemaHardeningMigration).toContain(
+      'REVOKE USAGE ON SCHEMA "platform" FROM PUBLIC',
+    );
+    expect(platformSchemaHardeningMigration).toContain(
+      'GRANT USAGE ON SCHEMA "platform" TO ams_web, ams_worker',
+    );
+    expect(platformSchemaHardeningMigration).toContain("privilege.grantee = 0");
+    expect(roles).toContain('REVOKE USAGE ON SCHEMA "platform" FROM PUBLIC');
+    expect(roles).toContain("PUBLIC must not have USAGE on schema platform");
   });
 
   it("keeps pg-boss write access worker-only", () => {

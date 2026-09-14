@@ -6,30 +6,12 @@
 
 Цель программы `AUDIT-2026-09`: закрыть подтверждённые замечания независимого аудита без изменения продуктового scope, основного stack и действующих auth/tenant контрактов. Каждый эпик выполняется отдельной веткой и PR. Проект имеет `DELIVERY_PROFILE = CRITICAL`, поэтому все кодовые эпики проходят один `RISKY` exact-head SourceCraft Gate перед merge. Итоговый production release выполняется один раз после завершения всей программы.
 
-### EPIC-AUD-03 — Browser Security Header Proof
+### EPIC-AUD-04 — Platform Schema Privilege Hardening
 
 - Status: `IN PROGRESS`
 - Priority: `P1`
 - Wave: `security-data`
 - Depends on: `EPIC-AUD-02` (`COMPLETE`)
-
-Goal: доказать route-aware CSP поведением Next config и сузить неиспользуемые browser capabilities.
-
-Tasks:
-
-- `AUD-03.1` — проверить фактические headers для `/`, `/dashboard` и `/sw.js` через официальный Next config test utility;
-- `AUD-03.2` — гарантировать единственный CSP и правильный `connect-src` для public/private routes;
-- `AUD-03.3` — запретить неиспользуемые `payment`, `usb` и `interest-cohort` в `Permissions-Policy`;
-- `AUD-03.4` — сохранить nonce-CSP как отдельный revisit gate: report-only measurement плюс явное принятие fully dynamic rendering.
-
-Done when: regression test проверяет итоговые response headers, а текущий documented framework-inline exception не расширяется.
-
-### EPIC-AUD-04 — Platform Schema Privilege Hardening
-
-- Status: `BACKLOG`
-- Priority: `P1`
-- Wave: `security-data`
-- Depends on: `EPIC-AUD-02`
 
 Goal: удалить у PostgreSQL pseudo-role `PUBLIC` доступ к schema `platform`, сохранив только явные runtime grants.
 

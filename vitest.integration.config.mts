@@ -36,6 +36,7 @@ export default defineConfig({
       "tests/research-audit-safety.integration.test.ts",
       "tests/operational-admin.integration.test.ts",
       "tests/database-runtime-contract.integration.test.ts",
+      "tests/platform-schema-privileges.integration.test.ts",
     ],
   },
 });

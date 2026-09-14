@@ -110,7 +110,10 @@ The migrator owns schema changes. `ams_web` and `ams_worker` are login roles wit
 
 `Site`, `SeoProjectAccess`, `ToolsMembership` and `ToolsProjectAccess` deliberately use ENABLE without FORCE because they are lookup inputs to tightly scoped `SECURITY DEFINER` authorization functions. PostgreSQL applies FORCE policies to a table owner; keeping FORCE here would recursively re-enter the same policy. The exception does not exempt runtime identities: they are verified non-owners with `NOBYPASSRLS`. Definer functions use fixed trusted `search_path` values ending in `pg_temp` and expose only boolean decisions.
 
-Execution on authorization `SECURITY DEFINER` helpers is revoked from `PUBLIC`. Only `ams_web` and/or `ams_worker` receive the exact function grants required by their RLS policies; stale-run scope discovery is worker-only. Budget boundaries are evaluated in UTC.
+`PUBLIC` has neither `USAGE` on schema `platform` nor execution on authorization
+`SECURITY DEFINER` helpers. `ams_web` and `ams_worker` receive explicit schema
+usage plus only the exact function grants required by their RLS policies;
+stale-run scope discovery is worker-only. Budget boundaries are evaluated in UTC.
 
 ## Browser And UI
 
