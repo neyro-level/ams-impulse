@@ -64,6 +64,8 @@ DELIVERY_PROFILE = CRITICAL
 | Paid retry safety | Unit + PostgreSQL integration | `tests/research-execution.test.ts`, `tests/research-worker-policy.test.ts`, `tests/research-concurrency.integration.test.ts` | IMPLEMENTED |
 | MCP grants cannot expand AMS access | PostgreSQL integration through MCP application boundary | `tests/research-mcp.test.ts`, `tests/research-isolation.integration.test.ts` | IMPLEMENTED |
 | Private responses excluded from caches | Unit + browser E2E | `tests/pwa-service-worker.test.ts`, `tests/private-cache-policy.test.ts`, `tests/e2e/platform-shell.spec.ts` | IMPLEMENTED |
+| Route-aware browser security headers | Next config response simulation | `tests/content-security-policy.test.ts`, `next.config.ts` | IMPLEMENTED |
+| Production Promise lifecycle lint | Type-aware ESLint on `src` + `collector` | `eslint.config.mjs`, `collector/tsconfig.json`, `tests/lint-contract.test.ts` | IMPLEMENTED |
 | Backup completeness and isolated restore | Release/operations proof | `ops/postgres/managed-restore-proof.sh`, `scripts/verify-managed-backup.mjs` | IMPLEMENTED |
 
 ## Proof Rules

@@ -2,46 +2,6 @@
 
 Документ содержит только незавершённую работу. Реализованные изменения сохраняются в Git и SourceCraft.
 
-## NOW — Независимый Аудит Репозитория
-
-Цель программы `AUDIT-2026-09`: закрыть подтверждённые замечания независимого аудита без изменения продуктового scope, основного stack и действующих auth/tenant контрактов. Каждый эпик выполняется отдельной веткой и PR. Проект имеет `DELIVERY_PROFILE = CRITICAL`, поэтому все кодовые эпики проходят один `RISKY` exact-head SourceCraft Gate перед merge. Итоговый production release выполняется один раз после завершения всей программы.
-
-### EPIC-AUD-06 — Type-aware Async Lint
-
-- Status: `IN PROGRESS`
-- Priority: `P2`
-- Wave: `quality`
-- Depends on: `EPIC-AUD-02` (`COMPLETE`)
-
-Goal: добавить type-aware проверки promises без suppressions и без неограниченного lint scope.
-
-Tasks:
-
-- `AUD-06.1` — измерить `no-floating-promises` и `no-misused-promises` на production TypeScript roots;
-- `AUD-06.2` — включить правила с project service только если fixes остаются локальными и не меняют lifecycle;
-- `AUD-06.3` — исправить подтверждённые promise defects и добавить lint regression proof;
-- `AUD-06.4` — при широком несовместимом diff оставить эпик `BLOCKED` с точным количеством/классами нарушений, не добавляя suppressions.
-
-Done when: правила включены и lint проходит либо evidence доказывает отдельную migration-программу; ложный статус PASS запрещён.
-
-### EPIC-AUD-07 — Program Closure And Release
-
-- Status: `BACKLOG`
-- Priority: `P1`
-- Wave: `final-docs`
-- Depends on: `EPIC-AUD-01..06`
-
-Goal: синхронизировать канон, выполнить итоговый release proof и выпустить один immutable artifact из clean canonical `main`.
-
-Tasks:
-
-- `AUD-07.1` — удалить завершённые пункты программы из `MASTER_PLAN` и обновить Architecture/Security/Data/Conformance только по фактическому diff;
-- `AUD-07.2` — выполнить один итоговый exact-main release workflow с переиспользованием Merge Gate evidence;
-- `AUD-07.3` — провести staging smoke, promote того же digest в production и проверить health, runtime DB profiles, private access и workers;
-- `AUD-07.4` — сохранить rollback/recovery evidence и обновить production baseline.
-
-Done when: SourceCraft exact-SHA chain, artifact digest, migration state и live proof подтверждены; неизвестная production identity или отсутствие CI evidence блокируют rollout.
-
 ## Внешние Проверки
 
 - выполнить первый подтверждённый платный тестовый запуск Research через MCP после серверной оценки и явного подтверждения стоимости;
