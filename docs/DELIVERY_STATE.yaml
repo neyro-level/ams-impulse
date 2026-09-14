@@ -1,7 +1,7 @@
 schemaVersion: 1
 program: audit-2026-09-remediation
-currentWave: security-data
-currentEpic: EPIC-AUD-04
+currentWave: research-domain
+currentEpic: EPIC-AUD-05
 source:
   backlog: docs/MASTER_PLAN.md#now--независимый-аудит-репозитория
   architecture: docs/ARCHITECTURE.md#runtime-and-delivery
@@ -10,10 +10,11 @@ dependencies:
     - EPIC-AUD-01
     - EPIC-AUD-02
     - EPIC-AUD-03
+    - EPIC-AUD-04
   blocked: []
 delivery:
-  branch: codex/aud-04-platform-schema-privileges
+  branch: codex/aud-05-research-money-boundary
   pullRequest: null
   headSha: null
   proof: pending
-nextAction: implement-and-prove-platform-schema-privileges
+nextAction: implement-and-prove-research-money-boundary

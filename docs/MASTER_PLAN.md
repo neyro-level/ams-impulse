@@ -6,29 +6,12 @@
 
 Цель программы `AUDIT-2026-09`: закрыть подтверждённые замечания независимого аудита без изменения продуктового scope, основного stack и действующих auth/tenant контрактов. Каждый эпик выполняется отдельной веткой и PR. Проект имеет `DELIVERY_PROFILE = CRITICAL`, поэтому все кодовые эпики проходят один `RISKY` exact-head SourceCraft Gate перед merge. Итоговый production release выполняется один раз после завершения всей программы.
 
-### EPIC-AUD-04 — Platform Schema Privilege Hardening
-
-- Status: `IN PROGRESS`
-- Priority: `P1`
-- Wave: `security-data`
-- Depends on: `EPIC-AUD-02` (`COMPLETE`)
-
-Goal: удалить у PostgreSQL pseudo-role `PUBLIC` доступ к schema `platform`, сохранив только явные runtime grants.
-
-Tasks:
-
-- `AUD-04.1` — добавить новую immutable migration с `REVOKE USAGE ON SCHEMA platform FROM PUBLIC`;
-- `AUD-04.2` — синхронизировать managed-role provisioning и fail-closed verification;
-- `AUD-04.3` — доказать grants для `ams_web`/`ams_worker` и deny для `PUBLIC`/неразрешённых helper-functions на clean и upgrade database.
-
-Done when: production-compatible migration не меняет данные, runtime scenarios проходят, а implicit schema access отсутствует.
-
 ### EPIC-AUD-05 — Research Money Arithmetic Boundary
 
-- Status: `BACKLOG`
+- Status: `IN PROGRESS`
 - Priority: `P2`
 - Wave: `research-domain`
-- Depends on: `EPIC-AUD-02`
+- Depends on: `EPIC-AUD-02` (`COMPLETE`)
 
 Goal: сделать pricing policy самостоятельно fail-closed при небезопасном query count или переполнении safe integer.
 

@@ -18,6 +18,27 @@ describe("configured Research money policy", () => {
     expect(() => ConfiguredResearchPricing.fromEnvironment({ RESEARCH_QUERY_ESTIMATE_KOPECKS: "12.5" })).toThrowError(expect.objectContaining({ code: "RESEARCH_PRICING_UNAVAILABLE" }));
   });
 
+  it.each([0, -1, 1.5, Number.NaN, Number.POSITIVE_INFINITY])(
+    "rejects unsafe query count %s at the pricing boundary",
+    (queryCount) => {
+      const pricing = ConfiguredResearchPricing.fromEnvironment({
+        RESEARCH_QUERY_ESTIMATE_KOPECKS: "125",
+      });
+      expect(() => pricing.estimateRunCostKopecks(queryCount)).toThrowError(
+        expect.objectContaining({ code: "RESEARCH_PRICING_UNAVAILABLE" }),
+      );
+    },
+  );
+
+  it("rejects multiplication outside the safe-integer money range", () => {
+    const pricing = ConfiguredResearchPricing.fromEnvironment({
+      RESEARCH_QUERY_ESTIMATE_KOPECKS: String(Number.MAX_SAFE_INTEGER),
+    });
+    expect(() => pricing.estimateRunCostKopecks(2)).toThrowError(
+      expect.objectContaining({ code: "RESEARCH_PRICING_UNAVAILABLE" }),
+    );
+  });
+
   it("rejects absent or inconsistent budget limits", () => {
     expect(() => ConfiguredResearchBudgetPolicy.fromEnvironment({})).toThrow("RESEARCH_BUDGET_CONFIGURATION_INVALID");
     expect(() => ConfiguredResearchBudgetPolicy.fromEnvironment({ RESEARCH_DAILY_LIMIT_KOPECKS: "50000", RESEARCH_MONTHLY_LIMIT_KOPECKS: "40000" })).toThrow("RESEARCH_BUDGET_CONFIGURATION_INVALID");

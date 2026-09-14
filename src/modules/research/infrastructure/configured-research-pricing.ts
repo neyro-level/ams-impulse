@@ -35,6 +35,13 @@ export class ConfiguredResearchPricing implements ResearchPricingPolicy {
   }
 
   estimateRunCostKopecks(queryCount: number) {
-    return this.queryAllocationKopecks * queryCount;
+    if (!Number.isSafeInteger(queryCount) || queryCount <= 0) {
+      throw new ResearchError("RESEARCH_PRICING_UNAVAILABLE");
+    }
+    const total = this.queryAllocationKopecks * queryCount;
+    if (!Number.isSafeInteger(total) || total < 0) {
+      throw new ResearchError("RESEARCH_PRICING_UNAVAILABLE");
+    }
+    return total;
   }
 }
