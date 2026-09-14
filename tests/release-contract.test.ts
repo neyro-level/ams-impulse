@@ -328,6 +328,7 @@ describe("production worker module boundary", () => {
     expect(containerEntrypoint).toContain('case "projects-sync":');
     expect(containerEntrypoint).toContain('case "topvisor-checks":');
     expect(containerEntrypoint).toContain('case "competitors-sync":');
+    expect(containerEntrypoint).toContain('case "auth-admin":');
     expect(containerEntrypoint).toContain('args[0] ?? "daily"');
   });
 
@@ -338,6 +339,14 @@ describe("production worker module boundary", () => {
     expect(runtime).toContain("/app/.next/standalone ./");
     expect(runtime).toContain("/app/dist-collector ./dist-collector");
     expect(runtime).not.toMatch(/\/app\/(src|prisma|tsconfig|next\.config|postcss\.config|docker-compose)/);
+  });
+
+  it("ships the owner-only auth recovery CLI in the compiled runtime artifact", () => {
+    const collectorConfig = readFileSync("tsconfig.collector.json", "utf8");
+    const containerEntrypoint = readFileSync("scripts/runtime-entrypoint.mjs", "utf8");
+
+    expect(collectorConfig).toContain('"scripts/auth-admin.ts"');
+    expect(containerEntrypoint).toContain("dist-collector/scripts/auth-admin.js");
   });
 
   it(

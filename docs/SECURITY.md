@@ -33,6 +33,10 @@ System roles:
   revokes its complete batch and every active session, rotates TOTP and recovery material,
   writes an AuditEvent, and leaves admin authority denied until the new TOTP is verified.
   Better Auth backup codes are intentionally empty for bootstrapped Platform Admin accounts.
+- A pre-TOTP legacy Platform Admin can be adopted exactly once by the owner CLI only when
+  it is the sole active Platform Admin and has no TOTP or recovery records. Adoption rotates
+  the password, revokes every session, creates pending TOTP plus offline recovery material,
+  writes start/completion AuditEvents and keeps admin authority denied until TOTP verification.
 - `ANALYST` - internal identity, explicit grants required;
 - `CLIENT` - customer identity, explicit grants required.
 

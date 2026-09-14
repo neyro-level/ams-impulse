@@ -18,6 +18,7 @@
   },
   "include": [
     "collector/**/*.ts",
+    "scripts/auth-admin.ts",
     "src/application/**/*.ts",
     "src/infrastructure/**/*.ts",
     "src/shared/**/*.ts",

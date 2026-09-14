@@ -1,7 +1,7 @@
 import { MembershipRole, SystemRole } from "../src/generated/prisma/client.ts";
 import { createPrismaContext } from "../src/platform/database/prisma/context.ts";
 import { randomUUID } from "node:crypto";
-import { readFileSync, writeFileSync } from "node:fs";
+import { readFileSync, unlinkSync, writeFileSync } from "node:fs";
 import { isAbsolute, relative, resolve, sep } from "node:path";
 import {
   generateRandomString,
@@ -25,6 +25,8 @@ type AuthAdminCommand =
   | "set-system-role"
   | "bootstrap-platform-admin"
   | "verify-platform-admin-bootstrap"
+  | "adopt-legacy-platform-admin"
+  | "verify-platform-admin-adoption"
   | "recover-platform-admin"
   | "verify-platform-admin-recovery"
   | "add-to-organization"
@@ -152,6 +154,39 @@ function writeRecoveryMaterial(input: {
     recoveryCodes: input.recoveryCodes,
     warning: "Move this file to offline storage and securely remove the workstation copy.",
   }, null, 2)}\n`, { encoding: "utf8", flag: "wx", mode: 0o600 });
+}
+
+async function assertLegacyPlatformAdmin(username: string) {
+  const [adminCount, user] = await Promise.all([
+    prisma.user.count({ where: { systemRole: SystemRole.PLATFORM_ADMIN } }),
+    prisma.user.findUnique({
+      where: { username },
+      include: {
+        twoFactor: true,
+        adminRecoveryCodes: { select: { id: true } },
+        accounts: {
+          where: { providerId: "credential" },
+          select: { id: true, password: true },
+        },
+      },
+    }),
+  ]);
+
+  if (
+    adminCount !== 1 ||
+    !user ||
+    user.systemRole !== SystemRole.PLATFORM_ADMIN ||
+    user.disabledAt ||
+    user.twoFactorEnabled ||
+    user.twoFactor ||
+    user.adminRecoveryCodes.length > 0 ||
+    user.accounts.length !== 1 ||
+    !user.accounts[0]?.password
+  ) {
+    throw new Error("Eligible legacy Platform Admin account not found");
+  }
+
+  return { user, credentialAccountId: user.accounts[0].id };
 }
 
 async function findUserByUsername(username: string) {
@@ -414,6 +449,182 @@ async function verifyPlatformAdminBootstrap() {
   console.log(`platform_admin_bootstrap_completed=${username}`);
 }
 
+async function adoptLegacyPlatformAdmin() {
+  const username = requireUsername();
+  const password = readBootstrapSecretFromStdin("password");
+  const authSecret = requireAuthSecret();
+  const resolvedMaterialOutput = resolveMaterialOutput();
+  const { user, credentialAccountId } = await assertLegacyPlatformAdmin(username);
+  const secret = generateRandomString(32);
+  const passwordHash = await hashPassword(password);
+  const encryptedSecret = await symmetricEncrypt({ key: authSecret, data: secret });
+  const disabledBetterAuthBackupCodes = await symmetricEncrypt({ key: authSecret, data: "[]" });
+  const recovery = createPlatformAdminRecoveryBatch(user.id);
+  const totpUri = createOTP(secret, { digits: 6, period: 30 }).url("AMS IMPULSE", user.email);
+
+  writeRecoveryMaterial({
+    path: resolvedMaterialOutput,
+    username,
+    totpUri,
+    status: "awaiting_totp_verification",
+    recoveryCodes: recovery.codes,
+  });
+
+  const correlationId = randomUUID();
+  try {
+    await prisma.$transaction(async (transaction) => {
+      const adminCount = await transaction.user.count({
+        where: { systemRole: SystemRole.PLATFORM_ADMIN },
+      });
+      const currentUser = await transaction.user.findUnique({
+        where: { id: user.id },
+        include: {
+          twoFactor: true,
+          accounts: {
+            where: { id: credentialAccountId, providerId: "credential" },
+            select: { id: true, password: true },
+          },
+        },
+      });
+      const recoveryCodeCount = await transaction.platformAdminRecoveryCode.count({
+        where: { userId: user.id },
+      });
+      if (
+        adminCount !== 1 ||
+        !currentUser ||
+        currentUser.systemRole !== SystemRole.PLATFORM_ADMIN ||
+        currentUser.disabledAt ||
+        currentUser.twoFactorEnabled ||
+        currentUser.twoFactor ||
+        recoveryCodeCount > 0 ||
+        currentUser.accounts.length !== 1 ||
+        !currentUser.accounts[0]?.password
+      ) {
+        throw new Error("Legacy Platform Admin state changed; adoption aborted");
+      }
+
+      await transaction.account.update({
+        where: { id: credentialAccountId },
+        data: { password: passwordHash },
+      });
+      await transaction.twoFactor.create({
+        data: {
+          id: randomUUID(),
+          userId: user.id,
+          secret: encryptedSecret,
+          backupCodes: disabledBetterAuthBackupCodes,
+          verified: false,
+        },
+      });
+      await transaction.platformAdminRecoveryCode.createMany({ data: recovery.records });
+      await transaction.user.update({
+        where: { id: user.id },
+        data: { twoFactorEnabled: false },
+      });
+      await transaction.session.deleteMany({ where: { userId: user.id } });
+      await transaction.auditEvent.create({
+        data: {
+          actorType: "SYSTEM",
+          action: "platform-admin.legacy-adoption.started",
+          entityType: "User",
+          entityId: user.id,
+          beforeMarker: { totpEnrolled: false },
+          afterMarker: {
+            passwordRotated: true,
+            sessionsRevoked: true,
+            totpVerified: false,
+            recoveryBatchCreated: true,
+          },
+          source: "owner-cli",
+          correlationId,
+        },
+      });
+    }, { isolationLevel: "Serializable" });
+  } catch (error) {
+    unlinkSync(resolvedMaterialOutput);
+    throw error;
+  }
+
+  console.log(`platform_admin_adoption_material=${resolvedMaterialOutput}`);
+  console.log(`platform_admin_adoption_pending=${username}`);
+}
+
+async function verifyPlatformAdminAdoption() {
+  const username = requireUsername();
+  const code = readBootstrapSecretFromStdin("totp");
+  const authSecret = requireAuthSecret();
+  const user = await prisma.user.findUnique({
+    where: { username },
+    include: { twoFactor: true },
+  });
+  if (
+    !user ||
+    user.systemRole !== SystemRole.PLATFORM_ADMIN ||
+    user.disabledAt ||
+    user.twoFactorEnabled ||
+    !user.twoFactor ||
+    user.twoFactor.verified
+  ) {
+    throw new Error("Pending legacy Platform Admin adoption not found");
+  }
+  const adoptionStarted = await prisma.auditEvent.findFirst({
+    where: {
+      action: "platform-admin.legacy-adoption.started",
+      entityType: "User",
+      entityId: user.id,
+    },
+    orderBy: { createdAt: "desc" },
+    select: { createdAt: true },
+  });
+  if (!adoptionStarted) {
+    throw new Error("Pending legacy Platform Admin adoption audit marker not found");
+  }
+  const secret = await symmetricDecrypt({ key: authSecret, data: user.twoFactor.secret });
+  if (!(await createOTP(secret, { digits: 6, period: 30 }).verify(code, { window: 1 }))) {
+    throw new Error("TOTP verification failed");
+  }
+
+  const correlationId = randomUUID();
+  await prisma.$transaction(async (transaction) => {
+    const currentUser = await transaction.user.findUnique({
+      where: { id: user.id },
+      include: { twoFactor: true },
+    });
+    if (
+      !currentUser ||
+      currentUser.systemRole !== SystemRole.PLATFORM_ADMIN ||
+      currentUser.disabledAt ||
+      currentUser.twoFactorEnabled ||
+      !currentUser.twoFactor ||
+      currentUser.twoFactor.verified
+    ) {
+      throw new Error("Legacy Platform Admin state changed; verification aborted");
+    }
+    await transaction.twoFactor.update({
+      where: { userId: user.id },
+      data: { verified: true, failedVerificationCount: 0, lockedUntil: null },
+    });
+    await transaction.user.update({
+      where: { id: user.id },
+      data: { twoFactorEnabled: true },
+    });
+    await transaction.session.deleteMany({ where: { userId: user.id } });
+    await transaction.auditEvent.create({
+      data: {
+        actorType: "SYSTEM",
+        action: "platform-admin.legacy-adoption.completed",
+        entityType: "User",
+        entityId: user.id,
+        afterMarker: { totpVerified: true, sessionsRevoked: true },
+        source: "owner-cli",
+        correlationId,
+      },
+    });
+  }, { isolationLevel: "Serializable" });
+
+  console.log(`platform_admin_adoption_completed=${username}`);
+}
+
 async function recoverPlatformAdmin() {
   const username = requireUsername();
   const recoveryCode = readBootstrapSecretFromStdin("recovery");
@@ -623,6 +834,12 @@ async function main() {
       return;
     case "verify-platform-admin-bootstrap":
       await verifyPlatformAdminBootstrap();
+      return;
+    case "adopt-legacy-platform-admin":
+      await adoptLegacyPlatformAdmin();
+      return;
+    case "verify-platform-admin-adoption":
+      await verifyPlatformAdminAdoption();
       return;
     case "recover-platform-admin":
       await recoverPlatformAdmin();

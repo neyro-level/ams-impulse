@@ -23,6 +23,7 @@ function run(argv) {
 }
 
 const workerMain = "dist-collector/src/worker/main.js";
+const authAdminMain = "dist-collector/scripts/auth-admin.js";
 switch (mode) {
   case "web": await run(["server.js"]); break;
   case "outbox-worker": await run([workerMain, "outbox-daemon", process.env.OUTBOX_WORKER_ID ?? "seo-monitor-outbox"]); break;
@@ -32,6 +33,7 @@ switch (mode) {
   case "projects-sync": await run([workerMain, "projects-sync", args[0] ?? "daily"]); break;
   case "topvisor-checks": await run([workerMain, "topvisor-checks"]); break;
   case "competitors-sync": await run([workerMain, "competitors-sync"]); break;
+  case "auth-admin": await run([authAdminMain, ...args]); break;
   case "project-sync": {
     if (!args[0]) throw new Error("Usage: runtime-entrypoint project-sync <project-slug> [trigger]");
     await run([workerMain, "project-sync", args[0], args[1] ?? "manual"]);

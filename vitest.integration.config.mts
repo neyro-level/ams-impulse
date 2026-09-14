@@ -13,6 +13,7 @@ export default defineConfig({
     setupFiles: ["./tests/setup-test-env.ts"],
     include: [
       "tests/platform-admin.integration.test.ts",
+      "tests/platform-admin-adoption.integration.test.ts",
       "tests/auth.authorization.test.ts",
       "tests/health.integration.test.ts",
       "tests/monitoring-service.test.ts",

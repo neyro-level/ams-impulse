@@ -62,6 +62,28 @@ Run an isolated provider restore every 3–6 months and before especially destru
 
 The executable gate refuses a source/target ID match, a production host/database match and a public application URL. It proves PostgreSQL 18, completed Prisma migrations, required tables and application/database readiness. Credentials, database coordinates, row data and PII are not written to the proof.
 
+## Platform Admin Access Recovery
+
+Normal recovery requires one unused offline Platform Admin recovery code and the two-stage
+`recover-platform-admin` / `verify-platform-admin-recovery` owner CLI flow. Passwords,
+recovery codes and TOTP codes enter only through stdin. Recovery material is written to a
+new `0600` file on an explicit bind mount outside the checkout, moved to offline storage and
+removed from the server after verification.
+
+A legacy administrator created before the mandatory-TOTP contract may use the separate
+`adopt-legacy-platform-admin` / `verify-platform-admin-adoption` flow exactly once. The CLI
+fails closed unless the target is the sole enabled Platform Admin and has no TOTP or recovery
+records. The first stage rotates the password, revokes all sessions and creates pending TOTP
+plus recovery codes. Platform authority remains denied until the second stage verifies TOTP.
+Both stages write safe AuditEvents. Direct auth-table edits and password-only exceptions are
+forbidden.
+
+Run the compiled CLI only from the exact deployed runtime image through a manual one-shot
+Compose invocation using the protected web environment. Bind a temporary owner-only host
+directory to `/run/owner-material`; do not print the generated password or recovery material
+and do not pass secrets in argv. After completion, prove username sign-in, TOTP challenge,
+private route access, session attributes and both adoption AuditEvents.
+
 ## Failure Classes
 
 - Web release failure: rollback code/assets only.

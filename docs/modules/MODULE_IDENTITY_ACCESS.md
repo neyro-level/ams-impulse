@@ -37,6 +37,9 @@ Better Auth `1.7.2` использует JWT, MCP OAuth Provider и CIMD. `/mcp`
 - Успешная выдача/смена/отзыв доступа пишет безопасный `AuditEvent`.
 - OAuth token не может расширить AMS grants.
 - Password, session token, OAuth token и PII не попадают в DTO, logs или audit markers.
+- Единственный legacy Platform Admin без TOTP восстанавливается только двухэтапной
+  owner-CLI adoption: rotation password/session, выпуск offline recovery material и
+  возврат authority лишь после TOTP verification.
 
 ## Проверки
 

@@ -137,4 +137,4 @@ The release writes `/opt/ams-platform/ams-seo-monitor/shared/release-proofs/<SHA
 
 ## Recovery
 
-Operational recovery details live in [`ops/RECOVERY.md`](ops/RECOVERY.md). DB restore is never an automatic release rollback and always requires separate owner decision.
+Operational recovery details live in [`docs/ops/RECOVERY.md`](ops/RECOVERY.md). DB restore is never an automatic release rollback and always requires separate owner decision.
