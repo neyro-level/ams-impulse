@@ -3,13 +3,14 @@ import { cn } from "../../shared/lib/cn.ts";
 
 type ContainerProps = HTMLAttributes<HTMLElement> & {
   as?: "div" | "main";
-  size?: "narrow" | "site" | "wide";
+  size?: "narrow" | "site" | "wide" | "fluid";
 };
 
 const widths = {
   narrow: "max-w-narrow",
   site: "max-w-site",
   wide: "max-w-wide",
+  fluid: "max-w-none",
 } as const;
 
 export function Container({ as: Component = "div", size = "wide", className, ...props }: ContainerProps) {

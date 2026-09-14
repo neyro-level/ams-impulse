@@ -3,6 +3,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { legalOperator } from "../../shared/legal/legal-config.ts";
 import { SiteFooter } from "./SiteFooter.tsx";
+import { PublicBrand } from "./PublicBrand.tsx";
 import styles from "./LegalDocument.module.css";
 import landingStyles from "./ImpulseLanding.module.css";
 
@@ -21,9 +22,8 @@ export function LegalDocument({ eyebrow, title, description, version, effectiveD
       <header className="bg-[var(--ch-bg-deepest)] text-[var(--ch-white)]">
         <div className="mx-auto w-full max-w-legal px-container pb-16 pt-6 sm:px-container-wide sm:pb-20 sm:pt-8">
           <div className="flex items-center justify-between gap-6">
-            <Link href="/" className="inline-flex items-center gap-3" aria-label="AMS IMPULSE — на главную">
-              <span className="grid size-10 place-items-center border border-[var(--ch-border-control)] bg-[var(--ch-surface-subtle)] text-public-label font-extrabold">AMS</span>
-              <span className="text-public-brand font-extrabold">IMPULSE</span>
+            <Link href="/" className="inline-flex items-center" aria-label="АМС ИМПУЛЬС — на главную">
+              <PublicBrand />
             </Link>
             <Link href="/" className="inline-flex min-h-11 items-center gap-2 border border-[var(--ch-border-control)] px-4 text-sm font-semibold text-[var(--ch-action-ondark)] transition hover:border-[var(--ch-border-strong)] hover:text-[var(--ch-white)]">
               <ArrowLeft className="size-4" strokeWidth={1.6} aria-hidden />

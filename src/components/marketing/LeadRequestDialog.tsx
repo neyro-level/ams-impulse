@@ -122,7 +122,7 @@ export function LeadRequestDialog() {
   return (
     <>
       <MarketingButton type="button" size="lg" className="group gap-3" onClick={openDialog}>
-        Обсудить продвижение
+        Обсудить архитектуру
         <ArrowUpRight className="transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" strokeWidth={1.8} aria-hidden />
       </MarketingButton>
 
@@ -143,8 +143,8 @@ export function LeadRequestDialog() {
             <>
               <DialogHeader>
                 <p className="text-public-micro font-bold uppercase text-[var(--ch-accent)]">AMS IMPULSE</p>
-                <DialogTitle className="mt-2 text-public-dialog-title font-extrabold text-[var(--ch-white)]">Обсудить продвижение</DialogTitle>
-                <p className="mt-2 max-w-md text-sm leading-6 text-[var(--ch-muted-ondark)]">Оставьте имя и телефон. Уточним задачу, оценим применимость услуги и согласуем следующий шаг.</p>
+                <DialogTitle className="mt-2 text-public-dialog-title font-extrabold text-[var(--ch-white)]">Обсудить архитектуру</DialogTitle>
+                <p className="mt-2 max-w-md text-sm leading-6 text-[var(--ch-muted-ondark)]">Оставьте имя и телефон. Разберём задачу, процессы и данные, затем согласуем следующий шаг.</p>
               </DialogHeader>
 
               <form className="mt-8 border-t border-[var(--ch-border-subtle)] pt-8" onSubmit={handleSubmit} noValidate>

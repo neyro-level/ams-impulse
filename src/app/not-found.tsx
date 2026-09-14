@@ -1,6 +1,7 @@
 import { ArrowLeft, ArrowUpRight } from "lucide-react";
 import Link from "next/link";
 import styles from "../components/marketing/ImpulseLanding.module.css";
+import { PublicBrand } from "../components/marketing/PublicBrand.tsx";
 
 const quickLinks = [
   {
@@ -30,9 +31,8 @@ export default function NotFound() {
       <div className="absolute inset-0 -z-10 bg-[image:var(--ch-not-found-atmosphere)]" aria-hidden />
 
       <div className="mx-auto w-full max-w-not-found text-center">
-        <Link href="/" className="mx-auto inline-flex items-center gap-3" aria-label="AMS IMPULSE — на главную">
-          <span className="grid size-12 place-items-center border border-[var(--ch-border-control)] bg-[var(--ch-surface-subtle)] text-xs font-extrabold">AMS</span>
-          <span className="text-public-brand font-extrabold">IMPULSE</span>
+        <Link href="/" className="mx-auto inline-flex items-center" aria-label="АМС ИМПУЛЬС — на главную">
+          <PublicBrand size="large" />
         </Link>
 
         <p className="mt-10 flex items-center justify-center gap-3 text-public-label font-bold uppercase text-[var(--ch-accent)]">

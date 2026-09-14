@@ -5,14 +5,15 @@ import { describe, expect, it, vi } from "vitest";
 type FetchListener = (event: { request: unknown; respondWith(value: Promise<unknown>): void }) => void;
 type ActivateListener = (event: { waitUntil(value: Promise<unknown>): void }) => void;
 
-async function loadWorker() {
+async function loadWorker(origin = "https://impulse.test") {
   const source = await readFile(new URL("../public/sw.js", import.meta.url), "utf8");
   const listeners = new Map<string, (event: never) => void>();
   const cache = { match: vi.fn(async () => undefined), put: vi.fn(async () => undefined) };
   const caches = { keys: vi.fn<() => Promise<string[]>>(async () => []), delete: vi.fn(async () => true), open: vi.fn(async () => cache) };
   const fetch = vi.fn(async () => ({ ok: true, type: "basic", headers: new Headers(), clone() { return this; } }));
   const self = {
-    location: { origin: "https://impulse.test" },
+    location: { origin, hostname: new URL(origin).hostname },
+    registration: { unregister: vi.fn(async () => true) },
     clients: { claim: vi.fn(async () => undefined) },
     skipWaiting: vi.fn(),
     addEventListener(type: string, listener: (event: never) => void) { listeners.set(type, listener); },
@@ -69,13 +70,30 @@ describe("PWA service worker cache boundary", () => {
 
   it("deletes only obsolete versions from its own cache namespace on activate", async () => {
     const worker = await loadWorker();
-    worker.caches.keys.mockResolvedValue(["ams-static-v1", "ams-static-v2", "another-app-v1"]);
+    worker.caches.keys.mockResolvedValue(["ams-static-v2", "ams-static-v3", "another-app-v1"]);
     let activation: Promise<unknown> | undefined;
     (worker.listeners.get("activate") as ActivateListener)({ waitUntil(value) { activation = value; } });
     await activation;
     expect(worker.caches.delete).toHaveBeenCalledTimes(1);
-    expect(worker.caches.delete).toHaveBeenCalledWith("ams-static-v1");
+    expect(worker.caches.delete).toHaveBeenCalledWith("ams-static-v2");
     expect(worker.caches.delete).not.toHaveBeenCalledWith("another-app-v1");
     expect(worker.self.clients.claim).toHaveBeenCalledOnce();
+  });
+
+  it("removes its caches and unregisters itself on local development hosts", async () => {
+    const worker = await loadWorker("http://127.0.0.1:3001");
+    worker.caches.keys.mockResolvedValue(["ams-static-v2", "ams-static-v3", "another-app-v1"]);
+    let activation: Promise<unknown> | undefined;
+    (worker.listeners.get("activate") as ActivateListener)({ waitUntil(value) { activation = value; } });
+    await activation;
+
+    expect(worker.caches.delete).toHaveBeenCalledTimes(2);
+    expect(worker.caches.delete).not.toHaveBeenCalledWith("another-app-v1");
+    expect(worker.self.registration.unregister).toHaveBeenCalledOnce();
+    expect(worker.self.clients.claim).not.toHaveBeenCalled();
+
+    let intercepted = false;
+    (worker.listeners.get("fetch") as FetchListener)({ request: request("/_next/static/chunks/app.js"), respondWith() { intercepted = true; } });
+    expect(intercepted).toBe(false);
   });
 });

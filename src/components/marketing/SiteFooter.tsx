@@ -2,6 +2,7 @@ import { ArrowUpRight, MessageCircle, Send } from "lucide-react";
 import Link from "next/link";
 import { legalLinks, legalOperator, publicContacts } from "../../shared/legal/legal-config.ts";
 import styles from "./ImpulseLanding.module.css";
+import { PublicBrand } from "./PublicBrand.tsx";
 
 export function SiteFooter() {
   const phoneHref = `tel:${legalOperator.phone.replace(/[^\d+]/g, "")}`;
@@ -10,9 +11,8 @@ export function SiteFooter() {
     <footer id="site-footer" className={`${styles.landing} border-t border-[var(--ch-border-subtle)] bg-[var(--ch-bg-deeper)] text-[var(--ch-white)]`} role="contentinfo">
       <div className="mx-auto grid w-full max-w-site gap-10 px-container py-14 sm:px-container-wide md:grid-cols-[1.15fr_0.85fr_0.8fr] lg:gap-16 lg:py-18">
         <div>
-          <Link href="/" className="inline-flex items-center gap-3" aria-label="AMS IMPULSE — на главную">
-            <span className="grid size-10 place-items-center border border-[var(--ch-border-control)] bg-[var(--ch-surface-subtle)] text-public-label font-extrabold">AMS</span>
-            <span className="text-public-brand font-extrabold">IMPULSE</span>
+          <Link href="/" className="inline-flex items-center" aria-label="АМС ИМПУЛЬС — на главную">
+            <PublicBrand />
           </Link>
           <p className="mt-5 max-w-sm text-sm leading-6 text-[var(--ch-body-ondark)]">
             Продвижение сайтов в Яндексе через поведенческие факторы с контролем динамики и понятной отчётностью.

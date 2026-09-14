@@ -18,9 +18,10 @@ import { authClient } from "../../../platform/auth/client.ts";
 type LoginDialogProps = {
   initialOpen?: boolean;
   oauthLoginRequested?: boolean;
+  triggerId?: string;
 };
 
-export function LoginDialog({ initialOpen = false, oauthLoginRequested = false }: LoginDialogProps) {
+export function LoginDialog({ initialOpen = false, oauthLoginRequested = false, triggerId = "login-dialog-trigger" }: LoginDialogProps) {
   const router = useRouter();
   const [open, setOpen] = useState(initialOpen);
   const [username, setUsername] = useState("");
@@ -92,7 +93,7 @@ export function LoginDialog({ initialOpen = false, oauthLoginRequested = false }
   return (
     <>
       <MarketingButton
-        id="login-dialog-trigger"
+        id={triggerId}
         ref={triggerRef}
         type="button"
         tone="outline"
@@ -104,12 +105,12 @@ export function LoginDialog({ initialOpen = false, oauthLoginRequested = false }
       >
         <span className="hidden sm:inline">Вход в личный кабинет</span>
         <span className="sm:hidden">Войти</span>
-        <LogIn className="transition-transform group-hover:translate-x-0.5" strokeWidth={1.7} aria-hidden />
+        <LogIn data-icon="inline-end" className="transition-transform group-hover:translate-x-0.5" strokeWidth={1.7} aria-hidden />
       </MarketingButton>
 
       <Dialog open={open} onOpenChange={handleOpenChange}>
         <DialogContent
-          finalFocus={() => triggerRef.current ?? document.getElementById("login-dialog-trigger")}
+          finalFocus={() => triggerRef.current ?? document.getElementById(triggerId)}
           className={`theme-public ${landingStyles.landing} rounded-none border-[var(--ch-border-control)] bg-[var(--ch-bg-deeper)] p-7 text-[var(--ch-white)] shadow-[var(--ch-overlay-shadow)] sm:p-10`}
           showCloseButton={!pending}
         >

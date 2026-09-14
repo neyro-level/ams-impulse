@@ -103,7 +103,7 @@
   --text-eyebrow: 0.6875rem;
   --text-eyebrow--line-height: 1rem;
   --text-eyebrow--letter-spacing: 0.14em;
-  --text-public-display: clamp(2.75rem, 6.2vw, 5.25rem);
+  --text-public-display: clamp(2.75rem, 4.34vw, 3.675rem);
   --text-public-display--line-height: 0.98;
   --text-public-display--letter-spacing: -0.045em;
   --text-public-heading: clamp(2.125rem, 4vw, 3.5rem);
@@ -279,6 +279,7 @@
   --ch-grid-mask: linear-gradient(to bottom, black 0%, rgb(0 0 0 / 68%) 72%, transparent 100%);
   --ch-atmosphere: radial-gradient(circle at 77% 34%, rgb(95 127 174 / 22%), transparent 26%), radial-gradient(circle at 60% 84%, rgb(95 127 174 / 10%), transparent 32%), linear-gradient(110deg, transparent 0 47%, rgb(16 23 32 / 46%) 64%, rgb(12 17 23 / 88%) 100%);
   --ch-atmosphere-mobile: radial-gradient(circle at 68% 58%, rgb(95 127 174 / 18%), transparent 34%), linear-gradient(180deg, transparent 0 54%, rgb(12 17 23 / 62%) 100%);
+  --ch-header-shadow: 0 12px 40px rgb(0 0 0 / 32%);
   --ch-visual-shadow: 0 32px 80px rgb(0 0 0 / 28%);
   --ch-visual-overlay: linear-gradient(180deg, transparent 58%, rgb(12 17 23 / 46%) 100%);
   --ch-not-found-atmosphere: radial-gradient(circle at 50% 44%, rgb(95 127 174 / 16%), transparent 36%);

@@ -66,6 +66,8 @@ The launcher:
 - preserves tracked generated files from dev server churn;
 - does not reset password/session on ordinary start.
 
+The production service worker is disabled on `localhost` and `127.0.0.1`. Local development removes only AMS-owned `ams-static-*` caches so stale Next.js assets cannot survive a dev-server restart.
+
 Canonical local operator username: `superadmin`. Password is never written in docs, argv or logs.
 
 ## Tests

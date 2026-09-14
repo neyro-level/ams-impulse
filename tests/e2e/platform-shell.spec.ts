@@ -6,14 +6,29 @@ const syntheticAlphaProjectName = "Synthetic Alpha Organization";
 test("preserves the public AMS IMPULSE surface", async ({ page, request }) => {
   await page.goto("/");
 
-  await expect(page).toHaveTitle("Продвижение сайтов в Яндексе с контролем позиций");
+  await expect(page).toHaveTitle("Проектируем системы продаж и маркетинга для предсказуемого роста выручки");
   await expect(
-    page.getByRole("heading", { level: 1, name: "Продвижение в Яндексе с контролем позиций" }),
+    page.getByRole("heading", { level: 1, name: "Проектируем системы продаж и маркетинга для предсказуемого роста выручки" }),
   ).toBeVisible();
-  await expect(page.getByRole("button", { name: /обсудить продвижение/i }).first()).toBeVisible();
+  await expect(page.getByRole("button", { name: /обсудить архитектуру/i }).first()).toBeVisible();
   await expect(page.getByRole("contentinfo")).toBeVisible();
 
-  const loginTrigger = page.getByRole("button", { name: /вход в личный кабинет|войти/i });
+  const primaryHeader = page.locator("[data-public-header-primary]");
+  const floatingHeader = page.locator('header[aria-label="Быстрый доступ"]');
+  await expect(primaryHeader).toBeVisible();
+  await expect(floatingHeader).toHaveCount(0);
+  await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+  await expect(floatingHeader).toBeVisible();
+  await expect(floatingHeader).toHaveCSS("background-color", "rgb(12, 17, 23)");
+  const floatingLoginTrigger = floatingHeader.getByRole("button", { name: /вход в личный кабинет|войти/i });
+  await expect(floatingLoginTrigger).toBeVisible();
+  const floatingLoginBox = await floatingLoginTrigger.boundingBox();
+  expect(floatingLoginBox).not.toBeNull();
+  expect((page.viewportSize()?.width ?? 0) - (floatingLoginBox?.x ?? 0) - (floatingLoginBox?.width ?? 0)).toBeLessThanOrEqual(40);
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await expect(floatingHeader).toHaveCount(0);
+
+  const loginTrigger = primaryHeader.getByRole("button", { name: /вход в личный кабинет|войти/i });
   await loginTrigger.focus();
   await expect(loginTrigger).toBeFocused();
   expect(await loginTrigger.evaluate((element) => element.matches(":focus-visible"))).toBe(true);

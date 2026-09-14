@@ -16,11 +16,14 @@ One screen should communicate one meaning: route, value and action first; decora
 
 Public UI uses isolated `.theme-public`, Manrope and `ch-*` tokens only. These tokens must not leak into private reusable components. The Manrope boundary is a locally owned CSS-module class; public business selectors do not live in `globals.css`.
 
-Core rhythm:
+Current temporary home-page rhythm:
 
 ```text
-dark hero → light evidence → soft service detail → light proof → dark CTA/footer
+dark header/hero → dark footer
 ```
+
+The service-mechanism and report-proof sections are intentionally not rendered
+until the owner approves the next public-page expansion.
 
 Steel-blue accent is used sparingly for primary CTA, focus and one data/structure marker.
 
@@ -59,15 +62,17 @@ Preferred patterns:
 
 - quiet premium hero;
 - editorial 4/8 or 6/6 sections;
-- evidence and service sections with varied rhythm;
-- dark final CTA and footer.
+- a focused dark hero;
+- a dark footer directly after the hero while the compact landing is active.
 
 Whole-page horizontal overflow is forbidden.
 
 ## Header
 
-- Left: compact `AMS IMPULSE` wordmark.
+- Left: compact Cyrillic `АМС ИМПУЛЬС` wordmark. `АМС` is an independent framed abbreviation; `ИМПУЛЬС` is the project name. The shared implementation is owned by `PublicBrand` and must not be duplicated in individual public layouts.
 - Right: one main action, login to cabinet.
+- The primary header remains in the normal first-screen flow. After it leaves the viewport, a separate full-width fixed header with an opaque dark surface, bottom border and shadow appears; its content stays pinned to the viewport edges and keeps login available while the page scrolls.
+- The fixed site header uses the explicit `Container` `fluid` variant; narrower page content continues to use `site`, `narrow` or `wide`.
 - Login opens modal, not a separate `/login` route.
 - Mobile label may shorten to `Войти`.
 - Touch targets use the canonical public control minimum.
@@ -121,9 +126,9 @@ The representative page is `/`: it carries the cold service-premium language thr
 
 ## Containers, Section Rhythm And Shared Patterns
 
-- `ImpulseLanding` is a composition layer; `PublicHeader`, `HeroSection`, `ServiceMechanismSection`, `ReportProofSection` and `SiteFooter` own semantic sections.
+- `ImpulseLanding` is a composition layer; the current home page contains only `PublicHeader` inside `HeroSection`, followed by `SiteFooter`.
 - `Container` owns repeated width/gutters; each section owns only its internal layout.
-- Shared patterns are wordmark, eyebrow, editorial heading, evidence list, proof card, primary CTA and legal footer.
+- Shared patterns are wordmark, eyebrow, hero copy, architectural hero visual, primary CTA and legal footer.
 - Public content data lives beside its section composition, not in the page entry point.
 
 ## Design Intake

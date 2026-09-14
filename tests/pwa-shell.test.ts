@@ -21,6 +21,7 @@ describe("PWA shell", () => {
     expect(source).not.toContain('"/api/"');
     expect(source).not.toContain('"/mcp"');
     expect(source).not.toContain('"/tools/"');
-    expect(source).toContain('const CACHE_VERSION = `${CACHE_NAMESPACE}v2`');
+    expect(source).toContain('const CACHE_VERSION = `${CACHE_NAMESPACE}v3`');
+    expect(source).toContain("IS_LOCAL_DEVELOPMENT");
   });
 });
