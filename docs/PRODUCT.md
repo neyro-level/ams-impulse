@@ -10,7 +10,7 @@ AMS IMPULSE - личная CRM-платформа владельца АМС с �
 
 - `IMPLEMENTED`: SEO Монитор, модульное platform-ядро, Инструменты, Исследования, OAuth/MCP, приватный кабинет и static-only PWA находятся в canonical `main`.
 - `DEPLOYED`: production release `2026-09-13` на exact SHA `1c5c3d6450a6934034f10ce15d91cdfb18da7659` подтвердил web, outbox worker, Research worker, managed PostgreSQL 18 и private read smoke.
-- `PLANNED`: АМС Лиды, Разбор сайтов, Договоры, Счета, Презентации, Клон сайтов и внутренний AI-агент не имеют business runtime.
+- `PLANNED`: Аудитории, Разбор сайтов, АМС Лиды, Договоры, Счета, Презентации, Клон сайтов и внутренний AI-агент не имеют business runtime.
 
 Docs-only commits после указанного release SHA не означают изменение production-функций и не требуют повторного deploy.
 
@@ -49,17 +49,18 @@ Leads Organization
 ```text
 Tools Organization
 -> Tools Project
--> Research / Site Intelligence / Contract / Invoice / Presentation / Site Clone
+-> Research / Audience Intelligence / Site Intelligence / Contract / Invoice / Presentation / Site Clone
 ```
 
 Модули:
 
 1. **Исследования** - реализован в canonical `main` и выпущен в production baseline `1c5c3d6`; платный запуск требует отдельного подтверждения рассчитанной стоимости. Production availability определяется deployed exact SHA.
-2. **Разбор сайтов** - запланированный модуль сбора структуры, SEO-фактов и сопоставимых профилей публичных сайтов. Канон: [`modules/MODULE_SITE_INTELLIGENCE.md`](modules/MODULE_SITE_INTELLIGENCE.md).
-3. **Договоры**.
-4. **Счета**.
-5. **Презентации**.
-6. **Клон сайтов**.
+2. **Аудитории** - запланированный provider-independent модуль discovery, обогащения, evidence и XLSX-экспорта публичных профилей. Discovery provider пока не выбран; Bright Data рассматривается только для известных URL/username и их контента. До решения Epic 0 доступен лишь fallback-концепт List Enrichment. Contract — `docs/modules/MODULE_AUDIENCE_INTELLIGENCE.md`.
+3. **Разбор сайтов** - запланированный модуль сбора структуры, SEO-фактов и сопоставимых профилей публичных сайтов. Канон: [`modules/MODULE_SITE_INTELLIGENCE.md`](modules/MODULE_SITE_INTELLIGENCE.md).
+4. **Договоры**.
+5. **Счета**.
+6. **Презентации**.
+7. **Клон сайтов**.
 
 Организация и проект создаются в Инструментах один раз. Все внутренние модули ссылаются на один `ToolsProject`.
 

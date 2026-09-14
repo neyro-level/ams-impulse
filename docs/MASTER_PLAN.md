@@ -13,13 +13,14 @@
 
 ## Следующие Продуктовые Эпики
 
-1. Разбор сайтов — выполнить Epics `SI-01..SI-08` по [`modules/MODULE_SITE_INTELLIGENCE.md`](modules/MODULE_SITE_INTELLIGENCE.md); proxy/managed fallback остаётся отдельным post-MVP `LATER-SI-09`.
-2. Договоры.
-3. Счета.
-4. Презентации.
-5. Клон сайтов.
-6. АМС Лиды.
-7. Внутренний AI-агент поверх Research application contract.
+1. **Audience Intelligence** — сначала выполнить блокирующий Epic 0 по [`modules/MODULE_AUDIENCE_INTELLIGENCE.md`](modules/MODULE_AUDIENCE_INTELLIGENCE.md) и получить решение владельца `GO_DISCOVERY | GO_LIST_ENRICHMENT | STOP`. Bright Data не искать Instagram-аудиторию: он рассматривается только для обогащения известных URL/username и их контента. Остальные эпики запускать только после gate; REST и новые платформы не входят в v0.1.
+2. Разбор сайтов — выполнить Epics `SI-01..SI-08` по [`modules/MODULE_SITE_INTELLIGENCE.md`](modules/MODULE_SITE_INTELLIGENCE.md); proxy/managed fallback остаётся отдельным post-MVP `LATER-SI-09`.
+3. Договоры.
+4. Счета.
+5. Презентации.
+6. Клон сайтов.
+7. АМС Лиды.
+8. Внутренний AI-агент поверх Research application contract.
 
 Каждый пункт - отдельная ветка, PR, review и risk-based gate.
 

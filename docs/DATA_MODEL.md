@@ -24,6 +24,7 @@ One database object has exactly one migration and runtime owner:
 | `tools.*` | Tools Workspace module / AMS SQL | immutable handwritten migrations plus typed Tools repositories |
 | `pgboss.*` | pg-boss | `scripts/pgboss-migrate.mjs`; application migrations do not edit its objects |
 | `platform.*` functions and RLS helpers | Platform / AMS SQL | immutable handwritten migrations; only platform infrastructure calls them |
+| reserved `audience` | planned Audience Intelligence module / AMS SQL | no runtime tables until implementation of `MODULE_AUDIENCE_INTELLIGENCE.md` |
 | reserved `seo`, `leads`, `contracts`, `invoices`, `presentations`, `site_clone`, `ops` | future owning module | no runtime tables until a module contract assigns ownership |
 
 Prisma introspection, Better Auth startup and pg-boss startup must not create or
@@ -113,10 +114,14 @@ Retention target: active leads remain; contact PII is removed six months after c
 ```text
 ToolsOrganization
 -> ToolsProject
--> Research / Contract / Invoice / Presentation / SiteClone
+-> Research / AudienceIntelligence / Contract / Invoice / Presentation / SiteClone
 ```
 
 Implemented and future internal tools reference `ToolsProject`. They do not create parallel organization/project tables.
+
+## Audience Intelligence Ownership (`PLANNED`)
+
+Audience Intelligence may own future `audience.*` records for Studies, criteria, seeds, immutable Runs/stages, `AudienceProviderOperation`, normalized profiles/observations, public contacts, evidence/assertions, bounded content metadata and private XLSX exports. Discovery and profile/content enrichment are separate provider boundaries; Bright Data is not an Instagram audience-search provider. Every business relation stores exact Tools `organizationId/projectId` and is protected by composite constraints and RLS. The complete gated contract is defined in `docs/modules/MODULE_AUDIENCE_INTELLIGENCE.md`; no `audience` runtime table exists before the discovery/mode decision and its own immutable implementation migration.
 
 ## Research Ownership
 
