@@ -35,6 +35,18 @@ const RISK_RULES: RiskRule[] = [
     matches: (path) => path.startsWith("src/platform/jobs/"),
   },
   {
+    label: "platform external boundary",
+    matches: (path) => /^src\/platform\/(?:http|mcp)\//u.test(path),
+  },
+  {
+    label: "collector runtime",
+    matches: (path) => path.startsWith("collector/"),
+  },
+  {
+    label: "module worker",
+    matches: (path) => /^src\/modules\/[^/]+\/worker(?:\.[^/]+|\/)/u.test(path),
+  },
+  {
     label: "module infrastructure",
     matches: (path) => /^src\/modules\/[^/]+\/infrastructure\//u.test(path),
   },
@@ -51,6 +63,14 @@ const RISK_RULES: RiskRule[] = [
     matches: (path) => path.startsWith(".sourcecraft/"),
   },
   {
+    label: "security scan policy",
+    matches: (path) => path === ".semgrep.yml",
+  },
+  {
+    label: "environment contract",
+    matches: (path) => path === ".env.example",
+  },
+  {
     label: "dependency contract",
     matches: (path) => path === "package.json" || path === "pnpm-lock.yaml",
   },
@@ -59,15 +79,13 @@ const RISK_RULES: RiskRule[] = [
     matches: (path) => path.startsWith("ops/"),
   },
   {
+    label: "verification or CI script",
+    matches: (path) => path.startsWith("scripts/ci/") || /^scripts\/verify-[^/]+\.(?:mjs|ts)$/u.test(path),
+  },
+  {
     label: "release or runtime script",
     matches: (path) =>
-      [
-        "scripts/build-release.mjs",
-        "scripts/container-entrypoint.mjs",
-        "scripts/deploy-production.mjs",
-        "scripts/verify-release-runtime.mjs",
-        "scripts/worker-daemon.mjs",
-      ].includes(path),
+      /^scripts\/[^/]*(?:runtime|release|deploy|migrat|worker|backup|restore)[^/]*\.(?:mjs|ts|sh)$/u.test(path),
   },
 ];
 

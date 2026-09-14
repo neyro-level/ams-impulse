@@ -3,7 +3,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const rootDir = path.resolve(import.meta.dirname, "..");
-const sourceDir = path.join(rootDir, "src");
+export const architectureSourceRoots = ["src", "collector"];
 
 async function collectFiles(directory) {
   const entries = await readdir(directory, { withFileTypes: true });
@@ -114,10 +114,13 @@ export function inspectArchitectureSource(relativePath, source) {
 
 export async function verifyArchitecture() {
   const failures = [];
-  for (const filePath of await collectFiles(sourceDir)) {
-    const source = await readFile(filePath, "utf8");
-    const relativePath = path.relative(rootDir, filePath).replaceAll("\\", "/");
-    failures.push(...inspectArchitectureSource(relativePath, source));
+  for (const sourceRoot of architectureSourceRoots) {
+    const sourceDir = path.join(rootDir, sourceRoot);
+    for (const filePath of await collectFiles(sourceDir)) {
+      const source = await readFile(filePath, "utf8");
+      const relativePath = path.relative(rootDir, filePath).replaceAll("\\", "/");
+      failures.push(...inspectArchitectureSource(relativePath, source));
+    }
   }
 
   if (failures.length > 0) {

@@ -6,33 +6,12 @@
 
 Цель программы `AUDIT-2026-09`: закрыть подтверждённые замечания независимого аудита без изменения продуктового scope, основного stack и действующих auth/tenant контрактов. Каждый эпик выполняется отдельной веткой и PR. Проект имеет `DELIVERY_PROFILE = CRITICAL`, поэтому все кодовые эпики проходят один `RISKY` exact-head SourceCraft Gate перед merge. Итоговый production release выполняется один раз после завершения всей программы.
 
-### EPIC-AUD-01 — Production Database Runtime Contract
-
-- Status: `IN PROGRESS`
-- Priority: `P0`
-- Wave: `runtime-release`
-
-Goal: гарантировать, что web и worker соединения получают timeout-профиль только из `pool-config.ts`, а production session подтверждает фактические значения.
-
-Tasks:
-
-- `AUD-01.1` — убрать дублирующие timeout-параметры из `PGOPTIONS` web/outbox/research/maintenance, сохранив `TimeZone=UTC`; migrator profile оставить отдельным;
-- `AUD-01.2` — добавить fail-closed runtime verifier фактических `statement_timeout`, `lock_timeout`, `idle_in_transaction_session_timeout`, `TimeZone` и `application_name` для web/worker identities;
-- `AUD-01.3` — включить verifier в release proof и обновить release-contract tests/Architecture.
-
-Done when:
-
-- Compose не может переопределить web/worker pool timeout;
-- тест проверяет production topology;
-- PostgreSQL proof читает реальные session settings под runtime-compatible identities;
-- rollback не требует schema/data rollback.
-
 ### EPIC-AUD-02 — Executable Guard Coverage
 
-- Status: `BACKLOG`
+- Status: `IN PROGRESS`
 - Priority: `P1`
 - Wave: `foundation`
-- Depends on: `EPIC-AUD-01`
+- Depends on: `EPIC-AUD-01` (`COMPLETE`)
 
 Goal: распространить механические архитектурные и risk guards на все заявленные server/runtime boundaries.
 

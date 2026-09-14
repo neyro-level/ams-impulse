@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { inspectArchitectureSource } from "../scripts/verify-architecture.mjs";
+import {
+  architectureSourceRoots,
+  inspectArchitectureSource,
+} from "../scripts/verify-architecture.mjs";
 
 describe("structural architecture guards", () => {
   it.each([
@@ -12,6 +15,8 @@ describe("structural architecture guards", () => {
     ["src/app/action.ts", '"use server";\nawait service.update(input);', "Server action bypasses action boundary"],
     ["src/modules/x/infrastructure/repo.ts", "prisma.$queryRawUnsafe(sql);", "Unsafe raw SQL"],
     ["src/modules/research/infrastructure/repo.ts", "const id = randomUUID();", "Domain ID bypasses platform identifier policy"],
+    ["collector/sources/provider.ts", "prisma.$queryRawUnsafe(sql);", "Unsafe raw SQL"],
+    ["collector/main.ts", 'import { Prisma } from "@prisma/client";', "Legacy generated Prisma import"],
   ])("rejects %s", (file, source, message) => {
     expect(inspectArchitectureSource(file, source).join("\n")).toContain(message);
   });
@@ -25,5 +30,9 @@ describe("structural architecture guards", () => {
       "src/app/action.ts",
       '"use server";\nimport { defineAction } from "../platform/actions/define-action.ts";\nawait service.update(input);',
     )).toEqual([]);
+  });
+
+  it("scans both executable TypeScript roots", () => {
+    expect(architectureSourceRoots).toEqual(["src", "collector"]);
   });
 });
