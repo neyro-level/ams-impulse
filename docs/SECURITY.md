@@ -187,7 +187,12 @@ be removed after a report-only measurement shows no required inline violations a
 official request-proxy nonce flow is accepted together with fully dynamic rendering
 instead of static/PPR output.
 
-Next.js and Nginx both provide HSTS, MIME sniffing protection, strict-origin referrer policy and bounded browser permissions; Next additionally owns opener isolation and the route-aware CSP. The public lead endpoint is the only external browser connection allowed by application CSP.
+Next.js and Nginx both provide HSTS, MIME sniffing protection, strict-origin
+referrer policy and bounded browser permissions. Next explicitly disables camera,
+microphone, geolocation, payment, USB and interest-cohort capabilities, owns opener
+isolation and the route-aware CSP. The public lead endpoint is the only external
+browser connection allowed by application CSP. Regression proof resolves final
+Next response headers for `/`, `/dashboard` and `/sw.js`, not only config text.
 
 ## PII, Secrets And Logging
 

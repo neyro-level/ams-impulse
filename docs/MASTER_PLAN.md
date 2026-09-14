@@ -6,30 +6,12 @@
 
 Цель программы `AUDIT-2026-09`: закрыть подтверждённые замечания независимого аудита без изменения продуктового scope, основного stack и действующих auth/tenant контрактов. Каждый эпик выполняется отдельной веткой и PR. Проект имеет `DELIVERY_PROFILE = CRITICAL`, поэтому все кодовые эпики проходят один `RISKY` exact-head SourceCraft Gate перед merge. Итоговый production release выполняется один раз после завершения всей программы.
 
-### EPIC-AUD-02 — Executable Guard Coverage
+### EPIC-AUD-03 — Browser Security Header Proof
 
 - Status: `IN PROGRESS`
 - Priority: `P1`
-- Wave: `foundation`
-- Depends on: `EPIC-AUD-01` (`COMPLETE`)
-
-Goal: распространить механические архитектурные и risk guards на все заявленные server/runtime boundaries.
-
-Tasks:
-
-- `AUD-02.1` — сканировать `src` и `collector` в `verify-architecture.mjs`;
-- `AUD-02.2` — добавить regression fixtures для запрещённых конструкций в `collector`;
-- `AUD-02.3` — считать RISKY изменения `collector`, MCP/HTTP boundary, module workers, `.env.example`, Semgrep и verify/CI/runtime scripts;
-- `AUD-02.4` — расширить unit matrix risk classifier без превращения отсутствия match в safety verdict.
-
-Done when: `verify:quick` механически покрывает оба code roots, а `risk:classify` поднимает внимание на каждый RISKY path из project contract.
-
-### EPIC-AUD-03 — Browser Security Header Proof
-
-- Status: `BACKLOG`
-- Priority: `P1`
 - Wave: `security-data`
-- Depends on: `EPIC-AUD-02`
+- Depends on: `EPIC-AUD-02` (`COMPLETE`)
 
 Goal: доказать route-aware CSP поведением Next config и сузить неиспользуемые browser capabilities.
 

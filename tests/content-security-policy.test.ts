@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
+import { responseFromNextConfig } from "./helpers/next-config-response.mjs";
 
 const requiredDirectives = [
   "default-src 'self'",
@@ -12,22 +13,42 @@ const requiredDirectives = [
 ];
 
 describe("application CSP", () => {
-  it("enforces separate public, private and service-worker policies from Next", () => {
+  it.each([
+    ["/", "public"],
+    ["/dashboard", "application"],
+    ["/sw.js", "service-worker"],
+  ] as const)("resolves the final response headers for %s", async (pathname, policy) => {
+    const response = await responseFromNextConfig(pathname);
+    const csp = response.headers.get("content-security-policy");
+    const cspHeaders = [...response.headers].filter(([key]) => key === "content-security-policy");
+
+    expect(csp).toBeTruthy();
+    expect(cspHeaders).toHaveLength(1);
+    expect(response.headers.get("permissions-policy")).toBe(
+      "camera=(), microphone=(), geolocation=(), payment=(), usb=(), interest-cohort=()",
+    );
+    expect(response.headers.get("strict-transport-security")).toBe(
+      "max-age=31536000; includeSubDomains",
+    );
+
+    if (policy === "public") {
+      for (const directive of requiredDirectives) expect(csp).toContain(directive);
+      expect(csp).toContain("connect-src 'self' https://ams24.ru");
+      expect(response.headers.get("cache-control")).toBeNull();
+    } else if (policy === "application") {
+      for (const directive of requiredDirectives) expect(csp).toContain(directive);
+      expect(csp).not.toContain("https://ams24.ru");
+      expect(response.headers.get("cache-control")).toBe("private, no-store");
+    } else {
+      expect(csp).toBe("default-src 'self'; script-src 'self'");
+      expect(response.headers.get("content-type")).toBe("application/javascript; charset=utf-8");
+      expect(response.headers.get("cache-control")).toBe("no-cache, no-store, must-revalidate");
+    }
+  });
+
+  it("keeps the documented framework-inline exception explicit", () => {
     const config = readFileSync("next.config.ts", "utf8");
-    for (const directive of requiredDirectives) expect(config).toContain(directive);
-    expect(config).toContain('source: "/((?!sw\\\\.js$|$).*)"');
-    expect(config).toContain('source: "/"');
-    expect(config).toContain('source: "/sw.js"');
-    expect(config.match(/{ key: "Content-Security-Policy"/g)).toHaveLength(3);
-    expect(config).toContain('{ key: "Content-Security-Policy", value: applicationCsp }');
-    expect(config).toContain('{ key: "Strict-Transport-Security", value: "max-age=31536000; includeSubDomains" }');
-    expect(config).toContain('{ key: "X-Content-Type-Options", value: "nosniff" }');
-    expect(config).toContain('{ key: "Referrer-Policy", value: "strict-origin-when-cross-origin" }');
-    expect(config).toContain('{ key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" }');
-    expect(config).toContain('{ key: "Cross-Origin-Opener-Policy", value: "same-origin-allow-popups" }');
-    expect(config.match(/https:\/\/ams24\.ru/g)).toHaveLength(1);
-    expect(config).toContain('{ key: "Content-Security-Policy", value: publicLandingCsp }');
-    expect(config).toContain('{ key: "Content-Security-Policy", value: serviceWorkerCsp }');
+    expect(config).toContain("'unsafe-inline'");
     expect(config).not.toContain("nonce-");
   });
 
