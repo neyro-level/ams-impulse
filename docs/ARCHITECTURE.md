@@ -292,6 +292,13 @@ Web, worker, migrator and backup use separate provider-managed identities. The p
 
 ## Verification
 
+ESLint uses TypeScript Project Service for production roots `src` and
+`collector`. `no-floating-promises` is strict. `no-misused-promises` is strict
+outside JSX event attributes; React form/click attributes retain their framework
+void-return boundary so enabling typed lint does not rewrite UI lifecycle merely
+to satisfy a callback type. Inline rule disables and known-safe Promise allowlists
+are not part of this contract.
+
 SourceCraft does not start verification merely because a PR was created. Merge evidence is started manually against the reviewed exact head SHA:
 
 - `standard-check` runs `verify:quick` plus an explicit allowlisted set of relevant unit tests;

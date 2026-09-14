@@ -6,29 +6,12 @@
 
 Цель программы `AUDIT-2026-09`: закрыть подтверждённые замечания независимого аудита без изменения продуктового scope, основного stack и действующих auth/tenant контрактов. Каждый эпик выполняется отдельной веткой и PR. Проект имеет `DELIVERY_PROFILE = CRITICAL`, поэтому все кодовые эпики проходят один `RISKY` exact-head SourceCraft Gate перед merge. Итоговый production release выполняется один раз после завершения всей программы.
 
-### EPIC-AUD-05 — Research Money Arithmetic Boundary
+### EPIC-AUD-06 — Type-aware Async Lint
 
 - Status: `IN PROGRESS`
 - Priority: `P2`
-- Wave: `research-domain`
-- Depends on: `EPIC-AUD-02` (`COMPLETE`)
-
-Goal: сделать pricing policy самостоятельно fail-closed при небезопасном query count или переполнении safe integer.
-
-Tasks:
-
-- `AUD-05.1` — валидировать query count и результат умножения внутри `ConfiguredResearchPricing`;
-- `AUD-05.2` — добавить boundary tests для отрицательных, дробных и overflow значений;
-- `AUD-05.3` — сохранить существующую application-level проверку как defense in depth.
-
-Done when: pricing port не может вернуть небезопасную денежную сумму даже при ошибочном будущем caller.
-
-### EPIC-AUD-06 — Type-aware Async Lint
-
-- Status: `BACKLOG`
-- Priority: `P2`
 - Wave: `quality`
-- Depends on: `EPIC-AUD-02`
+- Depends on: `EPIC-AUD-02` (`COMPLETE`)
 
 Goal: добавить type-aware проверки promises без suppressions и без неограниченного lint scope.
 

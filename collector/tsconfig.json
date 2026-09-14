@@ -1,0 +1,5 @@
+{
+  "extends": "../tsconfig.collector.json",
+  "include": ["**/*.ts"],
+  "exclude": ["../node_modules", "../dist-collector"]
+}
