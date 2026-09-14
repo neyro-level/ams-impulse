@@ -37,5 +37,11 @@ export function createTenantUserPrincipal(input: {
 }
 
 export function createDeniedJobPrincipal(organizationId: string): JobPrincipal {
-  return { kind: "job", jobName: "denied-test", organizationId, correlationId };
+  return {
+    kind: "job",
+    jobName: "denied-test",
+    organizationId,
+    projectId: "denied-project",
+    correlationId,
+  };
 }

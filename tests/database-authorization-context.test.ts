@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { deriveDatabaseAuthorizationContext } from "../src/platform/database/authorization-context.ts";
+import type { PrincipalContext } from "../src/platform/authorization/principal.ts";
 
 const correlationId = "00000000-0000-4000-8000-000000000002";
 
@@ -47,13 +48,15 @@ describe("database authorization context", () => {
   });
 
   it("rejects a principal that cannot provide complete database scope", () => {
+    const malformedJob = {
+      kind: "job",
+      jobName: "research.run.v1",
+      organizationId: "organization-1",
+      correlationId,
+    } as unknown as PrincipalContext;
+
     expect(() =>
-      deriveDatabaseAuthorizationContext({
-        kind: "job",
-        jobName: "research.run.v1",
-        organizationId: "organization-1",
-        correlationId,
-      }),
+      deriveDatabaseAuthorizationContext(malformedJob),
     ).toThrow("AUTHORIZATION_CONTEXT_REQUIRED");
   });
 });

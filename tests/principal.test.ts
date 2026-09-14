@@ -104,11 +104,17 @@ describe("PrincipalContext", () => {
 
   it("creates job principal with an explicit tenant", () => {
     expect(
-      createJobPrincipal({ jobName: "project-sync", organizationId: "organization-a", correlationId }),
+      createJobPrincipal({
+        jobName: "project-sync",
+        organizationId: "organization-a",
+        projectId: "project-a",
+        correlationId,
+      }),
     ).toEqual({
       kind: "job",
       jobName: "project-sync",
       organizationId: "organization-a",
+      projectId: "project-a",
       correlationId,
     });
   });

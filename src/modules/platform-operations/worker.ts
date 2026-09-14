@@ -4,7 +4,6 @@ import type { JobWithMetadata, PgBoss } from "pg-boss";
 import { ReliabilityService } from "./application/reliability-service.ts";
 import { PrismaReliabilityRepository } from "./infrastructure/prisma-reliability-repository.ts";
 import { closePrismaClient } from "../../platform/database/prisma/client.ts";
-import { createJobPrincipal } from "../../platform/authorization/principal-factories.ts";
 import { syncProjectToDatabase } from "../data-ingestion/worker.ts";
 import { setupSiteIntegrations, syncSiteCompetitors } from "../data-ingestion/worker.ts";
 import {
@@ -107,20 +106,12 @@ async function handleProjectSync(event: ClaimedReliabilityEvent) {
     throw outboxError("PROJECT_SYNC_MISSING_ORGANIZATION", false);
   }
 
-  const principal = createJobPrincipal({
-    jobName: event.topic,
-    organizationId: event.organizationId,
-    correlationId: event.correlationId,
-  });
-  if (principal.kind !== "job") {
-    throw outboxError("PROJECT_SYNC_INVALID_SCOPE", false);
-  }
   const result = await syncProjectToDatabase({
     projectSlug: payload.data.projectSlug,
     trigger: payload.data.trigger,
     env: process.env,
-    correlationId: principal.correlationId,
-    expectedOrganizationId: principal.organizationId,
+    correlationId: event.correlationId,
+    expectedOrganizationId: event.organizationId,
   });
   if (result.status === "failed") {
     throw outboxError("PROJECT_SYNC_FAILED", true);

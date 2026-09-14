@@ -97,6 +97,12 @@ Application authorization, scoped repositories and composite ownership constrain
 
 Every `defineCommand` transaction derives a discriminated database authorization context from the server-generated principal and installs it before application SQL runs. Supported context kinds are user, Platform Admin, API client and project-scoped job. Command payload fields never supply this context; an incomplete principal fails with `AUTHORIZATION_CONTEXT_REQUIRED`.
 
+`JobPrincipal` always carries both `organizationId` and `projectId`; the type and
+factory reject an incomplete project scope before a command can be composed. An
+organization-scoped outbox dispatcher passes its validated organization fields
+directly to the bounded orchestration adapter and does not manufacture a project job
+principal.
+
 RLS changes require PostgreSQL integration tests proving allowed and denied reads/writes. Backup proof verifies complete dump and restore independently from runtime policies.
 
 Protected-table policy matrix:
