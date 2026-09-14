@@ -16,6 +16,7 @@ import type {
 } from "../domain/research.ts";
 import type { ResearchAuditJsonValue, ResearchRepository } from "../application/ports/research-repository.ts";
 import { ResearchError } from "../domain/research.ts";
+import { deriveResearchEstimateAttemptKey } from "../domain/research-idempotency.ts";
 
 type Store = PrismaClient | DatabaseTransaction;
 type ResearchRow = Omit<ResearchRecord, "queries" | "updatedAt"> & { updatedAt: Date };
@@ -281,15 +282,33 @@ export class PrismaResearchRepository implements ResearchRepository {
       Prisma.sql`SELECT pg_advisory_xact_lock(hashtextextended(${`research.budget:${input.ref.organizationId}`}, 0))`,
     );
     await transaction.$executeRaw(Prisma.sql`
+      UPDATE "research"."QueryRun" AS query_run
+      SET "status"='FAILED', "safeErrorCode"='RESEARCH_ESTIMATE_EXPIRED',
+        "finishedAt"=${input.now}
+      FROM "research"."Run" AS run
+      WHERE query_run."runId"=run."id"
+        AND query_run."status"='PENDING'
+        AND run."organizationId"=${input.ref.organizationId}
+        AND run."projectId"=${input.ref.projectId}
+        AND run."status"='AWAITING_CONFIRMATION'
+        AND run."estimateExpiresAt"<=${input.now}
+    `);
+    await transaction.$executeRaw(Prisma.sql`
       UPDATE "research"."Run"
       SET "status"='CANCELLED', "safeErrorCode"='RESEARCH_ESTIMATE_EXPIRED',
         "finishedAt"=${input.now}, "updatedAt"=CURRENT_TIMESTAMP
       WHERE "organizationId"=${input.ref.organizationId} AND "projectId"=${input.ref.projectId}
         AND "status"='AWAITING_CONFIRMATION' AND "estimateExpiresAt"<=${input.now}
     `);
-    const existing = await transaction.$queryRaw<Array<{ id: string; projectId: string; researchId: string; queryCount: number; estimatedCostKopecks: number }>>(Prisma.sql`
-      SELECT "id", "projectId", "researchId", "queryCount", "estimatedCostKopecks" FROM "research"."Run"
-      WHERE "organizationId" = ${input.ref.organizationId} AND "idempotencyKey" = ${input.idempotencyKey}
+    const existing = await transaction.$queryRaw<Array<{ id: string; projectId: string; researchId: string; queryCount: number; estimatedCostKopecks: number; status: ResearchRunStatus; estimateExpiresAt: Date }>>(Prisma.sql`
+      SELECT "id", "projectId", "researchId", "queryCount", "estimatedCostKopecks", "status"::text, "estimateExpiresAt"
+      FROM "research"."Run"
+      WHERE "organizationId" = ${input.ref.organizationId} AND "requestKey" = ${input.idempotencyKey}
+      ORDER BY CASE
+        WHEN "status"='AWAITING_CONFIRMATION' AND "estimateExpiresAt">${input.now} THEN 0
+        WHEN "status" IN ('QUEUED','RUNNING') THEN 1
+        ELSE 2
+      END, "createdAt" DESC, "id" DESC
       LIMIT 1
     `);
     const previous = existing[0];
@@ -310,7 +329,15 @@ export class PrismaResearchRepository implements ResearchRepository {
     `);
     const dailyCommittedKopecks = Number(spend[0]?.dailyKopecks ?? 0);
     const monthlyCommittedKopecks = Number(spend[0]?.monthlyKopecks ?? 0);
-    if (previous) return { runId: previous.id, dailyCommittedKopecks, monthlyCommittedKopecks };
+    if (previous?.status === "AWAITING_CONFIRMATION" && previous.estimateExpiresAt > input.now) {
+      return { runId: previous.id, dailyCommittedKopecks, monthlyCommittedKopecks };
+    }
+    if (previous && (["QUEUED", "RUNNING"] as const).includes(previous.status as "QUEUED" | "RUNNING")) {
+      throw new ResearchError("RESEARCH_ACTIVE_RUN_EXISTS");
+    }
+    const attemptIdempotencyKey = previous
+      ? deriveResearchEstimateAttemptKey(input.idempotencyKey, runId)
+      : input.idempotencyKey;
     if (dailyCommittedKopecks + input.estimatedCostKopecks > input.dailyLimitKopecks) {
       throw new ResearchError("RESEARCH_DAILY_LIMIT_EXCEEDED");
     }
@@ -319,9 +346,9 @@ export class PrismaResearchRepository implements ResearchRepository {
     }
     const inserted = await transaction.$queryRaw<Array<{ id: string }>>(Prisma.sql`
       INSERT INTO "research"."Run"
-        ("id", "organizationId", "projectId", "researchId", "status", "queryCount", "estimatedCostKopecks", "estimateExpiresAt", "idempotencyKey", "createdAt", "updatedAt")
+        ("id", "organizationId", "projectId", "researchId", "status", "queryCount", "estimatedCostKopecks", "estimateExpiresAt", "idempotencyKey", "requestKey", "createdAt", "updatedAt")
       VALUES
-        (${runId}, ${input.ref.organizationId}, ${input.ref.projectId}, ${input.ref.researchId}, 'AWAITING_CONFIRMATION', ${input.queryCount}, ${input.estimatedCostKopecks}, ${input.now}::timestamptz + INTERVAL '15 minutes', ${input.idempotencyKey}, ${input.now}, CURRENT_TIMESTAMP)
+        (${runId}, ${input.ref.organizationId}, ${input.ref.projectId}, ${input.ref.researchId}, 'AWAITING_CONFIRMATION', ${input.queryCount}, ${input.estimatedCostKopecks}, ${input.now}::timestamptz + INTERVAL '15 minutes', ${attemptIdempotencyKey}, ${input.idempotencyKey}, ${input.now}, CURRENT_TIMESTAMP)
       RETURNING "id"
     `);
     if (inserted[0]) {

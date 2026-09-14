@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   deriveResearchCsvIdempotencyKey,
+  deriveResearchEstimateAttemptKey,
   deriveResearchEstimateIdempotencyKey,
 } from "../src/modules/research/domain/research-idempotency.ts";
 
@@ -24,6 +25,18 @@ describe("Research idempotency keys", () => {
     const baseline = deriveResearchEstimateIdempotencyKey({ researchId: "research-1", version: 1, queries: ["alpha"] });
     expect(deriveResearchEstimateIdempotencyKey({ researchId: "research-1", version: 2, queries: ["alpha"] })).not.toBe(baseline);
     expect(deriveResearchEstimateIdempotencyKey({ researchId: "research-1", version: 1, queries: ["beta"] })).not.toBe(baseline);
+  });
+
+  it("keeps a stable request key while separating physical run attempts", () => {
+    const requestKey = deriveResearchEstimateIdempotencyKey({
+      researchId: "research-1",
+      version: 1,
+      queries: ["alpha"],
+    });
+    expect(deriveResearchEstimateAttemptKey(requestKey, "run-1")).toBe(`${requestKey}:attempt:run-1`);
+    expect(deriveResearchEstimateAttemptKey(requestKey, "run-2")).not.toBe(
+      deriveResearchEstimateAttemptKey(requestKey, "run-1"),
+    );
   });
 
   it("derives a stable versioned CSV key from the run", () => {

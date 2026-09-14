@@ -20,6 +20,10 @@ export function deriveResearchEstimateIdempotencyKey(input: {
   })}`;
 }
 
+export function deriveResearchEstimateAttemptKey(requestKey: string, runId: string): string {
+  return `${requestKey}:attempt:${runId}`;
+}
+
 export function deriveResearchCsvIdempotencyKey(runId: string): string {
   return `export:csv:v1:${digest({ runId, format: "csv", schemaVersion: 1 })}`;
 }

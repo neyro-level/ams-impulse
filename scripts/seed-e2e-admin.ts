@@ -200,10 +200,10 @@ async function main() {
       INSERT INTO "research"."Run"
         ("id", "organizationId", "projectId", "researchId", "status", "queryCount",
          "estimatedCostKopecks", "estimateExpiresAt", "approvedCostKopecks", "allocatedCostKopecks",
-         "idempotencyKey", "confirmedByUserId", "confirmedAt", "finishedAt")
+         "idempotencyKey", "requestKey", "confirmedByUserId", "confirmedAt", "finishedAt")
       VALUES ('e2e-budget-run', ${E2E_RESEARCH.budgetOrganizationId}, ${E2E_RESEARCH.budgetProjectId},
         ${E2E_RESEARCH.budgetResearchId}, 'SUCCEEDED', 1, 50000, CURRENT_TIMESTAMP + INTERVAL '1 hour',
-        50000, 50000, 'e2e-budget-limit', ${E2E_RESEARCH.analystUserId}, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+        50000, 50000, 'e2e-budget-limit', 'e2e-budget-limit', ${E2E_RESEARCH.analystUserId}, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
       ON CONFLICT ("id") DO UPDATE SET "status"='SUCCEEDED', "approvedCostKopecks"=50000,
         "allocatedCostKopecks"=50000, "confirmedAt"=CURRENT_TIMESTAMP, "finishedAt"=CURRENT_TIMESTAMP
     `);

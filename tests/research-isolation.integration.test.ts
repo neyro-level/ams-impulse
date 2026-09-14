@@ -123,9 +123,9 @@ integrationDescription("Research tenant and project isolation", () => {
         `INSERT INTO "research"."Run"
           ("id", "organizationId", "projectId", "researchId", "status", "queryCount",
            "estimatedCostKopecks", "estimateExpiresAt", "approvedCostKopecks",
-           "allocatedCostKopecks", "idempotencyKey", "finishedAt")
+           "allocatedCostKopecks", "idempotencyKey", "requestKey", "finishedAt")
          VALUES ($1, $2, $3, $4, 'SUCCEEDED', 1, 100, CURRENT_TIMESTAMP + INTERVAL '1 hour',
-           100, 100, $5, CURRENT_TIMESTAMP)`,
+           100, 100, $5, $5, CURRENT_TIMESTAMP)`,
         [runId, organizationId, projectId, researchId, `${prefix}:${runId}`],
       );
       await database.pool.query(

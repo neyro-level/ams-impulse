@@ -38,6 +38,10 @@ Research UI mutations проходят через `defineAction`; revalidation �
 - transient claim-lock contention creates exactly one delayed replacement delivery and completes the current job; the payload carries a bounded counter with at most 12 deferrals, after which the delivery is completed with a PII-free `research_job_deferral_exhausted` event while the unclaimed run stays `QUEUED` for explicit recovery and is never mislabeled as a paid-execution failure;
 - daily and monthly budget windows are UTC calendar windows and do not depend on the PostgreSQL session timezone;
 - estimate reservation acquires the organization budget lock and performs expiry, idempotency lookup, committed-spend read, limit checks and insert in one transaction;
+- estimate idempotency has two levels: stable server-derived `requestKey` identifies
+  equivalent input, while every physical run stores a unique attempt key. Repeated
+  requests reuse only the same unexpired `AWAITING_CONFIRMATION` attempt; after expiry
+  or another terminal outcome a new estimate is allowed without rewriting history;
 - ambiguous timeout не повторяет платный вызов;
 - история запусков, Evidence и CompetitorProjection;
 - private S3 CSV и signed URL на 60 секунд;

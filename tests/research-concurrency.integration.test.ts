@@ -185,9 +185,9 @@ integrationDescription("Research budget concurrency and idempotency", () => {
       `INSERT INTO "research"."Run"
         ("id", "organizationId", "projectId", "researchId", "status", "queryCount",
          "estimatedCostKopecks", "estimateExpiresAt", "approvedCostKopecks",
-         "idempotencyKey", "confirmedAt")
+         "idempotencyKey", "requestKey", "confirmedAt")
        VALUES ($1, $2, $3, $4, 'QUEUED', 1, 49900, CURRENT_TIMESTAMP + INTERVAL '1 hour',
-         49900, $5, $6)`,
+         49900, $5, $5, $6)`,
       [`${prefix}-baseline`, ids.organization, ids.project, ids.research, `${prefix}:baseline`, proofNow],
     );
     const estimates = await Promise.allSettled([
@@ -232,6 +232,74 @@ integrationDescription("Research budget concurrency and idempotency", () => {
     } finally {
       client.release();
     }
+  });
+
+  it("creates one fresh attempt after estimate expiry and queues it once", async () => {
+    const expired = await research.estimateRun(principal, ref());
+    await database.pool.query(
+      `UPDATE "research"."Run" SET "estimateExpiresAt" = $1 WHERE "id" = $2`,
+      [new Date(proofNow.getTime() - 1_000), expired.runId],
+    );
+
+    const [fresh, repeated] = await Promise.all([
+      research.estimateRun(principal, ref()),
+      research.estimateRun(principal, ref()),
+    ]);
+    expect(fresh.runId).not.toBe(expired.runId);
+    expect(repeated.runId).toBe(fresh.runId);
+
+    const attempts = await database.pool.query<{
+      id: string;
+      status: string;
+      requestKey: string;
+      idempotencyKey: string;
+    }>(
+      `SELECT "id", "status"::text, "requestKey", "idempotencyKey"
+       FROM "research"."Run" WHERE "researchId" = $1 ORDER BY "createdAt", "id"`,
+      [ids.research],
+    );
+    expect(attempts.rows).toHaveLength(2);
+    expect(attempts.rows[0]).toMatchObject({ id: expired.runId, status: "CANCELLED" });
+    expect(attempts.rows[1]).toMatchObject({ id: fresh.runId, status: "AWAITING_CONFIRMATION" });
+    expect(new Set(attempts.rows.map(({ requestKey }) => requestKey)).size).toBe(1);
+    expect(new Set(attempts.rows.map(({ idempotencyKey }) => idempotencyKey)).size).toBe(2);
+    const expiredQueries = await database.pool.query<{ status: string; safeErrorCode: string | null }>(
+      `SELECT "status"::text, "safeErrorCode" FROM "research"."QueryRun" WHERE "runId" = $1`,
+      [expired.runId],
+    );
+    expect(expiredQueries.rows).toEqual([
+      { status: "FAILED", safeErrorCode: "RESEARCH_ESTIMATE_EXPIRED" },
+    ]);
+
+    await research.confirmAndQueue(principal, {
+      ...ref(),
+      runId: fresh.runId,
+      expectedEstimatedCostKopecks: 100,
+    });
+    const outbox = await database.pool.query<{ count: string }>(
+      `SELECT COUNT(*)::text AS count FROM "public"."OutboxEvent"
+       WHERE "topic" = 'research.run.v1' AND "payload"->>'runId' = $1`,
+      [fresh.runId],
+    );
+    expect(outbox.rows[0]?.count).toBe("1");
+  });
+
+  it("fills requestKey for rollback-compatible legacy inserts", async () => {
+    const runId = `${prefix}-legacy-request-key`;
+    const idempotencyKey = `${prefix}:legacy-request-key`;
+    await database.pool.query(
+      `INSERT INTO "research"."Run"
+        ("id", "organizationId", "projectId", "researchId", "status", "queryCount",
+         "estimatedCostKopecks", "estimateExpiresAt", "idempotencyKey", "finishedAt")
+       VALUES ($1, $2, $3, $4, 'CANCELLED', 1, 100, CURRENT_TIMESTAMP,
+         $5, CURRENT_TIMESTAMP)`,
+      [runId, ids.organization, ids.project, ids.research, idempotencyKey],
+    );
+    const stored = await database.pool.query<{ requestKey: string }>(
+      `SELECT "requestKey" FROM "research"."Run" WHERE "id" = $1`,
+      [runId],
+    );
+    expect(stored.rows[0]?.requestKey).toBe(idempotencyKey);
   });
 
   it("keeps research budget boundaries on UTC across database session timezones", async () => {
@@ -373,9 +441,9 @@ integrationDescription("Research budget concurrency and idempotency", () => {
       `INSERT INTO "research"."Run"
         ("id", "organizationId", "projectId", "researchId", "status", "queryCount",
          "estimatedCostKopecks", "estimateExpiresAt", "approvedCostKopecks",
-         "allocatedCostKopecks", "idempotencyKey", "confirmedAt", "finishedAt")
+         "allocatedCostKopecks", "idempotencyKey", "requestKey", "confirmedAt", "finishedAt")
        VALUES ($1, $2, $3, $4, 'SUCCEEDED', 1, 100, CURRENT_TIMESTAMP + INTERVAL '1 hour',
-         100, 100, $5, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
+         100, 100, $5, $5, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
       [runId, ids.organization, ids.project, ids.research, `${prefix}:succeeded`],
     );
     const input = {

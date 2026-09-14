@@ -44,5 +44,6 @@
   "20260913160000_harden_research_runtime_invariants": "c1657eee52bd7a2cd369c2b78b041231f361f5a455a84ff0d5fe9fe95d33ff58",
   "20260913190000_unify_research_budget_utc": "c5ec4a06ab84e7fe37ce865590bab4fb3ad3f8decf31fede4a8a344c4bdf65d5",
   "20260913191000_rename_research_allocated_cost": "12c71d3455730949ffeaf6618ea1906e19d92b437b3dc9334577f48a25ca368c",
-  "20260914212000_revoke_platform_public_usage": "e43e82b51f61ead1c6dd33284b51eef61b141f8120601f56282db8161e500e82"
+  "20260914212000_revoke_platform_public_usage": "e43e82b51f61ead1c6dd33284b51eef61b141f8120601f56282db8161e500e82",
+  "20260915013000_add_research_estimate_request_key": "d09db26d442faa3e6756b7e1c18aec6e8e76a8e257d0296efd76527babd48c6d"
 }
