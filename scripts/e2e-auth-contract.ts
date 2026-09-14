@@ -1,1 +1,1 @@
-export const E2E_PLATFORM_ADMIN_TOTP_SECRET = "AMSIMPULSE-E2E-TOTP-SECRET-2026";
+export const E2E_PLATFORM_ADMIN_TOTP_SECRET = "test-only-not-for-production-2026";

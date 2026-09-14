@@ -50,5 +50,7 @@ rules:
     severity: ERROR
     message: Possible hardcoded credential or token.
     patterns:
-      - pattern-regex: '(?i)(secret|password|passwd|token|api[_-]?key|private[_-]?key)\\s*[:=]\\s*["''][^"'']{12,}["'']'
-      - pattern-not-regex: '(?i)(example|placeholder|test-only|not-for-production|process\\.env|field|schema|message|name)'
+      - pattern-regex: |-
+          (?i)(secret|password|passwd|token|api[_-]?key|private[_-]?key)\s*[:=]\s*["'][^"']{12,}["']
+      - pattern-not-regex: |-
+          (?i)(example|placeholder|test-only|not-for-production|process\.env|field|schema|message|name)
