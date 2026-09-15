@@ -2,6 +2,7 @@ import { readdir, readFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { z } from "zod";
+import { findDependencyVersionRanges } from "./lib/exact-dependency-versions.mjs";
 
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const sourceIndex = process.argv.indexOf("--source");
@@ -157,6 +158,12 @@ function assert(condition, message) {
 }
 
 try {
+  const packageJson = JSON.parse(await readFile(path.join(projectRoot, "package.json"), "utf8"));
+  const dependencyRanges = findDependencyVersionRanges(packageJson);
+  assert(
+    dependencyRanges.length === 0,
+    `Dependencies must use exact semantic versions: ${dependencyRanges.join(", ")}`,
+  );
   const clients = (await readJsonDirectory("clients")).map((item) => clientSchema.parse(item));
   const clusters = (await readJsonDirectory("clusters")).map((item) => clusterSchema.parse(item));
   const goalProfiles = (await readJsonDirectory("goals")).map((item) => goalProfileSchema.parse(item));
