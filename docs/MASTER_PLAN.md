@@ -2,37 +2,6 @@
 
 Документ содержит только незавершённую работу. Реализованные изменения сохраняются в Git и SourceCraft.
 
-## Audit Remediation 2026-09
-
-Программа основана на независимом аудите tree `9e1958ac` и повторной проверке по canonical `main`. Каждый task выполняется отдельной веткой и PR. Порядок ниже учитывает зависимости; P0-потоки не объединяются.
-
-### Epic AR-1 — Достоверные security guards
-
-1. **AR-01 / P0 / RISKY — Semgrep secret guard.** Исправить regex поиска hardcoded credentials, доказать каждое локальное правило positive/negative fixtures и затем проверить текущий source scope.
-
-### Epic AR-2 — Явная авторизация и минимальные полномочия
-
-1. **AR-02 / P0 / RISKY — ANALYST isolation.** Убрать implicit `*:any` у `identity-user`, сохранить global scope только у server-generated principals, проверить resource authorization всех потребителей и закрыть production-пользователей явными grants до merge.
-2. **AR-03 / P0 / RISKY — JobPrincipal contract.** Сделать `projectId` обязательным для project-scoped job, убрать ложный principal из org-scoped orchestration и доказать project isolation worker-команд.
-3. **AR-04 / P1 / RISKY — Tools VIEWER permissions.** Убрать создающий S3-объект `research:export` у read-only роли и обновить permission matrix.
-
-### Epic AR-3 — Безопасный платный Research lifecycle
-
-1. **AR-05 / P0 / RISKY — Estimate retry.** Разрешить новый estimate после истечения предыдущего без обхода advisory lock и без повторного списания при повторном confirm.
-2. **AR-06 / P2 / STANDARD — XMLRiver credential leakage guard.** Доказать на всех ошибочных ветках клиента, что `user`, `key` и полный provider URL не входят в error/log serialization.
-
-### Epic AR-4 — Auth и database perimeter
-
-1. **AR-07 / P1 / RISKY — Shared auth rate limit.** Перевести Better Auth rate-limit storage в PostgreSQL, добавить требуемую library-owned таблицу новой миграцией и строгие правила для sign-in, password, 2FA и OAuth token endpoints.
-2. **AR-08 / P1 / RISKY — Notification RLS.** Разделить org-level и project-level visibility без тихо невидимых строк; чужой tenant остаётся недоступен.
-3. **AR-09 / P1 / RISKY — RLS coverage guard.** Механически проверять `ENABLE` + `FORCE`, authorization policies и явный registry platform-owned operational tables на живой test DB; включить proof в daily verification.
-
-### Epic AR-5 — Воспроизводимость и безопасная эволюция
-
-1. **AR-10 / P2 / RISKY — Better Auth post-1.7.2 transition plan.** Зафиксировать проверенный по официальному upstream план очистки отменённой `Account.issuer` схемы и отдельный rollback; packages пока не обновлять.
-2. **AR-11 / P2 / STANDARD — Exact dependency pins.** Зафиксировать `pino` на lockfile version и запретить range-specifiers во всех dependency sections.
-3. **AR-12 / P2 / STANDARD — Canonical dev port.** Привести прямой `pnpm dev` к уже действующему контракту launcher/docs `127.0.0.1:3001`.
-
 ## Внешние Проверки
 
 - выполнить первый подтверждённый платный тестовый запуск Research через MCP после серверной оценки и явного подтверждения стоимости;
