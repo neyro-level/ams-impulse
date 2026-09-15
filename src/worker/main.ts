@@ -8,6 +8,7 @@ import {
 } from "../modules/platform-operations/worker.ts";
 import { getLogger } from "../platform/observability/logger.ts";
 import { runNextResearchJob, runResearchWorkerDaemon } from "../modules/research/worker.ts";
+import { runWorkerProcess } from "./process-lifecycle.ts";
 
 const command = process.argv[2] ?? null;
 const argument = process.argv[3] ?? null;
@@ -140,7 +141,7 @@ async function main() {
   }
 }
 
-main().catch((error) => {
+runWorkerProcess(main).catch((error) => {
   logger.error({ err: error }, "worker failed");
-  process.exit(1);
+  process.exitCode = 1;
 });

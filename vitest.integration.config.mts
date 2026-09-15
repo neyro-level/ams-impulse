@@ -40,6 +40,7 @@ export default defineConfig({
       "tests/operational-admin.integration.test.ts",
       "tests/database-runtime-contract.integration.test.ts",
       "tests/datetime-contract-registry.integration.test.ts",
+      "tests/worker-process-exit.integration.test.ts",
       "tests/platform-schema-privileges.integration.test.ts",
     ],
   },

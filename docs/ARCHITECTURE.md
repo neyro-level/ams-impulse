@@ -254,7 +254,10 @@ Canonical release topology: host Nginx -> web/outbox/research worker containers 
 
 Health is runtime-specific: web uses `/api/health/live`; persistent workers prove
 a fresh database heartbeat for their exact runtime/worker identity. Migrator and
-maintenance are one-shot services and have Docker healthchecks disabled.
+maintenance are one-shot services and have Docker healthchecks disabled. Every
+worker command closes the shared Prisma client and PostgreSQL pool when its
+top-level task returns; release cutover enables maintenance timers but never
+runs a scheduled sync inline.
 
 All production services drop Linux capabilities, prohibit privilege escalation,
 use a read-only root filesystem, bounded tmpfs, process/memory limits and rotated
