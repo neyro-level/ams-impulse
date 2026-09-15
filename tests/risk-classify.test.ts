@@ -50,4 +50,21 @@ describe("risk classifier", () => {
       },
     ]);
   });
+
+  it.each([
+    ["next.config.ts", "security headers and CSP"],
+    ["dependency-cruiser.config.cjs", "architecture guard configuration"],
+    ["eslint.config.mjs", "architecture guard configuration"],
+    ["tsconfig.json", "type or test configuration"],
+    ["tsconfig.collector.json", "type or test configuration"],
+    ["vitest.config.mts", "type or test configuration"],
+    ["vitest.integration.config.mts", "type or test configuration"],
+    ["playwright.config.ts", "type or test configuration"],
+  ])("flags %s as %s", (path, label) => {
+    expect(classifyRiskPaths([path])).toEqual([{ path, reasons: [label] }]);
+  });
+
+  it("does not flag README documentation mechanically", () => {
+    expect(classifyRiskPaths(["README.md"])).toEqual([]);
+  });
 });

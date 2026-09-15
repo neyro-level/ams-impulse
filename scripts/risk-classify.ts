@@ -12,6 +12,16 @@ export interface RiskMatch {
 }
 
 const RISK_RULES: RiskRule[] = [
+  { label: "security headers and CSP", matches: (path) => path === "next.config.ts" },
+  {
+    label: "architecture guard configuration",
+    matches: (path) => path === "dependency-cruiser.config.cjs" || path === "eslint.config.mjs",
+  },
+  {
+    label: "type or test configuration",
+    matches: (path) => /^tsconfig[^/]*\.json$/u.test(path)
+      || ["vitest.config.mts", "vitest.integration.config.mts", "playwright.config.ts"].includes(path),
+  },
   { label: "database schema or migration", matches: (path) => path.startsWith("prisma/") },
   { label: "Prisma CLI contract", matches: (path) => path === "prisma.config.ts" },
   {
