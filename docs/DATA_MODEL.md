@@ -19,7 +19,7 @@ One database object has exactly one migration and runtime owner:
 | Schema / objects | Owner | Change path |
 | --- | --- | --- |
 | `public` AMS product, authorization and operations tables | Prisma / AMS | `prisma/schema.prisma` plus Prisma migrations |
-| `public.User`, `Session`, `Account`, `Verification`, `Jwks`, `Oauth*` identity fields | Better Auth and its official plugins | generated library contract reviewed first, then an immutable Prisma migration |
+| `public.User`, `Session`, `Account`, `Verification`, `RateLimit`, `Jwks`, `Oauth*` identity fields | Better Auth and its official plugins | generated library contract reviewed first, then an immutable Prisma migration |
 | `research.*` | Research module / AMS SQL | immutable handwritten migrations plus typed Research repositories |
 | `tools.*` | Tools Workspace module / AMS SQL | immutable handwritten migrations plus typed Tools repositories |
 | `pgboss.*` | pg-boss | `scripts/pgboss-migrate.mjs`; application migrations do not edit its objects |
@@ -50,7 +50,7 @@ SQL for Prisma-owned `public` models.
 
 ## Platform Identity
 
-Better Auth owns `User`, `Session`, `Account`, `Verification`. AMS owns authorization records and AuditEvent.
+Better Auth owns `User`, `Session`, `Account`, `Verification` and `RateLimit`. AMS owns authorization records and AuditEvent. `RateLimit` is global operational security state, not a tenant-owned business record: its key contains the normalized client IP and auth path, its longest configured window is five minutes, and Better Auth removes expired rows opportunistically when a new window starts. Only `ams_web` may mutate it; `ams_worker` has no table privileges and `ams_backup` is read-only.
 
 Target system roles:
 

@@ -193,6 +193,14 @@ headers with its direct peer address; Better Auth reads only `X-Real-IP` and tru
 configured loopback proxy hop. Client-supplied forwarded chains never select a rate-limit or
 session IP identity.
 
+Better Auth stores rate-limit counters in PostgreSQL so limits survive process restarts and
+apply consistently across web replicas. Sign-in is limited to five attempts per minute;
+password change, password reset and two-factor verification use stricter five-minute windows;
+the OAuth token endpoint is limited to ten requests per minute. The global `RateLimit` key
+contains the normalized client IP and auth path, so it is treated as short-lived security
+metadata: only `ams_web` may mutate it, `ams_worker` has no access, and expired rows are pruned
+by Better Auth when rate-limit windows roll over. It is not used for analytics or tenant access.
+
 Next is the single owner of the response CSP; Nginx does not append a second policy.
 Public and private application routes enforce a Next 16-compatible CSP: same-origin
 defaults, fonts and forms; only local/data/blob images and local/blob workers; no

@@ -15,6 +15,7 @@ export default defineConfig({
       "tests/platform-admin.integration.test.ts",
       "tests/platform-admin-adoption.integration.test.ts",
       "tests/auth.authorization.test.ts",
+      "tests/auth-rate-limit.integration.test.ts",
       "tests/health.integration.test.ts",
       "tests/monitoring-service.test.ts",
       "tests/prisma-repositories.test.ts",
