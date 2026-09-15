@@ -116,6 +116,19 @@ describe("ResearchService", () => {
     expect(first).toMatchObject({ runId: repeated.runId, queryCount: 2, estimatedCostKopecks: 250, confirmationRequired: true });
   });
 
+  it("returns one estimate for concurrent equivalent commands", async () => {
+    const repository = new MemoryResearchRepository();
+    const service = new ResearchService(repository, authorization, pricing, budget);
+    const principal = createPlatformAnalystPrincipal("analyst");
+    const research = await service.create(principal, { organizationId: "atlas", projectId: "secondary", title: "Конкурентный estimate", queries: ["один"] });
+    const [first, second] = await Promise.all([
+      service.estimateRun(principal, { organizationId: "atlas", projectId: "secondary", researchId: research.id }),
+      service.estimateRun(principal, { organizationId: "atlas", projectId: "secondary", researchId: research.id }),
+    ]);
+    expect(first.runId).toBe(second.runId);
+    expect(repository.runIds.size).toBe(1);
+  });
+
   it("blocks the daily and monthly budget before creating a run", async () => {
     const repository = new MemoryResearchRepository();
     const service = new ResearchService(repository, authorization, { estimateRunCostKopecks: () => 100 }, budget);

@@ -30,6 +30,13 @@ const terminalSpendSql = readFileSync(
   new URL("../prisma/migrations/20260913160000_harden_research_runtime_invariants/migration.sql", import.meta.url),
   "utf8",
 );
+const requestKeyInvariantSql = readFileSync(
+  new URL(
+    "../prisma/migrations/20260915110000_enforce_active_research_request_key/migration.sql",
+    import.meta.url,
+  ),
+  "utf8",
+);
 
 describe("Tools and Research database contract", () => {
   it("uses independent membership and explicit project grants", () => {
@@ -104,5 +111,15 @@ describe("Tools and Research database contract", () => {
     expect(terminalSpendSql).toContain('REVOKE ALL ON FUNCTION "platform"."can_access_tools_project"(TEXT, TEXT) FROM PUBLIC');
     expect(terminalSpendSql).toContain('GRANT EXECUTE ON FUNCTION "platform"."can_access_tools_project"(TEXT, TEXT) TO ams_web, ams_worker');
     expect(terminalSpendSql).not.toContain('TO PUBLIC;');
+  });
+
+  it("allows only one active estimate attempt per organization and request key", () => {
+    expect(requestKeyInvariantSql).toContain(
+      'CREATE UNIQUE INDEX "Run_organizationId_requestKey_active_key"',
+    );
+    expect(requestKeyInvariantSql).toContain(
+      "WHERE \"status\" IN ('AWAITING_CONFIRMATION', 'QUEUED', 'RUNNING')",
+    );
+    expect(requestKeyInvariantSql).toContain("HAVING count(*) > 1");
   });
 });
