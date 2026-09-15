@@ -180,6 +180,23 @@ integrationDescription("Research budget concurrency and idempotency", () => {
     };
   }
 
+  it("stores one active run for concurrent equivalent estimate requests", async () => {
+    const [first, second] = await Promise.all([
+      research.estimateRun(principal, ref()),
+      research.estimateRun(principal, ref()),
+    ]);
+    expect(first.runId).toBe(second.runId);
+    const active = await database.pool.query<{ count: string }>(
+      `SELECT count(*)::text AS count
+       FROM "research"."Run"
+       WHERE "organizationId" = $1 AND "requestKey" = (
+         SELECT "requestKey" FROM "research"."Run" WHERE "id" = $2
+       ) AND "status" IN ('AWAITING_CONFIRMATION', 'QUEUED', 'RUNNING')`,
+      [ids.organization, first.runId],
+    );
+    expect(active.rows[0]?.count).toBe("1");
+  });
+
   it("serializes parallel estimates so reserved spend cannot exceed the daily limit", async () => {
     await database.pool.query(
       `INSERT INTO "research"."Run"

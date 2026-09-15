@@ -168,6 +168,7 @@ AWAITING_CONFIRMATION -> QUEUED -> RUNNING -> SUCCEEDED | FAILED
 - Run estimate is immutable after confirmation.
 - Retry increments query attempt state and never follows an ambiguous timeout.
 - Browser estimate keys are derived from research ID + version + normalized queries; CSV keys are derived from run ID + format schema version. Same organization/key/input returns the existing run or export, while the same key with different material input fails with `RESEARCH_IDEMPOTENCY_CONFLICT`.
+- `Run.requestKey` is the stable estimate-request idempotency key. PostgreSQL permits only one `AWAITING_CONFIRMATION`, `QUEUED` or `RUNNING` row per organization and request key; terminal history may retain the same key so an expired or completed attempt can be followed by a new estimate.
 - Re-run creates a new ResearchRun.
 
 ## Budget
