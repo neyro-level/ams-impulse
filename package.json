@@ -30,7 +30,7 @@
     "playwright:install": "playwright install chromium",
     "verify:quick": "pnpm verify:config && pnpm verify:migrations && pnpm typecheck && pnpm lint && pnpm architecture:check",
     "verify:risky": "pnpm verify:quick && pnpm test:unit && pnpm test:security && pnpm verify:datetime-contract && pnpm build",
-    "verify:daily": "pnpm verify:quick && pnpm test:unit && pnpm test:integration && pnpm verify:rls-coverage && pnpm build && pnpm test:e2e:run && pnpm security:semgrep && pnpm security:dependencies",
+    "verify:daily": "pnpm verify:quick && pnpm test:unit && pnpm test:integration && pnpm verify:rls-coverage && pnpm verify:datetime-contract && pnpm build && pnpm test:e2e:run && pnpm security:semgrep && pnpm security:dependencies",
     "verify:release": "pnpm verify:daily && pnpm verify:database-runtime && pnpm verify:snapshots && node scripts/verify-release-runtime.mjs && pnpm build:collector",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
