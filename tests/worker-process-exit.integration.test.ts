@@ -14,9 +14,12 @@ databaseDescribe("worker process database lifecycle", () => {
     const script = `
       import { getPrismaClient } from "./src/platform/database/prisma/client.ts";
       import { runWorkerProcess } from "./src/worker/process-lifecycle.ts";
-      await runWorkerProcess(async () => {
+      runWorkerProcess(async () => {
         await getPrismaClient().$queryRawUnsafe("SELECT 1");
         process.stdout.write("worker_database_lifecycle=ok\\n");
+      }).catch((error) => {
+        process.stderr.write((error instanceof Error ? error.message : String(error)) + "\\n");
+        process.exitCode = 1;
       });
     `;
     const result = spawnSync(
