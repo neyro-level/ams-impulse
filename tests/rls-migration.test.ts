@@ -32,6 +32,13 @@ const coverageHardeningMigration = readFileSync(
   ),
   "utf8",
 );
+const sessionUserInvariantMigration = readFileSync(
+  new URL(
+    "../prisma/migrations/20260915100000_unify_restricted_runtime_session_user/migration.sql",
+    import.meta.url,
+  ),
+  "utf8",
+);
 
 describe("PostgreSQL RLS foundation", () => {
   it("creates every approved product schema", () => {
@@ -137,5 +144,21 @@ describe("PostgreSQL RLS foundation", () => {
     expect(coverageHardeningMigration.match(/"platform"\."can_access_seo_site"/g)?.length)
       .toBeGreaterThanOrEqual(4);
     expect(coverageHardeningMigration).toContain("session_user = 'ams_worker'");
+  });
+
+  it("keeps restricted runtime detection stable across SECURITY DEFINER boundaries", () => {
+    expect(sessionUserInvariantMigration).toContain(
+      "SELECT session_user IN ('ams_web', 'ams_worker')",
+    );
+    expect(sessionUserInvariantMigration).toContain(
+      'CREATE FUNCTION pg_temp.verify_restricted_runtime_wrapper()',
+    );
+    expect(sessionUserInvariantMigration).toContain(
+      '"platform"."worker_can_access_seo_project"',
+    );
+    expect(sessionUserInvariantMigration).toContain(
+      '"platform"."worker_can_access_tools_project"',
+    );
+    expect(sessionUserInvariantMigration).not.toMatch(/\b(?:CREATE|ALTER|DROP) POLICY\b/);
   });
 });

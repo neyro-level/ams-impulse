@@ -23,13 +23,55 @@ export interface RuntimeRoleInventory {
   bypassRls: boolean;
 }
 
+export interface SecurityDefinerRoutineInventory {
+  schemaName: string;
+  routineName: string;
+  identityArguments: string;
+  source: string;
+}
+
 const lookupRelations = new Set<string>(RLS_AUTHORIZATION_LOOKUP_RELATIONS);
 const operationalExemptions: Readonly<Record<string, string>> = PLATFORM_OPERATIONAL_RLS_EXEMPTIONS;
 const authorizationReference = /platform.*(?:can_access|is_platform_admin|current_user_id|worker_can_access)/i;
+const definerAuthorizationReference = /\b(?:can_access_|worker_can_access_)[a-z0-9_]*\b/i;
+
+function escapeRegExp(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+export function securityDefinerReadsProtectedRelation(
+  source: string,
+  relation: Pick<RlsRelationInventory, "schemaName" | "tableName">,
+) {
+  const schema = escapeRegExp(relation.schemaName);
+  const table = escapeRegExp(relation.tableName);
+  return new RegExp(
+    `(?:"${schema}"\\s*\\.\\s*"${table}"|\\b${schema}\\s*\\.\\s*"?${table}"?|"${table}")`,
+    "i",
+  ).test(source);
+}
+
+export function evaluateSecurityDefinerBoundaries(
+  routines: SecurityDefinerRoutineInventory[],
+  protectedRelations: RlsRelationInventory[],
+) {
+  const failures: string[] = [];
+  for (const routine of routines) {
+    const readsProtectedRelation = protectedRelations.some((relation) =>
+      securityDefinerReadsProtectedRelation(routine.source, relation));
+    if (readsProtectedRelation && !definerAuthorizationReference.test(routine.source)) {
+      failures.push(
+        `${routine.schemaName}.${routine.routineName}(${routine.identityArguments}): SECURITY DEFINER reads a protected relation without an authorization function`,
+      );
+    }
+  }
+  return failures;
+}
 
 export function evaluateRlsCoverage(
   relations: RlsRelationInventory[],
   runtimeRoles: RuntimeRoleInventory[],
+  securityDefiners: SecurityDefinerRoutineInventory[] = [],
 ) {
   const failures: string[] = [];
   const relationKeys = new Set(relations.map((relation) => `${relation.schemaName}.${relation.tableName}`));
@@ -67,6 +109,11 @@ export function evaluateRlsCoverage(
     if (!role) failures.push(`${roleName}: runtime role is absent`);
     else if (role.superuser || role.bypassRls) failures.push(`${roleName}: runtime role can bypass RLS`);
   }
+
+  failures.push(...evaluateSecurityDefinerBoundaries(
+    securityDefiners,
+    relations.filter((relation) => !operationalExemptions[`${relation.schemaName}.${relation.tableName}`]),
+  ));
 
   return {
     checked: relations.length,
@@ -136,6 +183,18 @@ export async function loadRlsCoverageInventory(client: Client) {
     JOIN pg_namespace AS namespace ON namespace.oid = relation.relnamespace
     JOIN pg_proc AS routine ON routine.oid = protected_lookup.function_oid
   `);
+  const securityDefiners = await client.query<SecurityDefinerRoutineInventory>(`
+    SELECT
+      namespace.nspname AS "schemaName",
+      routine.proname AS "routineName",
+      pg_get_function_identity_arguments(routine.oid) AS "identityArguments",
+      routine.prosrc AS source
+    FROM pg_proc AS routine
+    JOIN pg_namespace AS namespace ON namespace.oid = routine.pronamespace
+    WHERE routine.prosecdef
+      AND namespace.nspname IN ('platform', 'research')
+    ORDER BY namespace.nspname, routine.proname, pg_get_function_identity_arguments(routine.oid)
+  `);
   const lookupOwnerMap = new Map(lookupOwners.rows.map((row) => [row.key, row.aligned]));
   return {
     relations: relations.rows.map((relation) => ({
@@ -144,6 +203,7 @@ export async function loadRlsCoverageInventory(client: Client) {
       policies: relation.policies as RlsRelationInventory["policies"],
     })),
     runtimeRoles: roles.rows,
+    securityDefiners: securityDefiners.rows,
   };
 }
 
@@ -164,7 +224,11 @@ async function main() {
   await client.connect();
   try {
     const inventory = await loadRlsCoverageInventory(client);
-    const result = evaluateRlsCoverage(inventory.relations, inventory.runtimeRoles);
+    const result = evaluateRlsCoverage(
+      inventory.relations,
+      inventory.runtimeRoles,
+      inventory.securityDefiners,
+    );
     process.stdout.write(`${JSON.stringify(result)}\n`);
     if (result.failures.length > 0) process.exitCode = 1;
   } finally {
