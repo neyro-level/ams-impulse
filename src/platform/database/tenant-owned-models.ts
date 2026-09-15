@@ -43,6 +43,18 @@ export const RLS_AUTHORIZATION_LOOKUP_RELATIONS = [
   "tools.ToolsProjectAccess",
 ] as const;
 
+export const PROTECTED_RELATIONS = [
+  { relation: "public.Member", tenancy: "lookup" },
+  { relation: "public.Site", tenancy: "lookup" },
+  { relation: "public.SeoProjectAccess", tenancy: "lookup" },
+  { relation: "public.NotificationRead", tenancy: "user-owned" },
+  { relation: "tools.ToolsOrganization", tenancy: "own-id" },
+  { relation: "tools.ToolsMembership", tenancy: "lookup" },
+  { relation: "tools.ToolsProjectAccess", tenancy: "lookup" },
+] as const;
+
+export type ProtectedRelation = (typeof PROTECTED_RELATIONS)[number];
+
 export const PLATFORM_OPERATIONAL_RLS_EXEMPTIONS = {
   "public.AuditEvent": "cross-tenant append-only audit queried only through authorized platform operations",
   "public.IdempotencyKey": "command coordination state shared by platform transaction infrastructure",

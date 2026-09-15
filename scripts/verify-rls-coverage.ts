@@ -3,6 +3,7 @@ import { Client } from "pg";
 import { inspectDatabaseTarget } from "../src/platform/config/database-target.ts";
 import {
   PLATFORM_OPERATIONAL_RLS_EXEMPTIONS,
+  PROTECTED_RELATIONS,
   RLS_AUTHORIZATION_LOOKUP_RELATIONS,
   TENANT_OWNED_MODELS,
 } from "../src/platform/database/tenant-owned-models.ts";
@@ -72,6 +73,7 @@ export function evaluateRlsCoverage(
   relations: RlsRelationInventory[],
   runtimeRoles: RuntimeRoleInventory[],
   securityDefiners: SecurityDefinerRoutineInventory[] = [],
+  protectedRelationRegistry: ReadonlyArray<{ relation: string; tenancy: string }> = PROTECTED_RELATIONS,
 ) {
   const failures: string[] = [];
   const relationKeys = new Set(relations.map((relation) => `${relation.schemaName}.${relation.tableName}`));
@@ -80,10 +82,21 @@ export function evaluateRlsCoverage(
     if (!relationKeys.has(`public.${model}`)) failures.push(`registered tenant model is absent: public.${model}`);
   }
 
+  for (const registered of protectedRelationRegistry) {
+    if (!relationKeys.has(registered.relation)) {
+      failures.push(`registered protected relation is absent: ${registered.relation}`);
+    }
+  }
+
   for (const relation of relations) {
     const key = `${relation.schemaName}.${relation.tableName}`;
     const exemption = operationalExemptions[key];
     if (exemption) continue;
+
+    if (protectedRelationRegistry.some((registered) => registered.relation === key)
+      && relation.policies.length === 0) {
+      failures.push(`${key}: protected relation has no policy`);
+    }
 
     if (!relation.enabled) failures.push(`${key}: RLS is not enabled`);
     if (lookupRelations.has(key)) {
@@ -125,8 +138,11 @@ export function evaluateRlsCoverage(
   };
 }
 
-export async function loadRlsCoverageInventory(client: Client) {
-  const relations = await client.query<RlsRelationInventory & { policies: unknown }>(`
+export async function loadRlsCoverageInventory(
+  client: Client,
+  protectedRelationRegistry: ReadonlyArray<{ relation: string; tenancy: string }> = PROTECTED_RELATIONS,
+) {
+  const organizationRelations = await client.query<RlsRelationInventory & { policies: unknown }>(`
     SELECT
       namespace.nspname AS "schemaName",
       relation.relname AS "tableName",
@@ -156,6 +172,32 @@ export async function loadRlsCoverageInventory(client: Client) {
       relation.relrowsecurity, relation.relforcerowsecurity
     ORDER BY namespace.nspname, relation.relname
   `);
+  const registeredRelations = await client.query<RlsRelationInventory & { policies: unknown }>(`
+    SELECT
+      namespace.nspname AS "schemaName",
+      relation.relname AS "tableName",
+      pg_get_userbyid(relation.relowner) AS "ownerName",
+      relation.relrowsecurity AS "enabled",
+      relation.relforcerowsecurity AS "forced",
+      COALESCE(
+        jsonb_agg(
+          DISTINCT jsonb_build_object(
+            'name', policy.polname,
+            'using', COALESCE(pg_get_expr(policy.polqual, policy.polrelid), ''),
+            'check', COALESCE(pg_get_expr(policy.polwithcheck, policy.polrelid), '')
+          )
+        ) FILTER (WHERE policy.polname IS NOT NULL),
+        '[]'::jsonb
+      ) AS policies
+    FROM pg_class AS relation
+    JOIN pg_namespace AS namespace ON namespace.oid = relation.relnamespace
+    LEFT JOIN pg_policy AS policy ON policy.polrelid = relation.oid
+    WHERE relation.relkind IN ('r', 'p')
+      AND namespace.nspname || '.' || relation.relname = ANY($1::text[])
+    GROUP BY namespace.nspname, relation.relname, relation.relowner,
+      relation.relrowsecurity, relation.relforcerowsecurity
+    ORDER BY namespace.nspname, relation.relname
+  `, [protectedRelationRegistry.map((entry) => entry.relation)]);
   const roles = await client.query<{
     name: string;
     superuser: boolean;
@@ -196,8 +238,12 @@ export async function loadRlsCoverageInventory(client: Client) {
     ORDER BY namespace.nspname, routine.proname, pg_get_function_identity_arguments(routine.oid)
   `);
   const lookupOwnerMap = new Map(lookupOwners.rows.map((row) => [row.key, row.aligned]));
+  const relationMap = new Map<string, RlsRelationInventory & { policies: unknown }>();
+  for (const relation of [...organizationRelations.rows, ...registeredRelations.rows]) {
+    relationMap.set(`${relation.schemaName}.${relation.tableName}`, relation);
+  }
   return {
-    relations: relations.rows.map((relation) => ({
+    relations: [...relationMap.values()].map((relation) => ({
       ...relation,
       lookupOwnerAligned: lookupOwnerMap.get(`${relation.schemaName}.${relation.tableName}`) ?? true,
       policies: relation.policies as RlsRelationInventory["policies"],
@@ -228,6 +274,7 @@ async function main() {
       inventory.relations,
       inventory.runtimeRoles,
       inventory.securityDefiners,
+      PROTECTED_RELATIONS,
     );
     process.stdout.write(`${JSON.stringify(result)}\n`);
     if (result.failures.length > 0) process.exitCode = 1;
