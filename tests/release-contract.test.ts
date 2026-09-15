@@ -331,6 +331,15 @@ describe("production compose networking", () => {
 });
 
 describe("production worker module boundary", () => {
+  it("closes shared database resources and does not run scheduled sync during deploy", () => {
+    const workerEntrypoint = readFileSync("src/worker/main.ts", "utf8");
+    const deployScript = readFileSync("scripts/deploy-production.mjs", "utf8");
+
+    expect(workerEntrypoint).toContain("runWorkerProcess(main)");
+    expect(deployScript).not.toContain("systemctl start seo-monitor-worker.service");
+    expect(deployScript).toContain("enable_runtime_timers");
+  });
+
   it("schedules every active database project instead of a hardcoded client", () => {
     const workerUnit = readFileSync("ops/systemd/seo-monitor-worker.service", "utf8");
     const containerEntrypoint = readFileSync(

@@ -80,7 +80,8 @@ After preparation:
 4. reload systemd;
 5. validate and reload Nginx;
 6. restart the persistent `web`, `worker` and `research-worker` Compose stack through `seo-monitor-web.service`;
-7. run scheduled sync once;
+7. do not run scheduled sync in the release path; one-shot maintenance owns its
+   database lifecycle and runs only through the operator command or timer;
 8. enable sync, Topvisor, competitors, outbox-retention and backup timers;
 9. verify web and worker containers use the exact image digest;
 10. require loopback live/ready DTOs to report exact target SHA, DB/auth/outbox/worker/integration freshness;

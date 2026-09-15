@@ -405,7 +405,6 @@ systemctl daemon-reload
 nginx -t
 systemctl reload nginx
 systemctl restart seo-monitor-web.service
-systemctl start seo-monitor-worker.service
 enable_runtime_timers
 
 run_with_env_file "$LIVE_PROOF_ENV_FILE" /usr/local/bin/seo-monitor-live-proof.sh \
