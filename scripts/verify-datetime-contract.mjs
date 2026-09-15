@@ -1,7 +1,10 @@
 import process from "node:process";
 
 import pg from "pg";
-import { APPLICATION_OWNED_SCHEMAS } from "../src/platform/database/tenant-owned-models.ts";
+import {
+  APPLICATION_OWNED_SCHEMAS,
+  DATETIME_CONTRACT_EXEMPT_COLUMNS,
+} from "../src/platform/database/tenant-owned-models.ts";
 import { evaluateDateTimeContract } from "./datetime-contract.ts";
 
 const databaseUrl = process.env.DATABASE_URL;
@@ -33,6 +36,7 @@ try {
   const { violations, summary } = evaluateDateTimeContract(
     APPLICATION_OWNED_SCHEMAS,
     result.rows,
+    Object.keys(DATETIME_CONTRACT_EXEMPT_COLUMNS),
   );
 
   if (violations.length > 0) {

@@ -245,7 +245,7 @@ model PlatformAdminRecoveryCode {
   codeHash   String
   consumedAt DateTime? @db.Timestamptz(3)
   revokedAt  DateTime? @db.Timestamptz(3)
-  createdAt  DateTime  @default(now())
+  createdAt  DateTime  @default(now()) @db.Timestamptz(3)
   user       User      @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
 
   @@unique([userId, codeHash])
@@ -507,8 +507,8 @@ model Organization {
   logo            String?
   metadata        String?
   version         Int              @default(1)
-  createdAt       DateTime         @default(now())
-  updatedAt       DateTime         @updatedAt
+  createdAt       DateTime         @default(now()) @db.Timestamptz(3)
+  updatedAt       DateTime         @updatedAt @db.Timestamptz(3)
   members         Member[]
   projects        Project[]
   idempotencyKeys IdempotencyKey[]
@@ -523,8 +523,8 @@ model Member {
   organizationId     String
   tenantRole         MembershipRole     @default(VIEWER)
   version            Int                @default(1)
-  createdAt          DateTime           @default(now())
-  updatedAt          DateTime           @updatedAt
+  createdAt          DateTime           @default(now()) @db.Timestamptz(3)
+  updatedAt          DateTime           @updatedAt @db.Timestamptz(3)
   user               User               @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
   organization       Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade, onUpdate: Cascade)
   seoProjectAccesses SeoProjectAccess[]
@@ -548,8 +548,8 @@ model ThresholdProfile {
   organicVisitsDropPercent  Decimal   @db.Decimal(6, 2)
   goalConversionDropPercent Decimal   @db.Decimal(6, 2)
   version                   Int       @default(1)
-  createdAt                 DateTime  @default(now())
-  updatedAt                 DateTime  @updatedAt
+  createdAt                 DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt                 DateTime  @updatedAt @db.Timestamptz(3)
   projects                  Project[]
 }
 
@@ -558,8 +558,8 @@ model QueryClusterProfile {
   slug      String              @unique
   name      String
   version   Int                 @default(1)
-  createdAt DateTime            @default(now())
-  updatedAt DateTime            @updatedAt
+  createdAt DateTime            @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime            @updatedAt @db.Timestamptz(3)
   groups    QueryClusterGroup[]
   projects  Project[]
 }
@@ -572,8 +572,8 @@ model QueryClusterGroup {
   order          Int
   brandTermsJson Json
   termsJson      Json
-  createdAt      DateTime            @default(now())
-  updatedAt      DateTime            @updatedAt
+  createdAt      DateTime            @default(now()) @db.Timestamptz(3)
+  updatedAt      DateTime            @updatedAt @db.Timestamptz(3)
   profile        QueryClusterProfile @relation(fields: [profileId], references: [id], onDelete: Cascade, onUpdate: Cascade)
 
   @@unique([profileId, slug])
@@ -589,8 +589,8 @@ model Project {
   thresholdProfileId String
   clusterProfileId   String
   version            Int                 @default(1)
-  createdAt          DateTime            @default(now())
-  updatedAt          DateTime            @updatedAt
+  createdAt          DateTime            @default(now()) @db.Timestamptz(3)
+  updatedAt          DateTime            @updatedAt @db.Timestamptz(3)
   organization       Organization        @relation(fields: [organizationId], references: [id], onDelete: Restrict, onUpdate: Cascade)
   thresholdProfile   ThresholdProfile    @relation(fields: [thresholdProfileId], references: [id], onDelete: Restrict, onUpdate: Cascade)
   clusterProfile     QueryClusterProfile @relation(fields: [clusterProfileId], references: [id], onDelete: Restrict, onUpdate: Cascade)
@@ -612,8 +612,8 @@ model SeoProjectAccess {
   projectId      String
   role           ProductRole @default(VIEWER)
   version        Int         @default(1)
-  createdAt      DateTime    @default(now())
-  updatedAt      DateTime    @updatedAt
+  createdAt      DateTime    @default(now()) @db.Timestamptz(3)
+  updatedAt      DateTime    @updatedAt @db.Timestamptz(3)
   membership     Member      @relation(fields: [membershipId, organizationId], references: [id, organizationId], onDelete: Cascade, onUpdate: Cascade)
   project        Project     @relation(fields: [organizationId, projectId], references: [organizationId, id], onDelete: Cascade, onUpdate: Cascade)
 
@@ -632,8 +632,8 @@ model Site {
   timezone                        String
   enabled                         Boolean
   version                         Int                              @default(1)
-  createdAt                       DateTime                         @default(now())
-  updatedAt                       DateTime                         @updatedAt
+  createdAt                       DateTime                         @default(now()) @db.Timestamptz(3)
+  updatedAt                       DateTime                         @updatedAt @db.Timestamptz(3)
   project                         Project                          @relation(fields: [projectId], references: [id], onDelete: Restrict, onUpdate: Cascade)
   providerConnections             ProviderConnection[]
   trackedQuerySet                 TrackedQuerySet?
@@ -674,8 +674,8 @@ model ProviderOperation {
   safeErrorCode  String?
   startedAt      DateTime?               @db.Timestamptz(3)
   finishedAt     DateTime?               @db.Timestamptz(3)
-  createdAt      DateTime                @default(now())
-  updatedAt      DateTime                @updatedAt
+  createdAt      DateTime                @default(now()) @db.Timestamptz(3)
+  updatedAt      DateTime                @updatedAt @db.Timestamptz(3)
   site           Site                    @relation(fields: [siteId], references: [id], onDelete: Cascade, onUpdate: Cascade)
 
   @@unique([organizationId, id])
@@ -695,8 +695,8 @@ model ProviderConnection {
   lastCheckedAt  DateTime?         @db.Timestamptz(3)
   connectedAt    DateTime?         @db.Timestamptz(3)
   version        Int               @default(1)
-  createdAt      DateTime          @default(now())
-  updatedAt      DateTime          @updatedAt
+  createdAt      DateTime          @default(now()) @db.Timestamptz(3)
+  updatedAt      DateTime          @updatedAt @db.Timestamptz(3)
   site           Site              @relation(fields: [siteId], references: [id], onDelete: Cascade, onUpdate: Cascade)
 
   @@unique([siteId, provider])
@@ -713,8 +713,8 @@ model SearchTarget {
   regionName     String
   regionIndex    Int?
   enabled        Boolean      @default(true)
-  createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @updatedAt
+  createdAt      DateTime     @default(now()) @db.Timestamptz(3)
+  updatedAt      DateTime     @updatedAt @db.Timestamptz(3)
   site           Site         @relation(fields: [siteId], references: [id], onDelete: Cascade, onUpdate: Cascade)
 
   @@unique([siteId, engine, device, regionKey])
@@ -732,8 +732,8 @@ model GoalDefinition {
   direction              GoalDirection
   includeInSeoConversion Boolean
   version                Int                  @default(1)
-  createdAt              DateTime             @default(now())
-  updatedAt              DateTime             @updatedAt
+  createdAt              DateTime             @default(now()) @db.Timestamptz(3)
+  updatedAt              DateTime             @updatedAt @db.Timestamptz(3)
   project                Project              @relation(fields: [projectId], references: [id], onDelete: Cascade, onUpdate: Cascade)
   siteScopes             GoalDefinitionSite[]
 
@@ -761,8 +761,8 @@ model TrackedQuerySet {
   baselineLabel  String
   expectedCount  Int
   version        Int            @default(1)
-  createdAt      DateTime       @default(now())
-  updatedAt      DateTime       @updatedAt
+  createdAt      DateTime       @default(now()) @db.Timestamptz(3)
+  updatedAt      DateTime       @updatedAt @db.Timestamptz(3)
   site           Site           @relation(fields: [siteId], references: [id], onDelete: Cascade, onUpdate: Cascade)
   queries        TrackedQuery[]
 
@@ -778,8 +778,8 @@ model TrackedQuery {
   enabled                  Boolean          @default(true)
   baselineCurrentPosition  Int?
   baselinePreviousPosition Int?
-  createdAt                DateTime         @default(now())
-  updatedAt                DateTime         @updatedAt
+  createdAt                DateTime         @default(now()) @db.Timestamptz(3)
+  updatedAt                DateTime         @updatedAt @db.Timestamptz(3)
   trackedQuerySet          TrackedQuerySet  @relation(fields: [trackedQuerySetId], references: [id], onDelete: Cascade, onUpdate: Cascade)
   rankingCaptures          RankingCapture[]
 
@@ -803,8 +803,8 @@ model SyncRun {
   sitesFailed    Int           @default(0)
   safeError      String?
   correlationId  String
-  createdAt      DateTime      @default(now())
-  updatedAt      DateTime      @updatedAt
+  createdAt      DateTime      @default(now()) @db.Timestamptz(3)
+  updatedAt      DateTime      @updatedAt @db.Timestamptz(3)
   sourceRuns     SourceRun[]
 
   @@unique([organizationId, id])
@@ -827,8 +827,8 @@ model SourceRun {
   rowsReceived                    Int?
   safeErrorCode                   String?
   notes                           String?
-  createdAt                       DateTime                         @default(now())
-  updatedAt                       DateTime                         @updatedAt
+  createdAt                       DateTime                         @default(now()) @db.Timestamptz(3)
+  updatedAt                       DateTime                         @updatedAt @db.Timestamptz(3)
   syncRun                         SyncRun                          @relation(fields: [syncRunId], references: [id], onDelete: Cascade, onUpdate: Cascade)
   site                            Site                             @relation(fields: [siteId], references: [id], onDelete: Cascade, onUpdate: Cascade)
   webmasterDailyMetrics           WebmasterDailyMetric[]
@@ -860,7 +860,7 @@ model WebmasterDailyMetric {
   ctr             Decimal?  @db.Decimal(8, 4)
   averagePosition Decimal?  @db.Decimal(8, 4)
   sourceRunId     String
-  createdAt       DateTime  @default(now())
+  createdAt       DateTime  @default(now()) @db.Timestamptz(3)
   site            Site      @relation(fields: [siteId], references: [id], onDelete: Cascade, onUpdate: Cascade)
   sourceRun       SourceRun @relation(fields: [sourceRunId], references: [id], onDelete: Cascade, onUpdate: Cascade)
 
@@ -889,7 +889,7 @@ model WebmasterQueryDailyMetric {
   relevantUrl          String?
   regionKey            String?
   sourceRunId          String
-  createdAt            DateTime              @default(now())
+  createdAt            DateTime              @default(now()) @db.Timestamptz(3)
   site                 Site                  @relation(fields: [siteId], references: [id], onDelete: Cascade, onUpdate: Cascade)
   sourceRun            SourceRun             @relation(fields: [sourceRunId], references: [id], onDelete: Cascade, onUpdate: Cascade)
 
@@ -916,7 +916,7 @@ model MetrikaDailyMetric {
   allVisits                   Int?
   conversionRate              Decimal?  @db.Decimal(8, 4)
   sourceRunId                 String
-  createdAt                   DateTime  @default(now())
+  createdAt                   DateTime  @default(now()) @db.Timestamptz(3)
   site                        Site      @relation(fields: [siteId], references: [id], onDelete: Cascade, onUpdate: Cascade)
   sourceRun                   SourceRun @relation(fields: [sourceRunId], references: [id], onDelete: Cascade, onUpdate: Cascade)
 
@@ -942,7 +942,7 @@ model LandingPageDailyMetric {
   targetVisits                Int
   conversionRate              Decimal?        @db.Decimal(8, 4)
   sourceRunId                 String
-  createdAt                   DateTime        @default(now())
+  createdAt                   DateTime        @default(now()) @db.Timestamptz(3)
   site                        Site            @relation(fields: [siteId], references: [id], onDelete: Cascade, onUpdate: Cascade)
   sourceRun                   SourceRun       @relation(fields: [sourceRunId], references: [id], onDelete: Cascade, onUpdate: Cascade)
 
@@ -963,7 +963,7 @@ model MetrikaDeviceDailyMetric {
   goalReaches    Int
   conversionRate Decimal?        @db.Decimal(8, 4)
   sourceRunId    String
-  createdAt      DateTime        @default(now())
+  createdAt      DateTime        @default(now()) @db.Timestamptz(3)
   site           Site            @relation(fields: [siteId], references: [id], onDelete: Cascade, onUpdate: Cascade)
   sourceRun      SourceRun       @relation(fields: [sourceRunId], references: [id], onDelete: Cascade, onUpdate: Cascade)
 
@@ -987,7 +987,7 @@ model MetrikaGoalDailyMetric {
   users          Int
   conversionRate Decimal?        @db.Decimal(8, 4)
   sourceRunId    String
-  createdAt      DateTime        @default(now())
+  createdAt      DateTime        @default(now()) @db.Timestamptz(3)
   site           Site            @relation(fields: [siteId], references: [id], onDelete: Cascade, onUpdate: Cascade)
   sourceRun      SourceRun       @relation(fields: [sourceRunId], references: [id], onDelete: Cascade, onUpdate: Cascade)
 
@@ -1009,7 +1009,7 @@ model MetrikaSearchEngineDailyMetric {
   uniqueTargetVisits Int
   conversionRate     Decimal?        @db.Decimal(8, 4)
   sourceRunId        String
-  createdAt          DateTime        @default(now())
+  createdAt          DateTime        @default(now()) @db.Timestamptz(3)
   site               Site            @relation(fields: [siteId], references: [id], onDelete: Cascade, onUpdate: Cascade)
   sourceRun          SourceRun       @relation(fields: [sourceRunId], references: [id], onDelete: Cascade, onUpdate: Cascade)
 
@@ -1032,7 +1032,7 @@ model MetrikaSearchPhraseDailyMetric {
   goalReaches        Int
   uniqueTargetVisits Int
   sourceRunId        String
-  createdAt          DateTime        @default(now())
+  createdAt          DateTime        @default(now()) @db.Timestamptz(3)
   site               Site            @relation(fields: [siteId], references: [id], onDelete: Cascade, onUpdate: Cascade)
   sourceRun          SourceRun       @relation(fields: [sourceRunId], references: [id], onDelete: Cascade, onUpdate: Cascade)
 
@@ -1054,7 +1054,7 @@ model MetrikaGeoDailyMetric {
   goalReaches        Int
   uniqueTargetVisits Int
   sourceRunId        String
-  createdAt          DateTime        @default(now())
+  createdAt          DateTime        @default(now()) @db.Timestamptz(3)
   site               Site            @relation(fields: [siteId], references: [id], onDelete: Cascade, onUpdate: Cascade)
   sourceRun          SourceRun       @relation(fields: [sourceRunId], references: [id], onDelete: Cascade, onUpdate: Cascade)
 
@@ -1076,7 +1076,7 @@ model RankingCapture {
   regionKey      String        @default("legacy")
   regionName     String?
   relevantUrl    String?
-  createdAt      DateTime      @default(now())
+  createdAt      DateTime      @default(now()) @db.Timestamptz(3)
   trackedQuery   TrackedQuery  @relation(fields: [trackedQueryId], references: [id], onDelete: Cascade, onUpdate: Cascade)
   sourceRun      SourceRun?    @relation(fields: [sourceRunId], references: [id], onDelete: SetNull, onUpdate: Cascade)
 
@@ -1104,7 +1104,7 @@ model CompetitorSnapshot {
   top100          Int          @default(0)
   queryCount      Int
   sourceRunId     String?
-  createdAt       DateTime     @default(now())
+  createdAt       DateTime     @default(now()) @db.Timestamptz(3)
   site            Site         @relation(fields: [siteId], references: [id], onDelete: Cascade, onUpdate: Cascade)
   sourceRun       SourceRun?   @relation(fields: [sourceRunId], references: [id], onDelete: Restrict, onUpdate: Cascade)
 
@@ -1128,7 +1128,7 @@ model Notification {
   sourceId       String?
   dedupKey       String                 @unique
   occurredAt     DateTime               @db.Timestamptz(3)
-  createdAt      DateTime               @default(now())
+  createdAt      DateTime               @default(now()) @db.Timestamptz(3)
   organization   Organization?          @relation(fields: [organizationId], references: [id], onDelete: SetNull, onUpdate: Cascade)
   project        Project?               @relation(fields: [projectId], references: [id], onDelete: Cascade, onUpdate: Cascade)
   site           Site?                  @relation(fields: [siteId], references: [id], onDelete: Cascade, onUpdate: Cascade)
@@ -1159,7 +1159,7 @@ model TechnicalSnapshot {
   sourceRunId    String
   kind           TechnicalSnapshotKind
   payload        Json
-  createdAt      DateTime              @default(now())
+  createdAt      DateTime              @default(now()) @db.Timestamptz(3)
   site           Site                  @relation(fields: [siteId], references: [id], onDelete: Cascade, onUpdate: Cascade)
   sourceRun      SourceRun             @relation(fields: [sourceRunId], references: [id], onDelete: Cascade, onUpdate: Cascade)
 
@@ -1178,7 +1178,7 @@ model ReportSnapshot {
   freshness        ReportFreshness
   payload          Json
   sourceRunSetJson Json?
-  createdAt        DateTime        @default(now())
+  createdAt        DateTime        @default(now()) @db.Timestamptz(3)
   site             Site            @relation(fields: [siteId], references: [id], onDelete: Cascade, onUpdate: Cascade)
 
   @@index([siteId, periodKey, generatedAt])
@@ -1198,7 +1198,7 @@ model AuditEvent {
   afterMarker    Json?
   source         String
   correlationId  String
-  createdAt      DateTime       @default(now())
+  createdAt      DateTime       @default(now()) @db.Timestamptz(3)
 
   @@index([organizationId, createdAt])
   @@index([productCode, organizationId, projectId, createdAt])
@@ -1218,8 +1218,8 @@ model IdempotencyKey {
   errorCode         String?
   outboxEventId     String?           @unique
   expiresAt         DateTime          @db.Timestamptz(3)
-  createdAt         DateTime          @default(now())
-  updatedAt         DateTime          @updatedAt
+  createdAt         DateTime          @default(now()) @db.Timestamptz(3)
+  updatedAt         DateTime          @updatedAt @db.Timestamptz(3)
   organization      Organization?     @relation(fields: [organizationId], references: [id], onDelete: SetNull, onUpdate: Cascade)
   outboxEvent       OutboxEvent?      @relation(fields: [outboxEventId], references: [id], onDelete: SetNull, onUpdate: Cascade)
 
@@ -1234,17 +1234,17 @@ model OutboxEvent {
   topic          String
   payload        Json
   schemaVersion  Int             @default(1)
-  occurredAt     DateTime        @default(now())
+  occurredAt     DateTime        @default(now()) @db.Timestamptz(3)
   status         OutboxStatus    @default(PENDING)
   attempts       Int             @default(0)
-  availableAt    DateTime        @default(now())
+  availableAt    DateTime        @default(now()) @db.Timestamptz(3)
   lockedAt       DateTime?       @db.Timestamptz(3)
   lockedBy       String?
   lastErrorCode  String?
   correlationId  String
   processedAt    DateTime?       @db.Timestamptz(3)
-  createdAt      DateTime        @default(now())
-  updatedAt      DateTime        @updatedAt
+  createdAt      DateTime        @default(now()) @db.Timestamptz(3)
+  updatedAt      DateTime        @updatedAt @db.Timestamptz(3)
   organization   Organization?   @relation(fields: [organizationId], references: [id], onDelete: SetNull, onUpdate: Cascade)
   idempotencyKey IdempotencyKey?
   jobRuns        JobRun[]
@@ -1266,7 +1266,7 @@ model JobRun {
   finishedAt     DateTime?     @db.Timestamptz(3)
   safeErrorCode  String?
   correlationId  String
-  createdAt      DateTime      @default(now())
+  createdAt      DateTime      @default(now()) @db.Timestamptz(3)
   organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull, onUpdate: Cascade)
   outboxEvent    OutboxEvent   @relation(fields: [outboxEventId], references: [id], onDelete: Cascade, onUpdate: Cascade)
 
@@ -1281,8 +1281,8 @@ model RuntimeHeartbeat {
   workerId    String
   startedAt   DateTime @db.Timestamptz(3)
   heartbeatAt DateTime @db.Timestamptz(3)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt   DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt   DateTime @updatedAt @db.Timestamptz(3)
 
   @@unique([runtime, workerId])
   @@index([runtime, heartbeatAt])
@@ -1296,7 +1296,7 @@ model RetentionRun {
   deletedOutboxEvents Int                @default(0)
   deletedJobRuns      Int                @default(0)
   safeErrorCode       String?
-  createdAt           DateTime           @default(now())
+  createdAt           DateTime           @default(now()) @db.Timestamptz(3)
 
   @@index([status, startedAt])
 }
