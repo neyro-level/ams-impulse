@@ -13,7 +13,11 @@ function safePrint(runtime: DatabaseRuntime, applicationName: string): void {
 
 function testRoleUrl(runtime: DatabaseRuntime): string | undefined {
   const base = process.env.DATABASE_URL?.trim();
-  const prefix = runtime === "web" ? "TEST_RUNTIME_DATABASE" : "TEST_WORKER_DATABASE";
+  const prefix = runtime === "web"
+    ? "TEST_RUNTIME_DATABASE"
+    : runtime === "worker"
+      ? "TEST_WORKER_DATABASE"
+      : "TEST_MIGRATOR_DATABASE";
   const user = process.env[`${prefix}_USER`]?.trim();
   const password = process.env[`${prefix}_PASSWORD`]?.trim();
   if (!base || !user || !password) return undefined;
@@ -31,11 +35,21 @@ if (webTestUrl && workerTestUrl) {
     const proof = await verifyDatabaseRuntimeContract(createPgPoolConfig(url, runtime), runtime);
     safePrint(runtime, proof.applicationName);
   }
+  const migratorTestUrl = testRoleUrl("migrator");
+  if (migratorTestUrl) {
+    const proof = await verifyDatabaseRuntimeContract(
+      createPgPoolConfig(migratorTestUrl, "migrator"),
+      "migrator",
+    );
+    safePrint("migrator", proof.applicationName);
+  } else {
+    process.stdout.write("database_runtime_contract=skipped runtime=migrator reason=missing_test_credentials\n");
+  }
 } else {
   const runtime = process.env.DATABASE_RUNTIME as DatabaseRuntime | undefined;
-  if (runtime !== "web" && runtime !== "worker") {
+  if (runtime !== "web" && runtime !== "worker" && runtime !== "migrator") {
     throw new Error(
-      "DATABASE_RUNTIME must be web or worker when dedicated test role credentials are unavailable",
+      "DATABASE_RUNTIME must be web, worker or migrator when dedicated test role credentials are unavailable",
     );
   }
 

@@ -14,14 +14,18 @@ function required(name: string): string {
 
 function roleDatabaseUrl(runtime: DatabaseRuntime): string {
   const url = new URL(required("DATABASE_URL"));
-  const prefix = runtime === "web" ? "TEST_RUNTIME_DATABASE" : "TEST_WORKER_DATABASE";
+  const prefix = runtime === "web"
+    ? "TEST_RUNTIME_DATABASE"
+    : runtime === "worker"
+      ? "TEST_WORKER_DATABASE"
+      : "TEST_MIGRATOR_DATABASE";
   url.username = required(`${prefix}_USER`);
   url.password = required(`${prefix}_PASSWORD`);
   return url.toString();
 }
 
 describe("database runtime contract", () => {
-  for (const runtime of ["web", "worker"] as const) {
+  for (const runtime of ["web", "worker", "migrator"] as const) {
     it(`applies the ${runtime} profile to a real PostgreSQL session`, async () => {
       const proof = await verifyDatabaseRuntimeContract(
         createPgPoolConfig(roleDatabaseUrl(runtime), runtime),
