@@ -44,6 +44,37 @@ export const EXTERNAL_OWNED_SCHEMAS = {
   platform: "AMS platform owns functions and RLS helpers, not application records",
 } as const;
 
+export const DATETIME_CONTRACT_EXEMPT_COLUMNS = {
+  "public.User.createdAt": "Better Auth owns the User lifecycle timestamp mapping",
+  "public.User.updatedAt": "Better Auth owns the User lifecycle timestamp mapping",
+  "public.Session.expiresAt": "Better Auth owns the Session lifecycle timestamp mapping",
+  "public.Session.createdAt": "Better Auth owns the Session lifecycle timestamp mapping",
+  "public.Session.updatedAt": "Better Auth owns the Session lifecycle timestamp mapping",
+  "public.jwks.createdAt": "Better Auth JWT owns the JWK lifecycle timestamp mapping",
+  "public.jwks.expiresAt": "Better Auth JWT owns the JWK lifecycle timestamp mapping",
+  "public.oauthClient.createdAt": "Better Auth OAuth owns the client timestamp mapping",
+  "public.oauthClient.updatedAt": "Better Auth OAuth owns the client timestamp mapping",
+  "public.oauthResource.createdAt": "Better Auth OAuth owns the resource timestamp mapping",
+  "public.oauthResource.updatedAt": "Better Auth OAuth owns the resource timestamp mapping",
+  "public.oauthClientResource.createdAt": "Better Auth OAuth owns the client-resource timestamp mapping",
+  "public.oauthRefreshToken.expiresAt": "Better Auth OAuth owns the refresh-token timestamp mapping",
+  "public.oauthRefreshToken.createdAt": "Better Auth OAuth owns the refresh-token timestamp mapping",
+  "public.oauthRefreshToken.rotatedAt": "Better Auth OAuth owns the refresh-token timestamp mapping",
+  "public.oauthRefreshToken.rotationReplayExpiresAt": "Better Auth OAuth owns the refresh-token timestamp mapping",
+  "public.oauthAccessToken.expiresAt": "Better Auth OAuth owns the access-token timestamp mapping",
+  "public.oauthAccessToken.createdAt": "Better Auth OAuth owns the access-token timestamp mapping",
+  "public.oauthConsent.createdAt": "Better Auth OAuth owns the consent timestamp mapping",
+  "public.oauthConsent.updatedAt": "Better Auth OAuth owns the consent timestamp mapping",
+  "public.oauthClientAssertion.expiresAt": "Better Auth OAuth owns the client-assertion timestamp mapping",
+  "public.Account.accessTokenExpiresAt": "Better Auth owns the Account token timestamp mapping",
+  "public.Account.refreshTokenExpiresAt": "Better Auth owns the Account token timestamp mapping",
+  "public.Account.createdAt": "Better Auth owns the Account lifecycle timestamp mapping",
+  "public.Account.updatedAt": "Better Auth owns the Account lifecycle timestamp mapping",
+  "public.Verification.expiresAt": "Better Auth owns the Verification timestamp mapping",
+  "public.Verification.createdAt": "Better Auth owns the Verification timestamp mapping",
+  "public.Verification.updatedAt": "Better Auth owns the Verification timestamp mapping",
+} as const;
+
 export const PLATFORM_OPERATIONAL_MODELS = [
   "AuditEvent",
   "IdempotencyKey",
