@@ -109,8 +109,10 @@ Tests:
 - `TEST_RUNTIME_DATABASE_PASSWORD`
 - `TEST_WORKER_DATABASE_USER`
 - `TEST_WORKER_DATABASE_PASSWORD`
+- `TEST_MIGRATOR_DATABASE_USER`
+- `TEST_MIGRATOR_DATABASE_PASSWORD`
 
-Test database name must end with `_test`; owner, web and worker identities must
+Test database name must end with `_test`; owner, web, worker and migrator identities must
 be dedicated test roles and different from local/production identities. Runtime
 role variables exist only to prove real PostgreSQL session settings and grants.
 

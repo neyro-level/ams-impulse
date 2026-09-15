@@ -8,9 +8,9 @@ import { inspectDatabaseTarget } from "../../config/database-target.ts";
 export type DatabaseRuntime = "web" | "worker" | "migrator";
 
 const runtimeProfiles = {
-  web: { application_name: "ams-impulse-web", statement_timeout: 15_000, lock_timeout: 3_000, idle_in_transaction_session_timeout: 15_000, max: 10, transactionMaxWaitMs: 2_000, transactionTimeoutMs: 10_000 },
-  worker: { application_name: "ams-impulse-worker", statement_timeout: 60_000, lock_timeout: 5_000, idle_in_transaction_session_timeout: 15_000, max: 5, transactionMaxWaitMs: 10_000, transactionTimeoutMs: 60_000 },
-  migrator: { application_name: "ams-impulse-migrator", statement_timeout: 900_000, lock_timeout: 10_000, idle_in_transaction_session_timeout: 60_000, max: 2, transactionMaxWaitMs: 10_000, transactionTimeoutMs: 900_000 },
+  web: { application_name: "ams-impulse-web", options: "-c TimeZone=UTC", statement_timeout: 15_000, lock_timeout: 3_000, idle_in_transaction_session_timeout: 15_000, max: 10, transactionMaxWaitMs: 2_000, transactionTimeoutMs: 10_000 },
+  worker: { application_name: "ams-impulse-worker", options: "-c TimeZone=UTC", statement_timeout: 60_000, lock_timeout: 5_000, idle_in_transaction_session_timeout: 15_000, max: 5, transactionMaxWaitMs: 10_000, transactionTimeoutMs: 60_000 },
+  migrator: { application_name: "ams-impulse-migrator", options: "-c TimeZone=UTC", statement_timeout: 900_000, lock_timeout: 10_000, idle_in_transaction_session_timeout: 60_000, max: 2, transactionMaxWaitMs: 10_000, transactionTimeoutMs: 900_000 },
 } as const;
 
 export function databaseRuntimeProfile(runtime: DatabaseRuntime = "web") {
@@ -21,6 +21,7 @@ function databasePoolRuntimeProfile(runtime: DatabaseRuntime) {
   const profile = databaseRuntimeProfile(runtime);
   return {
     application_name: profile.application_name,
+    options: profile.options,
     statement_timeout: profile.statement_timeout,
     lock_timeout: profile.lock_timeout,
     idle_in_transaction_session_timeout: profile.idle_in_transaction_session_timeout,
