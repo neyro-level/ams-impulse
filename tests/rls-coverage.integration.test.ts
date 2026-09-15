@@ -38,11 +38,19 @@ integrationDescription("live database RLS coverage", () => {
 
   it("passes the migrated schema and rejects an unprotected probe table", async () => {
     const baseline = await loadRlsCoverageInventory(client);
-    expect(evaluateRlsCoverage(baseline.relations, baseline.runtimeRoles).failures).toEqual([]);
+    expect(evaluateRlsCoverage(
+      baseline.relations,
+      baseline.runtimeRoles,
+      baseline.securityDefiners,
+    ).failures).toEqual([]);
 
     await client.query('CREATE TABLE "RlsCoverageProbe" ("organizationId" TEXT NOT NULL)');
     const withProbe = await loadRlsCoverageInventory(client);
-    expect(evaluateRlsCoverage(withProbe.relations, withProbe.runtimeRoles).failures)
+    expect(evaluateRlsCoverage(
+      withProbe.relations,
+      withProbe.runtimeRoles,
+      withProbe.securityDefiners,
+    ).failures)
       .toContain("public.RlsCoverageProbe: RLS is not enabled");
     await client.query('DROP TABLE "RlsCoverageProbe"');
   });

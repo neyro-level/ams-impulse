@@ -5,7 +5,9 @@ import {
   TENANT_OWNED_MODELS,
 } from "../src/platform/database/tenant-owned-models.ts";
 import {
+  evaluateSecurityDefinerBoundaries,
   evaluateRlsCoverage,
+  securityDefinerReadsProtectedRelation,
   type RlsRelationInventory,
 } from "../scripts/verify-rls-coverage.ts";
 
@@ -29,6 +31,24 @@ function protectedRelation(tableName: string): RlsRelationInventory {
 }
 
 describe("live RLS coverage evaluator", () => {
+  it("rejects a SECURITY DEFINER routine that reads a protected relation without authorization", () => {
+    const relation = protectedRelation("Notification");
+    const unsafeRoutine = {
+      schemaName: "platform",
+      routineName: "unsafe_notification_count",
+      identityArguments: "",
+      source: 'SELECT count(*) FROM "public"."Notification"',
+    };
+
+    expect(securityDefinerReadsProtectedRelation(unsafeRoutine.source, relation)).toBe(true);
+    expect(evaluateSecurityDefinerBoundaries([unsafeRoutine], [relation])).toEqual([
+      "platform.unsafe_notification_count(): SECURITY DEFINER reads a protected relation without an authorization function",
+    ]);
+    expect(evaluateSecurityDefinerBoundaries([
+      { ...unsafeRoutine, source: `${unsafeRoutine.source} WHERE platform.can_access_seo_project('', '')` },
+    ], [relation])).toEqual([]);
+  });
+
   it("fails closed for a newly discovered organization table without RLS", () => {
     const relations = TENANT_OWNED_MODELS.map(protectedRelation);
     relations.push({
