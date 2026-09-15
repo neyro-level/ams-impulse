@@ -182,6 +182,8 @@ stale-run scope discovery is worker-only. Budget boundaries are evaluated in UTC
 
 Research worker sets transaction-local `ams.job_organization_id` and `ams.job_project_id`. RLS allows `ams_worker` only rows matching both values from the validated queue payload.
 
+Notification RLS distinguishes project, organization and global scope. Project rows require a fresh SEO project grant; organization rows require membership in that organization; global and `PLATFORM_ADMIN_ONLY` rows are visible only to Platform Admin. A scoped worker may write project or organization lifecycle notifications only for its transaction-local organization, while `NotificationRead` is restricted to the current user's own rows and visible notifications.
+
 ## Passwords And Sessions
 
 Passwords and hashes never enter Git, docs, argv, logs or AuditEvent. Password reset,

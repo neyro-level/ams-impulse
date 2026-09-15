@@ -39,6 +39,8 @@ Every read mutation validates that the notification is visible to the current pr
 - Dedup key prevents repeated noise for the same lifecycle event.
 - Notification does not replace AuditEvent, SyncRun, SourceRun, OutboxEvent or logs.
 - Client Viewer does not receive notification route until a product decision changes it.
+- PostgreSQL enforces the same audience boundary: project notifications require a project grant, organization notifications require membership, and global or `PLATFORM_ADMIN_ONLY` notifications require Platform Admin.
+- A user can read or change only their own `NotificationRead` rows for notifications that are visible to them.
 
 ## Tests
 
