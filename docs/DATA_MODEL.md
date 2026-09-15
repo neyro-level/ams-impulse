@@ -232,6 +232,7 @@ query plans when production-like volume is available.
 - Research daily and monthly money limits use calendar boundaries at `00:00:00 UTC`, calculated only by `platform.research_budget_boundaries` so reservation and aggregation cannot disagree at a day or month rollover;
 - `Run.allocatedCostKopecks` and `QueryRun.allocatedCostKopecks` are allocations of the approved conservative estimate across dispatched provider operations. They protect the internal budget but are not evidence of the exact XMLRiver invoice; a future provider reconciliation may introduce a separate factual cost field only when supported by provider billing evidence;
 - Better Auth and OAuth timestamps in `public` remain library-managed and are excluded from bulk conversion; a library-contract review is required before changing them.
+- The current Better Auth `1.7.2` `Account` contract requires `issuer` and `(issuer, accountId)` uniqueness. `ADR-004-better-auth-account-schema-transition.md` is the mandatory data/cutover plan before any move to `1.7.3` or later; the current stream does not alter rows or schema.
 
 ## Identifier Policy
 

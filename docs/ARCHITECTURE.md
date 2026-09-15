@@ -41,7 +41,7 @@ Exact versions определяют `package.json`, `pnpm-lock.yaml` и `.node-v
 | --- | --- |
 | Runtime | Node.js `24.20.0`, pnpm `11.5.1` |
 | Web | Next.js `16.3.3`, React `19.2.8`, TypeScript strict `6.0.3` |
-| Identity | Better Auth `1.7.2` |
+| Identity | Better Auth `1.7.2`; the required account-schema transition before any newer patch is defined by `ADR-004-better-auth-account-schema-transition.md` |
 | Data | Prisma `7.10.0` for `public`; typed parameterized SQL repositories for `tools` and `research` |
 | Database | Timeweb Managed PostgreSQL `18`, private network + TLS |
 | Queue | transactional outbox + pg-boss `12.30.0` |
