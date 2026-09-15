@@ -4,6 +4,7 @@ import {
   evaluateRlsCoverage,
   loadRlsCoverageInventory,
 } from "../scripts/verify-rls-coverage.ts";
+import { PROTECTED_RELATIONS } from "../src/platform/database/tenant-owned-models.ts";
 
 const enabled = Boolean(
   process.env.TEST_DATABASE_HOST
@@ -32,6 +33,7 @@ integrationDescription("live database RLS coverage", () => {
   afterAll(async () => {
     if (client) {
       await client.query('DROP TABLE IF EXISTS "RlsCoverageProbe"');
+      await client.query('DROP TABLE IF EXISTS tools."ProbeOrganization"');
       await client.end();
     }
   });
@@ -42,6 +44,7 @@ integrationDescription("live database RLS coverage", () => {
       baseline.relations,
       baseline.runtimeRoles,
       baseline.securityDefiners,
+      PROTECTED_RELATIONS,
     ).failures).toEqual([]);
 
     await client.query('CREATE TABLE "RlsCoverageProbe" ("organizationId" TEXT NOT NULL)');
@@ -50,8 +53,58 @@ integrationDescription("live database RLS coverage", () => {
       withProbe.relations,
       withProbe.runtimeRoles,
       withProbe.securityDefiners,
+      PROTECTED_RELATIONS,
     ).failures)
       .toContain("public.RlsCoverageProbe: RLS is not enabled");
     await client.query('DROP TABLE "RlsCoverageProbe"');
+  });
+
+  it("discovers a registered relation without organizationId and requires its policy", async () => {
+    const registry = [{ relation: "tools.ProbeOrganization", tenancy: "own-id" }];
+    await client.query('CREATE TABLE tools."ProbeOrganization" (id TEXT PRIMARY KEY)');
+
+    const unprotected = await loadRlsCoverageInventory(client, registry);
+    expect(evaluateRlsCoverage(
+      unprotected.relations,
+      unprotected.runtimeRoles,
+      unprotected.securityDefiners,
+      registry,
+    ).failures).toEqual(expect.arrayContaining([
+      "tools.ProbeOrganization: RLS is not enabled",
+      "tools.ProbeOrganization: protected relation has no policy",
+    ]));
+
+    await client.query('ALTER TABLE tools."ProbeOrganization" ENABLE ROW LEVEL SECURITY');
+    await client.query('ALTER TABLE tools."ProbeOrganization" FORCE ROW LEVEL SECURITY');
+    await client.query(`
+      CREATE POLICY probe_scope ON tools."ProbeOrganization"
+      USING (platform.can_access_tools_project(id, id))
+      WITH CHECK (platform.can_access_tools_project(id, id))
+    `);
+
+    const protectedInventory = await loadRlsCoverageInventory(client, registry);
+    expect(evaluateRlsCoverage(
+      protectedInventory.relations,
+      protectedInventory.runtimeRoles,
+      protectedInventory.securityDefiners,
+      registry,
+    ).failures).toEqual([]);
+    await client.query('DROP TABLE tools."ProbeOrganization"');
+  });
+
+  it("fails when the registered NotificationRead policy is removed", async () => {
+    await client.query("BEGIN");
+    try {
+      await client.query('DROP POLICY "notification_read_owner" ON "public"."NotificationRead"');
+      const inventory = await loadRlsCoverageInventory(client);
+      expect(evaluateRlsCoverage(
+        inventory.relations,
+        inventory.runtimeRoles,
+        inventory.securityDefiners,
+        PROTECTED_RELATIONS,
+      ).failures).toContain("public.NotificationRead: protected relation has no policy");
+    } finally {
+      await client.query("ROLLBACK");
+    }
   });
 });

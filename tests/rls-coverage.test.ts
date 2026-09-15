@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   PLATFORM_OPERATIONAL_RLS_EXEMPTIONS,
+  PROTECTED_RELATIONS,
   RLS_AUTHORIZATION_LOOKUP_RELATIONS,
   TENANT_OWNED_MODELS,
 } from "../src/platform/database/tenant-owned-models.ts";
@@ -61,7 +62,7 @@ describe("live RLS coverage evaluator", () => {
       policies: [],
     });
 
-    expect(evaluateRlsCoverage(relations, roles).failures).toEqual(expect.arrayContaining([
+    expect(evaluateRlsCoverage(relations, roles, [], []).failures).toEqual(expect.arrayContaining([
       "public.UnprotectedProbe: RLS is not enabled",
       "public.UnprotectedProbe: FORCE RLS is not enabled",
       "public.UnprotectedProbe: no policy references an authorization function",
@@ -82,6 +83,37 @@ describe("live RLS coverage evaluator", () => {
         policies: [],
       });
     }
-    expect(evaluateRlsCoverage(relations, roles).failures).toEqual([]);
+    expect(evaluateRlsCoverage(relations, roles, [], []).failures).toEqual([]);
+  });
+
+  it("keeps protected and lookup registries disjoint from operational exemptions", () => {
+    const exemptions = new Set(Object.keys(PLATFORM_OPERATIONAL_RLS_EXEMPTIONS));
+    for (const relation of PROTECTED_RELATIONS.map((entry) => entry.relation)) {
+      expect(exemptions.has(relation), relation).toBe(false);
+    }
+    for (const relation of RLS_AUTHORIZATION_LOOKUP_RELATIONS) {
+      expect(exemptions.has(relation), relation).toBe(false);
+    }
+  });
+
+  it("reports an absent registered relation and a registered relation without policy", () => {
+    const relations = TENANT_OWNED_MODELS.map(protectedRelation);
+    const registry = [{ relation: "tools.ProbeOrganization", tenancy: "own-id" }];
+    expect(evaluateRlsCoverage(relations, roles, [], registry).failures).toContain(
+      "registered protected relation is absent: tools.ProbeOrganization",
+    );
+
+    relations.push({
+      schemaName: "tools",
+      tableName: "ProbeOrganization",
+      ownerName: "seo_monitor_test",
+      enabled: true,
+      forced: true,
+      lookupOwnerAligned: true,
+      policies: [],
+    });
+    expect(evaluateRlsCoverage(relations, roles, [], registry).failures).toContain(
+      "tools.ProbeOrganization: protected relation has no policy",
+    );
   });
 });
