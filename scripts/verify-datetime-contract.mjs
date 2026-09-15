@@ -1,6 +1,8 @@
 import process from "node:process";
 
 import pg from "pg";
+import { APPLICATION_OWNED_SCHEMAS } from "../src/platform/database/tenant-owned-models.ts";
+import { evaluateDateTimeContract } from "./datetime-contract.ts";
 
 const databaseUrl = process.env.DATABASE_URL;
 
@@ -24,26 +26,25 @@ try {
   const result = await client.query(`
     SELECT table_schema, table_name, column_name, data_type
     FROM information_schema.columns
-    WHERE table_schema IN ('research', 'tools')
-      AND column_name ~ '(At)$'
+    WHERE table_schema = ANY($1::text[])
     ORDER BY table_schema, table_name, ordinal_position
-  `);
+  `, [APPLICATION_OWNED_SCHEMAS]);
 
-  const violations = result.rows.filter(
-    (column) => column.data_type !== "timestamp with time zone",
+  const { violations, summary } = evaluateDateTimeContract(
+    APPLICATION_OWNED_SCHEMAS,
+    result.rows,
   );
 
   if (violations.length > 0) {
-    const details = violations
-      .map(
-        (column) =>
-          `${column.table_schema}.${column.table_name}.${column.column_name}: ${column.data_type}`,
-      )
-      .join("\n");
+    const details = violations.join("\n");
     throw new Error(`UTC DateTime contract violations:\n${details}`);
   }
 
-  console.log(`DateTime contract valid: TimeZone=UTC; ${result.rowCount} application-owned UTC instants.`);
+  for (const item of summary) {
+    console.log(`DateTime schema=${item.schema} tables=${item.tables} instantColumns=${item.instantColumns}`);
+  }
+  const instantCount = summary.reduce((total, item) => total + item.instantColumns, 0);
+  console.log(`DateTime contract valid: TimeZone=UTC; ${instantCount} application-owned UTC instants.`);
 } finally {
   await client.end();
 }

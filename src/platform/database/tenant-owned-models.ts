@@ -26,6 +26,24 @@ export const TENANT_OWNED_MODELS = [
   "Notification",
 ] as const;
 
+export const APPLICATION_OWNED_SCHEMAS = [
+  "public",
+  "seo",
+  "leads",
+  "tools",
+  "research",
+  "contracts",
+  "invoices",
+  "presentations",
+  "site_clone",
+  "ops",
+] as const;
+
+export const EXTERNAL_OWNED_SCHEMAS = {
+  pgboss: "pg-boss owns its queue schema and timestamp contract",
+  platform: "AMS platform owns functions and RLS helpers, not application records",
+} as const;
+
 export const PLATFORM_OPERATIONAL_MODELS = [
   "AuditEvent",
   "IdempotencyKey",
