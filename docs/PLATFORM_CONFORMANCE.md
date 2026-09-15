@@ -32,7 +32,7 @@ DELIVERY_PROFILE = CRITICAL
 | Better Auth | IMPLEMENTED | Better Auth `1.7.2` владеет identity/password/session; public signup отключён. |
 | Authorization | IMPLEMENTED | Typed product grants, deny-by-default checks and exact `organizationId/projectId` ResourceRef scope are enforced at action/query/MCP/worker boundaries. |
 | Multi-tenancy | IMPLEMENTED | Product-local memberships/grants, server-owned selection, audit/outbox scope and composite ownership constraints are implemented. |
-| PostgreSQL RLS | IMPLEMENTED | `defineCommand` installs transaction-local principal/job context before repository work; runtime roles are non-owner `NOBYPASSRLS`, missing context denies. |
+| PostgreSQL RLS | IMPLEMENTED | `defineCommand` installs transaction-local principal/job context before repository work; runtime roles are non-owner `NOBYPASSRLS`, missing context denies; `verify:rls-coverage` inventories the live schema and fails closed on unprotected tenant tables. |
 | Async / outbox / queue | IMPLEMENTED | Outbox and pg-boss have long-lived outbox and Research workers in canonical Compose topology, bounded shutdown and no ambiguous paid retry. |
 | SourceCraft CI | IMPLEMENTED | Branch push, PR creation и schedule не запускают verification; manual exact-head `standard-check`, `risky-check`, `daily` и `release-check` определены в `.sourcecraft/ci.yaml`. |
 | Risk classification | IMPLEMENTED | `pnpm risk:classify` сопоставляет exact Git diff с high-risk paths и выдаёт только повышающий внимание `RISK_HINT`; semantic review остаётся обязательным. |

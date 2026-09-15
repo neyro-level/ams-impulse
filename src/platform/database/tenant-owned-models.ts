@@ -35,6 +35,21 @@ export const PLATFORM_OPERATIONAL_MODELS = [
   "RetentionRun",
 ] as const;
 
+export const RLS_AUTHORIZATION_LOOKUP_RELATIONS = [
+  "public.Member",
+  "public.Site",
+  "public.SeoProjectAccess",
+  "tools.ToolsMembership",
+  "tools.ToolsProjectAccess",
+] as const;
+
+export const PLATFORM_OPERATIONAL_RLS_EXEMPTIONS = {
+  "public.AuditEvent": "cross-tenant append-only audit queried only through authorized platform operations",
+  "public.IdempotencyKey": "command coordination state shared by platform transaction infrastructure",
+  "public.OutboxEvent": "cross-tenant queue claimed by the worker dispatcher before project context exists",
+  "public.JobRun": "cross-tenant worker lifecycle state linked to the platform outbox",
+} as const;
+
 export type TenantOwnedModel = (typeof TENANT_OWNED_MODELS)[number];
 
 export function isTenantOwnedModel(model: string): model is TenantOwnedModel {

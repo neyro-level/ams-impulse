@@ -25,6 +25,13 @@ const platformSchemaHardeningMigration = readFileSync(
   ),
   "utf8",
 );
+const coverageHardeningMigration = readFileSync(
+  new URL(
+    "../prisma/migrations/20260915022000_harden_rls_coverage/migration.sql",
+    import.meta.url,
+  ),
+  "utf8",
+);
 
 describe("PostgreSQL RLS foundation", () => {
   it("creates every approved product schema", () => {
@@ -118,5 +125,17 @@ describe("PostgreSQL RLS foundation", () => {
     expect(policyGapMigration).toContain("SET search_path = public, tools, pg_catalog, pg_temp");
     expect(policyGapMigration).toContain("SET search_path = public, platform, pg_catalog, pg_temp");
     expect(policyGapMigration).toContain("relation.relowner <> routine.proowner");
+  });
+
+  it("directly authorizes transitive ranking rows and protects Member lookup access", () => {
+    expect(coverageHardeningMigration).toContain(
+      'ALTER TABLE "public"."Member" ENABLE ROW LEVEL SECURITY',
+    );
+    expect(coverageHardeningMigration).toContain(
+      'ALTER TABLE "public"."Member" NO FORCE ROW LEVEL SECURITY',
+    );
+    expect(coverageHardeningMigration.match(/"platform"\."can_access_seo_site"/g)?.length)
+      .toBeGreaterThanOrEqual(4);
+    expect(coverageHardeningMigration).toContain("session_user = 'ams_worker'");
   });
 });

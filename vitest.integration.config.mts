@@ -17,6 +17,7 @@ export default defineConfig({
       "tests/auth.authorization.test.ts",
       "tests/auth-rate-limit.integration.test.ts",
       "tests/notification-rls.integration.test.ts",
+      "tests/rls-coverage.integration.test.ts",
       "tests/health.integration.test.ts",
       "tests/monitoring-service.test.ts",
       "tests/prisma-repositories.test.ts",
