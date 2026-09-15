@@ -41,4 +41,13 @@ export class ResearchProviderError extends Error {
     super(code);
     this.name = "ResearchProviderError";
   }
+
+  toJSON() {
+    return {
+      name: this.name,
+      code: this.code,
+      category: this.category,
+      ...(this.retryAfterMs === undefined ? {} : { retryAfterMs: this.retryAfterMs }),
+    };
+  }
 }

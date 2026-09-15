@@ -80,6 +80,18 @@ const REDACTION_PATHS = [
 
 const URL_KEY = /(?:url|uri|endpoint)$/i;
 const REDACTED = "[REDACTED]";
+const SENSITIVE_URL_PARAMETERS = new Set([
+  "apikey",
+  "api_key",
+  "authorization",
+  "key",
+  "password",
+  "secret",
+  "signature",
+  "token",
+  "user",
+  "x-amz-signature",
+]);
 
 function isSensitiveKey(key: string): boolean {
   const normalized = key.replaceAll(/[^a-z0-9]/gi, "").toLowerCase();
@@ -107,9 +119,22 @@ function sanitizeUrl(value: string): string {
   }
 }
 
+function sanitizeSensitiveUrl(value: string): string {
+  try {
+    const url = new URL(value);
+    if (!["http:", "https:"].includes(url.protocol)) return value;
+    const containsSensitiveParameter = [...url.searchParams.keys()]
+      .some((name) => SENSITIVE_URL_PARAMETERS.has(name.toLowerCase()));
+    return containsSensitiveParameter ? `${url.origin}${url.pathname}` : value;
+  } catch {
+    return value;
+  }
+}
+
 function sanitizeLogValue(value: unknown, key = "", seen = new WeakSet<object>()): unknown {
   if (isSensitiveKey(key)) return REDACTED;
   if (typeof value === "string" && URL_KEY.test(key)) return sanitizeUrl(value);
+  if (typeof value === "string") return sanitizeSensitiveUrl(value);
   if (!value || typeof value !== "object") return value;
   if (value instanceof Date) return value.toISOString();
   if (value instanceof Error) {

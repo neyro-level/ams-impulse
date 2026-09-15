@@ -104,7 +104,7 @@ MCP не предоставляет SQL, provider credentials или admin beare
 
 ## Хранилище И Секреты
 
-Нормализованные данные находятся в PostgreSQL. CSV хранится в private S3 с SSE AES-256 и `no-store`; object key детерминированно привязан к точным organization/project/research/export, а HTTPS signed URL живёт не более 60 секунд и создаётся после свежей авторизации. `XMLRIVER_USER`, `XMLRIVER_KEY`, AWS credentials и signed URL не логируются.
+Нормализованные данные находятся в PostgreSQL. CSV хранится в private S3 с SSE AES-256 и `no-store`; object key детерминированно привязан к точным organization/project/research/export, а HTTPS signed URL живёт не более 60 секунд и создаётся после свежей авторизации. `XMLRIVER_USER`, `XMLRIVER_KEY`, AWS credentials и signed URL не логируются. XMLRiver требует credentials в query string, поэтому transport errors всегда преобразуются в закрытый `ResearchProviderError`, его JSON-контракт содержит только safe code/category/retry delay, а logger удаляет чувствительные query parameters даже у URL, переданного под ошибочным именем поля.
 
 ## Проверенное Состояние
 

@@ -1,5 +1,8 @@
+import { Writable } from "node:stream";
 import { describe, expect, it } from "vitest";
+import { ResearchProviderError } from "../src/modules/research/index.ts";
 import { parseXmlRiverSerp, parseXmlRiverSuggestions, parseXmlRiverWordstat, XmlRiverClient } from "../src/modules/research/worker.ts";
+import { createLogger } from "../src/platform/observability/logger.ts";
 
 const serp = `<?xml version="1.0" encoding="utf-8"?>
 <yandexsearch><response><results><grouping><group><doc><url>https://www.example.ru/page</url><title>Пример</title><passages><passage>Описание результата</passage></passages></doc></group></grouping></results><topads><query><url>ads.example.ru</url><title>Реклама</title><snippet>Предложение</snippet></query></topads><addresults><relatedSearches><query><title>похожий запрос</title></query></relatedSearches></addresults></response></yandexsearch>`;
@@ -41,5 +44,78 @@ describe("XmlRiverClient", () => {
 
     const serverFailure = new XmlRiverClient({ user: "user", key: "secret" }, async () => new Response("", { status: 503 }));
     await expect(serverFailure.collectYandexSerp({ query: "test" })).rejects.toMatchObject({ category: "AMBIGUOUS_AFTER_DISPATCH" });
+  });
+
+  it("keeps credentials and the full provider URL out of every client error branch and logs", async () => {
+    const user = "xmlriver-user-private-2841";
+    const key = "xmlriver-key-private-9274";
+    const query = "private-query-marker-5813";
+    const capturedUrls: string[] = [];
+    const scenarios: Array<() => Promise<unknown>> = [];
+
+    const withResponse = (response: Response, operation: "serp" | "suggestions" | "wordstat" = "serp") => {
+      const client = new XmlRiverClient({ user, key }, async (input) => {
+        capturedUrls.push(String(input));
+        return response;
+      });
+      const request = { query };
+      if (operation === "suggestions") return () => client.collectYandexSuggestions(request);
+      if (operation === "wordstat") return () => client.collectWordstat(request);
+      return () => client.collectYandexSerp(request);
+    };
+
+    const networkClient = new XmlRiverClient({ user, key }, async (input) => {
+      capturedUrls.push(String(input));
+      throw new Error(`transport failed for ${String(input)}`);
+    });
+    scenarios.push(() => networkClient.collectYandexSerp({ query }));
+    for (const status of [400, 408, 429, 503]) {
+      scenarios.push(withResponse(new Response("", { status })));
+    }
+    scenarios.push(withResponse(new Response("", { headers: { "content-length": "2000001" } })));
+    scenarios.push(withResponse(new Response(new Uint8Array(2_000_001))));
+    scenarios.push(withResponse(new Response("not xml")));
+    scenarios.push(withResponse(new Response("not-json"), "suggestions"));
+    scenarios.push(withResponse(new Response("not-json"), "wordstat"));
+
+    const failures: ResearchProviderError[] = [];
+    for (const scenario of scenarios) {
+      try {
+        await scenario();
+        throw new Error("Expected XMLRiver scenario to fail");
+      } catch (error) {
+        expect(error).toBeInstanceOf(ResearchProviderError);
+        failures.push(error as ResearchProviderError);
+      }
+    }
+
+    let output = "";
+    const destination = new Writable({
+      write(chunk, _encoding, callback) {
+        output += chunk.toString();
+        callback();
+      },
+    });
+    const logger = createLogger({ scope: "xmlriver-error-proof" }, destination);
+    failures.forEach((error, index) => {
+      logger.error({
+        err: error,
+        mislabeledContext: capturedUrls[index],
+        providerUrl: capturedUrls[index],
+      }, "XMLRiver request failed");
+    });
+
+    for (const error of failures) {
+      const serialized = JSON.stringify(error);
+      expect(error.message).toBe(error.code);
+      expect(String(error)).not.toContain(user);
+      expect(String(error)).not.toContain(key);
+      expect(serialized).not.toContain(user);
+      expect(serialized).not.toContain(key);
+      expect(serialized).not.toContain(query);
+    }
+    for (const forbidden of [user, key, query, encodeURIComponent(user), encodeURIComponent(key), encodeURIComponent(query)]) {
+      expect(output).not.toContain(forbidden);
+    }
   });
 });

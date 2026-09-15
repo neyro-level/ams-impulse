@@ -15,6 +15,7 @@ describe("Research operational log safety", () => {
     const logger = createLogger({ scope: "research-proof" }, destination);
     logger.info({
       providerUrl: "https://provider.invalid/?key=provider-secret",
+      mislabeledContext: "https://xmlriver.com/search_yandex/xml?user=xmlriver-user-secret&key=xmlriver-key-secret&query=private",
       signedUrl: "https://storage.invalid/object?signature=signed-secret",
       rawQuery: "private@example.invalid sensitive phrase",
       payload: {
@@ -30,6 +31,8 @@ describe("Research operational log safety", () => {
 
     for (const forbidden of [
       "provider-secret",
+      "xmlriver-user-secret",
+      "xmlriver-key-secret",
       "signed-secret",
       "nested-secret",
       "nested-signed-secret",
@@ -41,6 +44,7 @@ describe("Research operational log safety", () => {
     const record = JSON.parse(output) as Record<string, unknown>;
     expect(record).toMatchObject({
       providerUrl: "[REDACTED]",
+      mislabeledContext: "https://xmlriver.com/search_yandex/xml",
       signedUrl: "[REDACTED]",
       rawQuery: "[REDACTED]",
       payload: {
